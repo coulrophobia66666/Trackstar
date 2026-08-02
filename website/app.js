@@ -14,6 +14,44 @@ function statusForScore(score) {
   return { key: "critical", color: "var(--status-critical)", label: "Schwach" };
 }
 
+/* ---------- Entertainment layer: grades, badges, teaser (for the free view) ---------- */
+
+function gradeForScore(score) {
+  if (score >= 80) {
+    return { emoji: "🔥", title: "Radio-ready!", desc: "Dein Track hat richtig Potential – so kannst du ihn einreichen.", color: "var(--status-good)" };
+  }
+  if (score >= 60) {
+    return { emoji: "👍", title: "Fast am Ziel", desc: "Guter Stand – mit ein paar Anpassungen ist noch mehr drin.", color: "var(--status-good)" };
+  }
+  if (score >= 40) {
+    return { emoji: "🛠️", title: "Noch Feinschliff nötig", desc: "Die Basis stimmt, aber es gibt ein paar klare Stellschrauben.", color: "var(--status-warning)" };
+  }
+  return { emoji: "🚧", title: "Baustelle", desc: "Vor einer Einreichung lohnt sich nochmal Arbeit am Track.", color: "var(--status-critical)" };
+}
+
+function simpleBadge(score) {
+  if (score === null || score === undefined) return { emoji: "➖", label: "Fehlt Info" };
+  if (score >= 75) return { emoji: "💪", label: "Stark" };
+  if (score >= 50) return { emoji: "👌", label: "Okay" };
+  return { emoji: "🔧", label: "Muss ran" };
+}
+
+function combineScores(scores) {
+  const vals = scores.filter((v) => v !== null && v !== undefined);
+  if (vals.length === 0) return null;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+const TIP_LEVEL_RANK = { critical: 0, warning: 1, good: 2 };
+
+function pickTopTip(tips) {
+  let best = tips[0];
+  for (const tip of tips) {
+    if (TIP_LEVEL_RANK[tip.level] < TIP_LEVEL_RANK[best.level]) best = tip;
+  }
+  return best;
+}
+
 /* ---------- FFT (iterative radix-2 Cooley-Tukey) ---------- */
 
 function fft(re, im) {
@@ -461,12 +499,32 @@ function renderSubmissions(listEl, hintEl, { items, note }) {
   }
 }
 
+function renderBadges(container, badgeDefs) {
+  container.innerHTML = "";
+  for (const { label, score, mutedNote } of badgeDefs) {
+    const b = score === null ? { emoji: "➖", label: mutedNote || "Fehlt Info" } : simpleBadge(score);
+    const borderColor = score === null ? "var(--gridline)" : statusForScore(score).color;
+    const el = document.createElement("div");
+    el.className = "badge";
+    el.style.borderColor = borderColor;
+    el.innerHTML = `<span class="badge-emoji">${b.emoji}</span><span>${label}</span><span class="badge-name">${b.label}</span>`;
+    container.appendChild(el);
+  }
+}
+
 /* ---------- Main flow ---------- */
 
 const form = document.getElementById("analyze-form");
 const statusLine = document.getElementById("status-line");
 const analyzeBtn = document.getElementById("analyze-btn");
-const resultsEl = document.getElementById("results");
+const freeResultsEl = document.getElementById("free-results");
+const premiumResultsEl = document.getElementById("premium-results");
+const unlockBtn = document.getElementById("unlock-btn");
+
+unlockBtn.addEventListener("click", () => {
+  premiumResultsEl.hidden = false;
+  premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -513,12 +571,29 @@ form.addEventListener("submit", async (e) => {
     const totalWeight = weighted.reduce((a, x) => a + x.weight, 0);
     const overallScore = Math.round(weighted.reduce((a, x) => a + x.score * x.weight, 0) / totalWeight);
 
-    document.getElementById("overall-score").textContent = `${overallScore}/100`;
-    const overallStatus = statusForScore(overallScore);
-    const verdictEl = document.getElementById("overall-verdict");
-    verdictEl.textContent =
-      overallScore >= 75 ? "Vielversprechend" : overallScore >= 50 ? "Ausbaufähig" : "Noch nicht bereit";
-    verdictEl.style.color = overallStatus.color;
+    const soundScore = combineScores([scores.technik, scores.frequenz]);
+    const radioScore = scores.lautheit;
+    const hookScore = combineScores([scores.hook, scores.titel]);
+
+    const grade = gradeForScore(overallScore);
+    document.getElementById("hero-emoji").textContent = grade.emoji;
+    const heroTitleEl = document.getElementById("hero-title");
+    heroTitleEl.textContent = grade.title;
+    heroTitleEl.style.color = grade.color;
+    document.getElementById("hero-desc").textContent = grade.desc;
+
+    renderBadges(document.getElementById("badges"), [
+      { label: "Sound", score: soundScore },
+      { label: "Radiotauglich", score: radioScore },
+      { label: "Hook", score: hookScore, mutedNote: "Songtext fehlt" },
+    ]);
+
+    const tips = buildTips(audioMetrics, lyrics, scores);
+    const topTip = pickTopTip(tips);
+    const teaserPrefix = topTip.level === "good" ? "✅ " : "💡 Dein größter Hebel gerade: ";
+    document.getElementById("teaser-tip").textContent = teaserPrefix + topTip.text;
+
+    premiumResultsEl.hidden = true;
 
     const metersEl = document.getElementById("meters");
     metersEl.innerHTML = "";
@@ -538,14 +613,13 @@ form.addEventListener("submit", async (e) => {
 
     renderFreqChart(document.getElementById("freq-chart"), audioMetrics.bandPercents);
 
-    const tips = buildTips(audioMetrics, lyrics, scores);
     renderTips(document.getElementById("tips-list"), tips);
 
     const submissions = buildSubmissions(overallScore, targetStation);
     renderSubmissions(document.getElementById("submit-list"), document.getElementById("submit-hint"), submissions);
 
-    resultsEl.hidden = false;
-    resultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    freeResultsEl.hidden = false;
+    freeResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
     statusLine.textContent = "";
     ctx.close();
   } catch (err) {

@@ -3,69 +3,90 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Trackstar Songcheck – KI-Analyse für deinen Track</title>
-  <meta name="description" content="Lade deinen fertigen Track hoch und bekomme eine automatische Einschätzung zu Klangqualität, Frequenzen, Hook und Radiotauglichkeit." />
+  <title>Trackstar Songcheck – Ist dein Track schon Radio-ready?</title>
+  <meta name="description" content="Lad deinen Track hoch und finde in 30 Sekunden raus, ob er schon Radio-ready ist – mit Sofort-Check gratis, Tiefenanalyse optional." />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="page">
     <header class="header">
+      <div class="header-emoji">🎧</div>
       <h1>Trackstar Songcheck</h1>
-      <p class="subtitle">Lade deinen fertigen Track hoch – die App analysiert Klang, Frequenzen, Hook und Radiotauglichkeit und gibt dir konkrete Tipps.</p>
+      <p class="subtitle">Lad deinen Track hoch – in 30 Sekunden weißt du, ob er schon Radio-ready ist. Der Kurzcheck ist gratis.</p>
     </header>
 
     <main>
       <section class="card" id="upload-card">
         <form id="analyze-form">
           <div class="field">
-            <label for="audio-file">Track-Datei (MP3/WAV)</label>
+            <label for="audio-file">🎵 Dein Track</label>
             <input type="file" id="audio-file" accept="audio/*" required />
           </div>
 
           <div class="field">
-            <label for="track-title">Songtitel</label>
+            <label for="track-title">✏️ Songtitel</label>
             <input type="text" id="track-title" placeholder="z. B. Natriumlicht" />
           </div>
 
           <div class="field">
             <label for="track-lyrics">
-              Songtext <span class="optional">(optional, aber empfohlen)</span>
+              📜 Songtext <span class="optional">(optional – für den Hook-Check)</span>
             </label>
-            <textarea id="track-lyrics" rows="6" placeholder="Füge hier den Songtext ein, damit Hook und Songtitel-Erkennbarkeit geprüft werden können…"></textarea>
+            <textarea id="track-lyrics" rows="5" placeholder="Text reinkopieren, dann checken wir auch, ob dein Titel in der Hook hängen bleibt…"></textarea>
           </div>
 
           <div class="field">
-            <label for="target-station">Ziel-Sender / Ziel-Playlist <span class="optional">(optional)</span></label>
+            <label for="target-station">📻 Ziel-Sender / Ziel-Playlist <span class="optional">(optional)</span></label>
             <input type="text" id="target-station" placeholder="z. B. Oberberg Radio" />
           </div>
 
-          <button type="submit" id="analyze-btn">Track analysieren</button>
+          <button type="submit" id="analyze-btn">Jetzt checken 🚀</button>
           <p class="status-line" id="status-line" role="status" aria-live="polite"></p>
         </form>
       </section>
 
-      <section class="card" id="results" hidden>
+      <section class="card free-card" id="free-results" hidden>
         <div class="hero-tile">
-          <div class="hero-label">Erfolgschance</div>
-          <div class="hero-value" id="overall-score">–</div>
-          <div class="hero-verdict" id="overall-verdict"></div>
+          <div class="hero-emoji" id="hero-emoji">🎧</div>
+          <div class="hero-title" id="hero-title">–</div>
+          <p class="hero-desc" id="hero-desc"></p>
         </div>
+
+        <div class="badges" id="badges"></div>
+
+        <div class="teaser-tip" id="teaser-tip"></div>
+
+        <div class="unlock-card">
+          <div class="unlock-emoji">🔒</div>
+          <div class="unlock-text">
+            <div class="unlock-title">Willst du wissen, woran's genau liegt?</div>
+            <p class="unlock-desc">
+              Frequenzkurve im Detail, alle Verbesserungstipps und wohin du den Track am besten einreichst.
+            </p>
+          </div>
+          <button type="button" id="unlock-btn">Vollanalyse ansehen</button>
+          <p class="unlock-note">Aktuell kostenlos, solange wir testen 🎁</p>
+        </div>
+      </section>
+
+      <section class="card" id="premium-results" hidden>
+        <h2 class="premium-heading">🔬 Die Tiefenanalyse</h2>
 
         <div class="meters" id="meters"></div>
 
         <div class="freq-block">
-          <h2>Frequenzbalance</h2>
+          <h3>Frequenzbalance</h3>
           <p class="hint">Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).</p>
           <div class="freq-chart" id="freq-chart"></div>
         </div>
 
         <div class="tips-block">
-          <h2>Verbesserungsvorschläge</h2>
+          <h3>Verbesserungsvorschläge</h3>
           <ul class="tips" id="tips-list"></ul>
         </div>
 
         <div class="submit-block">
-          <h2>Wo einreichen?</h2>
+          <h3>Wo einreichen?</h3>
           <p class="hint" id="submit-hint"></p>
           <ul class="submit-list" id="submit-list"></ul>
         </div>
@@ -73,7 +94,7 @@
         <p class="disclaimer">
           Diese Analyse basiert auf automatischer Signalverarbeitung (Frequenzspektrum, Lautheit, Dynamik) sowie einer
           einfachen Textanalyse deines Songtexts. Sie ersetzt kein professionelles Mastering-Ohr oder A&amp;R-Urteil,
-          gibt dir aber eine schnelle, kostenlose Ersteinschätzung.
+          gibt dir aber eine schnelle Ersteinschätzung.
         </p>
       </section>
     </main>

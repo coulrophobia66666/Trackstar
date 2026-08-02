@@ -9,6 +9,9 @@
   --border:         rgba(11, 11, 11, 0.10);
   --accent:         #2a78d6;
   --accent-light:   #cde2fb;
+  --grad-a:         #2a78d6;
+  --grad-b:         #4a3aa7;
+  --grad-c:         #1baf7a;
   --status-good:      #0ca30c;
   --status-warning:   #fab219;
   --status-serious:   #ec835a;
@@ -27,6 +30,9 @@
     --border:         rgba(255, 255, 255, 0.10);
     --accent:         #3987e5;
     --accent-light:   #184f95;
+    --grad-a:         #3987e5;
+    --grad-b:         #9085e9;
+    --grad-c:         #199e70;
     --status-good:      #0ca30c;
     --status-warning:   #fab219;
     --status-serious:   #ec835a;
@@ -44,6 +50,9 @@
   --border:         rgba(255, 255, 255, 0.10);
   --accent:         #3987e5;
   --accent-light:   #184f95;
+  --grad-a:         #3987e5;
+  --grad-b:         #9085e9;
+  --grad-c:         #199e70;
   --status-good:      #0ca30c;
   --status-warning:   #fab219;
   --status-serious:   #ec835a;
@@ -62,29 +71,41 @@ body {
 .page {
   max-width: 780px;
   margin: 0 auto;
-  padding: 2rem 1.25rem 4rem;
+  padding: 0 1.25rem 4rem;
 }
 
+/* Header banner */
 .header {
   text-align: center;
-  margin-bottom: 2rem;
+  padding: 2.75rem 1.5rem 3rem;
+  margin: 0 -1.25rem 2rem;
+  background: linear-gradient(135deg, var(--grad-a), var(--grad-b) 55%, var(--grad-c));
+  border-radius: 0 0 28px 28px;
+  color: #ffffff;
+}
+
+.header-emoji {
+  font-size: 2.75rem;
+  line-height: 1;
+  margin-bottom: 0.4rem;
 }
 
 .header h1 {
   font-size: 1.9rem;
   margin: 0 0 0.5rem;
+  color: #ffffff;
 }
 
 .subtitle {
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.92);
   margin: 0 auto;
-  max-width: 46ch;
+  max-width: 40ch;
 }
 
 .card {
   background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 18px;
   padding: 1.75rem;
   margin-bottom: 1.5rem;
   overflow-x: auto;
@@ -127,13 +148,15 @@ body {
 
 button#analyze-btn {
   font: inherit;
-  font-weight: 600;
-  padding: 0.75rem 1.5rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 0.85rem 1.75rem;
   border: none;
   border-radius: 999px;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
   color: #fff;
   cursor: pointer;
+  width: 100%;
 }
 
 button#analyze-btn:disabled {
@@ -146,9 +169,10 @@ button#analyze-btn:disabled {
   min-height: 1.2em;
   color: var(--text-secondary);
   font-size: 0.9rem;
+  text-align: center;
 }
 
-/* Hero tile */
+/* Free result: hero */
 .hero-tile {
   text-align: center;
   padding-bottom: 1.5rem;
@@ -156,20 +180,103 @@ button#analyze-btn:disabled {
   border-bottom: 1px solid var(--gridline);
 }
 
-.hero-label {
+.hero-emoji {
+  font-size: 3.5rem;
+  line-height: 1;
+}
+
+.hero-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-top: 0.3rem;
+}
+
+.hero-desc {
   color: var(--text-secondary);
+  margin: 0.4rem auto 0;
+  max-width: 40ch;
+}
+
+/* Badges */
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 2px solid var(--gridline);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.badge .badge-emoji { font-size: 1.15rem; }
+.badge .badge-name { color: var(--text-secondary); font-weight: 500; }
+
+/* Teaser tip */
+.teaser-tip {
+  background: var(--accent-light);
+  color: var(--text-primary);
+  border-radius: 14px;
+  padding: 1rem 1.15rem;
   font-size: 0.95rem;
+  line-height: 1.45;
+  margin-bottom: 1.5rem;
 }
 
-.hero-value {
-  font-size: 3.25rem;
-  font-weight: 600;
-  line-height: 1.1;
+/* Unlock card */
+.unlock-card {
+  text-align: center;
+  border: 2px dashed var(--gridline);
+  border-radius: 16px;
+  padding: 1.75rem 1.25rem;
 }
 
-.hero-verdict {
-  font-weight: 600;
-  margin-top: 0.25rem;
+.unlock-emoji {
+  font-size: 2.25rem;
+  margin-bottom: 0.4rem;
+}
+
+.unlock-title {
+  font-weight: 800;
+  font-size: 1.1rem;
+  margin-bottom: 0.35rem;
+}
+
+.unlock-desc {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0 auto 1.1rem;
+  max-width: 40ch;
+}
+
+button#unlock-btn {
+  font: inherit;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--text-primary);
+  color: var(--surface-1);
+  cursor: pointer;
+}
+
+.unlock-note {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 0.7rem 0 0;
+}
+
+.premium-heading {
+  font-size: 1.3rem;
+  margin: 0 0 1.5rem;
 }
 
 /* Meters */
@@ -230,7 +337,7 @@ button#analyze-btn:disabled {
 }
 
 /* Frequency chart */
-.freq-block h2, .tips-block h2, .submit-block h2 {
+.freq-block h3, .tips-block h3, .submit-block h3 {
   font-size: 1.1rem;
   margin: 0 0 0.35rem;
 }
@@ -346,6 +453,7 @@ button#analyze-btn:disabled {
 }
 
 @media (max-width: 480px) {
-  .hero-value { font-size: 2.5rem; }
+  .hero-title { font-size: 1.5rem; }
+  .hero-emoji { font-size: 3rem; }
   .freq-chart { gap: 5px; }
 }
