@@ -1,3 +1,11 @@
 name = "trackstar-songtext-worker"
 main = "songtext-worker.js"
 compatibility_date = "2025-01-01"
+
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+
+[ratelimits.simple]
+limit = 5
+period = 60

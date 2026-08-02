@@ -3,19 +3,29 @@
 // Titel-Ideen erzeugen. Haelt den Anthropic API-Key serverseitig - er darf nie im
 // Frontend-Code der statischen Website landen.
 //
-// Deploy: ueber das an GitHub angebundene Cloudflare-Projekt (siehe README-Hinweise
-// im Chat) - Secret ANTHROPIC_API_KEY in den Worker-Settings hinterlegen.
+// Deploy: ueber das an GitHub angebundene Cloudflare-Projekt - Secret ANTHROPIC_API_KEY
+// in den Worker-Settings hinterlegen. Rate-Limit-Binding (siehe wrangler.toml) wird
+// automatisch beim Deploy mit angelegt, keine manuelle Cloudflare-Einrichtung noetig.
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+const ALLOWED_ORIGINS = new Set([
+  "https://trackstar-web.coulrophobia66666.workers.dev",
+]);
 
-function jsonResponse(obj, status = 200) {
+function corsHeadersFor(request) {
+  const origin = request.headers.get("Origin") || "";
+  const allowOrigin = ALLOWED_ORIGINS.has(origin) ? origin : [...ALLOWED_ORIGINS][0];
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    Vary: "Origin",
+  };
+}
+
+function jsonResponse(obj, status, corsHeaders) {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { "content-type": "application/json", ...CORS_HEADERS },
+    headers: { "content-type": "application/json", ...corsHeaders },
   });
 }
 
@@ -27,18 +37,28 @@ function stripCodeFence(text) {
 
 export default {
   async fetch(request, env) {
+    const cors = corsHeadersFor(request);
+
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: CORS_HEADERS });
+      return new Response(null, { headers: cors });
     }
     if (request.method !== "POST") {
-      return jsonResponse({ error: "Method not allowed" }, 405);
+      return jsonResponse({ error: "Method not allowed" }, 405, cors);
+    }
+
+    const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
+    if (env.RATE_LIMITER) {
+      const { success } = await env.RATE_LIMITER.limit({ key: clientIp });
+      if (!success) {
+        return jsonResponse({ error: "Zu viele Anfragen. Bitte in einer Minute nochmal versuchen." }, 429, cors);
+      }
     }
 
     let body;
     try {
       body = await request.json();
     } catch {
-      return jsonResponse({ error: "Ungueltiger Request-Body." }, 400);
+      return jsonResponse({ error: "Ungueltiger Request-Body." }, 400, cors);
     }
 
     const title = typeof body.title === "string" ? body.title.slice(0, 200) : "";
@@ -46,10 +66,10 @@ export default {
     const metrics = body.metrics && typeof body.metrics === "object" ? body.metrics : {};
 
     if (lyrics.trim().length < 10) {
-      return jsonResponse({ error: "Songtext fehlt oder ist zu kurz." }, 400);
+      return jsonResponse({ error: "Songtext fehlt oder ist zu kurz." }, 400, cors);
     }
     if (lyrics.length > 6000) {
-      return jsonResponse({ error: "Songtext ist zu lang (max. 6000 Zeichen)." }, 400);
+      return jsonResponse({ error: "Songtext ist zu lang (max. 6000 Zeichen)." }, 400, cors);
     }
 
     const metricLines = [];
@@ -96,24 +116,24 @@ export default {
         }),
       });
     } catch (err) {
-      return jsonResponse({ error: "KI-Dienst nicht erreichbar." }, 502);
+      return jsonResponse({ error: "KI-Dienst nicht erreichbar." }, 502, cors);
     }
 
     if (!apiRes.ok) {
-      return jsonResponse({ error: "KI-Anfrage fehlgeschlagen." }, 502);
+      return jsonResponse({ error: "KI-Anfrage fehlgeschlagen." }, 502, cors);
     }
 
     const data = await apiRes.json();
     const rawText = data?.content?.[0]?.text?.trim() || "";
     if (!rawText) {
-      return jsonResponse({ error: "Keine Antwort von der KI erhalten." }, 502);
+      return jsonResponse({ error: "Keine Antwort von der KI erhalten." }, 502, cors);
     }
 
     let parsed;
     try {
       parsed = JSON.parse(stripCodeFence(rawText));
     } catch {
-      return jsonResponse({ error: "KI-Antwort konnte nicht gelesen werden." }, 502);
+      return jsonResponse({ error: "KI-Antwort konnte nicht gelesen werden." }, 502, cors);
     }
 
     const improved = typeof parsed.verbesserterText === "string" ? parsed.verbesserterText.trim() : "";
@@ -121,9 +141,9 @@ export default {
     const titleIdeas = Array.isArray(parsed.titelvorschlaege) ? parsed.titelvorschlaege.filter((t) => typeof t === "string").slice(0, 3) : [];
 
     if (!improved) {
-      return jsonResponse({ error: "Keine verwertbare Antwort von der KI erhalten." }, 502);
+      return jsonResponse({ error: "Keine verwertbare Antwort von der KI erhalten." }, 502, cors);
     }
 
-    return jsonResponse({ improved, classification, titleIdeas });
+    return jsonResponse({ improved, classification, titleIdeas }, 200, cors);
   },
 };
