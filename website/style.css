@@ -1,0 +1,351 @@
+:root {
+  color-scheme: light;
+  --surface-1:      #fcfcfb;
+  --page-plane:     #f9f9f7;
+  --text-primary:   #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted:     #898781;
+  --gridline:       #e1e0d9;
+  --border:         rgba(11, 11, 11, 0.10);
+  --accent:         #2a78d6;
+  --accent-light:   #cde2fb;
+  --status-good:      #0ca30c;
+  --status-warning:   #fab219;
+  --status-serious:   #ec835a;
+  --status-critical:  #d03b3b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --border:         rgba(255, 255, 255, 0.10);
+    --accent:         #3987e5;
+    --accent-light:   #184f95;
+    --status-good:      #0ca30c;
+    --status-warning:   #fab219;
+    --status-serious:   #ec835a;
+    --status-critical:  #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-1:      #1a1a19;
+  --page-plane:     #0d0d0d;
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted:     #898781;
+  --gridline:       #2c2c2a;
+  --border:         rgba(255, 255, 255, 0.10);
+  --accent:         #3987e5;
+  --accent-light:   #184f95;
+  --status-good:      #0ca30c;
+  --status-warning:   #fab219;
+  --status-serious:   #ec835a;
+  --status-critical:  #e66767;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--page-plane);
+  color: var(--text-primary);
+}
+
+.page {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.header h1 {
+  font-size: 1.9rem;
+  margin: 0 0 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  margin: 0 auto;
+  max-width: 46ch;
+}
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.75rem;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+}
+
+.field {
+  margin-bottom: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.optional {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.field input[type="text"],
+.field input[type="file"],
+.field textarea {
+  font: inherit;
+  padding: 0.6rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--gridline);
+  background: var(--page-plane);
+  color: var(--text-primary);
+  resize: vertical;
+}
+
+.field input:focus,
+.field textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+button#analyze-btn {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+button#analyze-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.status-line {
+  margin: 0.75rem 0 0;
+  min-height: 1.2em;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* Hero tile */
+.hero-tile {
+  text-align: center;
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--gridline);
+}
+
+.hero-label {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.hero-value {
+  font-size: 3.25rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.hero-verdict {
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+/* Meters */
+.meters {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.meter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+}
+
+.meter-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.meter-status {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.meter-status svg { flex: none; }
+
+.meter-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--gridline);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.meter-note {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+/* Frequency chart */
+.freq-block h2, .tips-block h2, .submit-block h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.35rem;
+}
+
+.hint {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: 0 0 0.9rem;
+}
+
+.freq-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 160px;
+  padding: 0 4px;
+  margin-bottom: 1.75rem;
+}
+
+.freq-bar-wrap {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+}
+
+.freq-ref-zone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--gridline);
+  opacity: 0.6;
+  border-radius: 3px;
+}
+
+.freq-bar {
+  width: 100%;
+  max-width: 28px;
+  border-radius: 4px 4px 0 0;
+  background: var(--accent);
+  position: relative;
+}
+
+.freq-value {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.freq-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Tips */
+.tips {
+  list-style: none;
+  margin: 0 0 1.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.tips li {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.tips li svg { flex: none; margin-top: 2px; }
+
+/* Submit recommendations */
+.submit-list {
+  list-style: none;
+  margin: 0 0 1.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.submit-list li {
+  border: 1px solid var(--gridline);
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+}
+
+.submit-list .submit-name {
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.submit-list .submit-desc {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.disclaimer {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--gridline);
+  padding-top: 1rem;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .hero-value { font-size: 2.5rem; }
+  .freq-chart { gap: 5px; }
+}

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trackstar Songcheck – KI-Analyse für deinen Track</title>
+  <meta name="description" content="Lade deinen fertigen Track hoch und bekomme eine automatische Einschätzung zu Klangqualität, Frequenzen, Hook und Radiotauglichkeit." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <h1>Trackstar Songcheck</h1>
+      <p class="subtitle">Lade deinen fertigen Track hoch – die App analysiert Klang, Frequenzen, Hook und Radiotauglichkeit und gibt dir konkrete Tipps.</p>
+    </header>
+
+    <main>
+      <section class="card" id="upload-card">
+        <form id="analyze-form">
+          <div class="field">
+            <label for="audio-file">Track-Datei (MP3/WAV)</label>
+            <input type="file" id="audio-file" accept="audio/*" required />
+          </div>
+
+          <div class="field">
+            <label for="track-title">Songtitel</label>
+            <input type="text" id="track-title" placeholder="z. B. Natriumlicht" />
+          </div>
+
+          <div class="field">
+            <label for="track-lyrics">
+              Songtext <span class="optional">(optional, aber empfohlen)</span>
+            </label>
+            <textarea id="track-lyrics" rows="6" placeholder="Füge hier den Songtext ein, damit Hook und Songtitel-Erkennbarkeit geprüft werden können…"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="target-station">Ziel-Sender / Ziel-Playlist <span class="optional">(optional)</span></label>
+            <input type="text" id="target-station" placeholder="z. B. Oberberg Radio" />
+          </div>
+
+          <button type="submit" id="analyze-btn">Track analysieren</button>
+          <p class="status-line" id="status-line" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="card" id="results" hidden>
+        <div class="hero-tile">
+          <div class="hero-label">Erfolgschance</div>
+          <div class="hero-value" id="overall-score">–</div>
+          <div class="hero-verdict" id="overall-verdict"></div>
+        </div>
+
+        <div class="meters" id="meters"></div>
+
+        <div class="freq-block">
+          <h2>Frequenzbalance</h2>
+          <p class="hint">Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).</p>
+          <div class="freq-chart" id="freq-chart"></div>
+        </div>
+
+        <div class="tips-block">
+          <h2>Verbesserungsvorschläge</h2>
+          <ul class="tips" id="tips-list"></ul>
+        </div>
+
+        <div class="submit-block">
+          <h2>Wo einreichen?</h2>
+          <p class="hint" id="submit-hint"></p>
+          <ul class="submit-list" id="submit-list"></ul>
+        </div>
+
+        <p class="disclaimer">
+          Diese Analyse basiert auf automatischer Signalverarbeitung (Frequenzspektrum, Lautheit, Dynamik) sowie einer
+          einfachen Textanalyse deines Songtexts. Sie ersetzt kein professionelles Mastering-Ohr oder A&amp;R-Urteil,
+          gibt dir aber eine schnelle, kostenlose Ersteinschätzung.
+        </p>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
