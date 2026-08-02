@@ -44,16 +44,20 @@ export default {
       return jsonResponse({ error: "Songtext ist zu lang (max. 6000 Zeichen)." }, 400);
     }
 
-    const prompt = `Du bist ein erfahrener deutscher Songtexter und Ghostwriter für Deutschrap/Straßenmusik. \
-Überarbeite den folgenden Songtext: mach Reime runder, Zeilen prägnanter und die Hook einprägsamer, \
-ohne Sprache, Stil, Silbenzahl pro Zeile oder Grundaussage grundlegend zu verändern. \
-Vermeide generische Floskeln und Füllzeilen.${
-      title ? ` Der Songtitel ist "${title}" – lass ihn, falls sinnvoll, in der Hook anklingen.` : ""
+    const promptLines = [
+      "Du bist ein erfahrener deutscher Songtexter und Ghostwriter fuer Deutschrap/Strassenmusik.",
+      "Ueberarbeite den folgenden Songtext: mach Reime runder, Zeilen praegnanter und die Hook einpraegsamer,",
+      "ohne Sprache, Stil, Silbenzahl pro Zeile oder Grundaussage grundlegend zu veraendern.",
+      "Vermeide generische Floskeln und Fuellzeilen.",
+    ];
+    if (title) {
+      promptLines.push('Der Songtitel ist "' + title + '" - lass ihn, falls sinnvoll, in der Hook anklingen.');
     }
-Gib NUR den überarbeiteten Songtext zurück, ohne Erklärung, ohne Anführungszeichen, ohne Überschrift.
-
-Songtext:
-${lyrics}`;
+    promptLines.push("Gib NUR den ueberarbeiteten Songtext zurueck, ohne Erklaerung, ohne Anfuehrungszeichen, ohne Ueberschrift.");
+    promptLines.push("");
+    promptLines.push("Songtext:");
+    promptLines.push(lyrics);
+    const prompt = promptLines.join("\n");
 
     let apiRes;
     try {
