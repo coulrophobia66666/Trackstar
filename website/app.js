@@ -529,7 +529,7 @@ function renderBadges(container, badgeDefs) {
 
 // Nach dem Deploy des Workers (siehe worker/songtext-worker.js) die Worker-URL eintragen,
 // z. B. "https://trackstar-songtext-worker.<dein-account>.workers.dev". Leer = Funktion deaktiviert.
-const SONGTEXT_WORKER_URL = "";
+const SONGTEXT_WORKER_URL = "https://dark-sun-3dde.coulrophobia66666.workers.dev/";
 
 async function requestImprovedLyrics(title, lyrics) {
   const res = await fetch(SONGTEXT_WORKER_URL, {
