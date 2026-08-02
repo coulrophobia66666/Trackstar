@@ -3,51 +3,65 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Trackstar Songcheck – Ist dein Track schon Radio-ready?</title>
-  <meta name="description" content="Lad deinen Track hoch und finde in 30 Sekunden raus, ob er schon Radio-ready ist – mit Sofort-Check gratis, Tiefenanalyse optional." />
+  <title>Trackstar Songcheck – Hat dein Track Star Potential?</title>
+  <meta name="description" content="Lad deinen Track hoch und finde heraus, ob er Star Potential hat – Kurzcheck gratis, Tiefenanalyse optional." />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="page">
     <header class="header">
-      <div class="header-emoji">🎧</div>
-      <h1>Trackstar Songcheck</h1>
-      <p class="subtitle">Lad deinen Track hoch – in 30 Sekunden weißt du, ob er schon Radio-ready ist. Der Kurzcheck ist gratis.</p>
+      <svg class="header-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 2.5l2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 16.6l-5.6 3 1.4-6.3-4.8-4.3 6.4-.6L12 2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" fill="rgba(205,168,107,0.15)"/>
+      </svg>
+      <p class="eyebrow">KI Songcheck</p>
+      <h1>Trackstar</h1>
+      <p class="subtitle">Lad deinen Track hoch und finde heraus, ob er Star Potential hat. Der Kurzcheck ist kostenlos.</p>
     </header>
 
     <main>
       <section class="card" id="upload-card">
         <form id="analyze-form">
           <div class="field">
-            <label for="audio-file">🎵 Dein Track</label>
+            <label for="audio-file">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 12.5a1.8 1.8 0 1 1-1.8-1.8" stroke="currentColor" stroke-width="1.3"/><path d="M6 12.5V3.8L12.5 2v8.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 10.2a1.8 1.8 0 1 1-1.8 1.8" stroke="currentColor" stroke-width="1.3"/></svg>
+              Dein Track
+            </label>
             <input type="file" id="audio-file" accept="audio/*" required />
           </div>
 
           <div class="field">
-            <label for="track-title">✏️ Songtitel</label>
+            <label for="track-title">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10.5 2.5l3 3-8 8-3.4.6.6-3.4 7.8-8.2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+              Songtitel
+            </label>
             <input type="text" id="track-title" placeholder="z. B. Natriumlicht" />
           </div>
 
           <div class="field">
             <label for="track-lyrics">
-              📜 Songtext <span class="optional">(optional – für den Hook-Check)</span>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 2.5h6l2.5 2.5v8.5H4V2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6 8h4M6 10.5h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+              Songtext <span class="optional">(optional – für den Hook-Check)</span>
             </label>
-            <textarea id="track-lyrics" rows="5" placeholder="Text reinkopieren, dann checken wir auch, ob dein Titel in der Hook hängen bleibt…"></textarea>
+            <textarea id="track-lyrics" rows="5" placeholder="Text reinkopieren, dann prüfen wir auch, ob dein Titel in der Hook hängen bleibt…"></textarea>
           </div>
 
           <div class="field">
-            <label for="target-station">📻 Ziel-Sender / Ziel-Playlist <span class="optional">(optional)</span></label>
+            <label for="target-station">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/></svg>
+              Ziel-Sender / Ziel-Playlist <span class="optional">(optional)</span>
+            </label>
             <input type="text" id="target-station" placeholder="z. B. Oberberg Radio" />
           </div>
 
-          <button type="submit" id="analyze-btn">Jetzt checken 🚀</button>
+          <button type="submit" id="analyze-btn">Analyse starten</button>
           <p class="status-line" id="status-line" role="status" aria-live="polite"></p>
         </form>
       </section>
 
       <section class="card free-card" id="free-results" hidden>
         <div class="hero-tile">
-          <div class="hero-emoji" id="hero-emoji">🎧</div>
+          <p class="hero-eyebrow">Dein Ergebnis</p>
+          <div class="star-rating" id="star-rating"></div>
           <div class="hero-title" id="hero-title">–</div>
           <p class="hero-desc" id="hero-desc"></p>
         </div>
@@ -57,20 +71,21 @@
         <div class="teaser-tip" id="teaser-tip"></div>
 
         <div class="unlock-card">
-          <div class="unlock-emoji">🔒</div>
-          <div class="unlock-text">
-            <div class="unlock-title">Willst du wissen, woran's genau liegt?</div>
-            <p class="unlock-desc">
-              Frequenzkurve im Detail, alle Verbesserungstipps und wohin du den Track am besten einreichst.
-            </p>
-          </div>
+          <svg class="unlock-mark" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3.5" y="7.5" width="9" height="6" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5" stroke="currentColor" stroke-width="1.3"/></svg>
+          <div class="unlock-title">Willst du wissen, woran's genau liegt?</div>
+          <p class="unlock-desc">
+            Frequenzkurve im Detail, alle Verbesserungstipps und wohin du den Track am besten einreichst.
+          </p>
           <button type="button" id="unlock-btn">Vollanalyse ansehen</button>
-          <p class="unlock-note">Aktuell kostenlos, solange wir testen 🎁</p>
+          <p class="unlock-note">Aktuell kostenlos, solange wir testen</p>
         </div>
       </section>
 
       <section class="card" id="premium-results" hidden>
-        <h2 class="premium-heading">🔬 Die Tiefenanalyse</h2>
+        <h2 class="premium-heading">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M12.5 3.5l-1.4 1.4M4.9 11.1l-1.4 1.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="2.4" stroke="currentColor" stroke-width="1.2"/></svg>
+          Die Tiefenanalyse
+        </h2>
 
         <div class="meters" id="meters"></div>
 

@@ -18,22 +18,30 @@ function statusForScore(score) {
 
 function gradeForScore(score) {
   if (score >= 80) {
-    return { emoji: "🔥", title: "Radio-ready!", desc: "Dein Track hat richtig Potential – so kannst du ihn einreichen.", color: "var(--status-good)" };
+    return { stars: 5, title: "Star Potential", desc: "Dein Track hat richtig Potential – so kannst du ihn einreichen.", color: "var(--status-good)" };
   }
   if (score >= 60) {
-    return { emoji: "👍", title: "Fast am Ziel", desc: "Guter Stand – mit ein paar Anpassungen ist noch mehr drin.", color: "var(--status-good)" };
+    return { stars: 4, title: "Fast am Ziel", desc: "Guter Stand – mit ein paar Anpassungen ist noch mehr drin.", color: "var(--status-good)" };
   }
   if (score >= 40) {
-    return { emoji: "🛠️", title: "Noch Feinschliff nötig", desc: "Die Basis stimmt, aber es gibt ein paar klare Stellschrauben.", color: "var(--status-warning)" };
+    return { stars: 3, title: "Noch Feinschliff nötig", desc: "Die Basis stimmt, aber es gibt ein paar klare Stellschrauben.", color: "var(--status-warning)" };
   }
-  return { emoji: "🚧", title: "Baustelle", desc: "Vor einer Einreichung lohnt sich nochmal Arbeit am Track.", color: "var(--status-critical)" };
+  return { stars: 2, title: "Baustelle", desc: "Vor einer Einreichung lohnt sich nochmal Arbeit am Track.", color: "var(--status-critical)" };
 }
 
-function simpleBadge(score) {
-  if (score === null || score === undefined) return { emoji: "➖", label: "Fehlt Info" };
-  if (score >= 75) return { emoji: "💪", label: "Stark" };
-  if (score >= 50) return { emoji: "👌", label: "Okay" };
-  return { emoji: "🔧", label: "Muss ran" };
+function starRatingHtml(stars) {
+  let html = "";
+  for (let i = 1; i <= 5; i++) {
+    html += i <= stars ? "★" : `<span class="star-empty">★</span>`;
+  }
+  return html;
+}
+
+function badgeTier(score) {
+  if (score === null || score === undefined) return { dots: "○ ○ ○", label: "Fehlt Info" };
+  if (score >= 75) return { dots: "● ● ●", label: "Stark" };
+  if (score >= 50) return { dots: "● ● ○", label: "Solide" };
+  return { dots: "● ○ ○", label: "Ausbaufähig" };
 }
 
 function combineScores(scores) {
@@ -303,7 +311,7 @@ function buildTips(a, lyrics, scores) {
   } else if (a.crestFactorDb > 22) {
     tips.push({
       level: "warning",
-      text: `Der Track ist sehr dynamisch (Crest Factor ${a.crestFactorDb.toFixed(1)} dB). Auf kleinen Boxen/Radio könnten leise Parts untergehen – ggf. etwas mehr komprimieren.`,
+      text: `Der Track ist sehr dynamisch (Crest Factor ${a.crestFactorDb.toFixed(1)} dB). Auf kleinen Boxen könnten leise Parts untergehen – ggf. etwas mehr komprimieren.`,
     });
   }
 
@@ -311,7 +319,7 @@ function buildTips(a, lyrics, scores) {
   if (a.loudnessDb < loudnessTarget - 4) {
     tips.push({
       level: "warning",
-      text: `Der Track ist recht leise (~${a.loudnessDb.toFixed(1)} dB RMS). Für Streaming/Radio wird meist um ${loudnessTarget} dB (LUFS-ähnlich) angepeilt – lauter mastern.`,
+      text: `Der Track ist recht leise (~${a.loudnessDb.toFixed(1)} dB RMS). Für Streaming wird meist um ${loudnessTarget} dB (LUFS-ähnlich) angepeilt – lauter mastern.`,
     });
   } else if (a.loudnessDb > loudnessTarget + 4) {
     tips.push({
@@ -502,12 +510,17 @@ function renderSubmissions(listEl, hintEl, { items, note }) {
 function renderBadges(container, badgeDefs) {
   container.innerHTML = "";
   for (const { label, score, mutedNote } of badgeDefs) {
-    const b = score === null ? { emoji: "➖", label: mutedNote || "Fehlt Info" } : simpleBadge(score);
-    const borderColor = score === null ? "var(--gridline)" : statusForScore(score).color;
+    const tier = score === null ? { dots: "○ ○ ○", label: mutedNote || "Fehlt Info" } : badgeTier(score);
+    const dotColor = score === null ? "var(--text-muted)" : statusForScore(score).color;
     const el = document.createElement("div");
     el.className = "badge";
-    el.style.borderColor = borderColor;
-    el.innerHTML = `<span class="badge-emoji">${b.emoji}</span><span>${label}</span><span class="badge-name">${b.label}</span>`;
+    el.innerHTML = `
+      <span class="badge-dots" style="color:${dotColor}">${tier.dots}</span>
+      <span class="badge-text">
+        <span class="badge-label">${label}</span>
+        <span class="badge-tier">${tier.label}</span>
+      </span>
+    `;
     container.appendChild(el);
   }
 }
@@ -572,11 +585,11 @@ form.addEventListener("submit", async (e) => {
     const overallScore = Math.round(weighted.reduce((a, x) => a + x.score * x.weight, 0) / totalWeight);
 
     const soundScore = combineScores([scores.technik, scores.frequenz]);
-    const radioScore = scores.lautheit;
+    const starPotentialScore = scores.lautheit;
     const hookScore = combineScores([scores.hook, scores.titel]);
 
     const grade = gradeForScore(overallScore);
-    document.getElementById("hero-emoji").textContent = grade.emoji;
+    document.getElementById("star-rating").innerHTML = starRatingHtml(grade.stars);
     const heroTitleEl = document.getElementById("hero-title");
     heroTitleEl.textContent = grade.title;
     heroTitleEl.style.color = grade.color;
@@ -584,21 +597,21 @@ form.addEventListener("submit", async (e) => {
 
     renderBadges(document.getElementById("badges"), [
       { label: "Sound", score: soundScore },
-      { label: "Radiotauglich", score: radioScore },
+      { label: "Star-Potential", score: starPotentialScore },
       { label: "Hook", score: hookScore, mutedNote: "Songtext fehlt" },
     ]);
 
     const tips = buildTips(audioMetrics, lyrics, scores);
     const topTip = pickTopTip(tips);
-    const teaserPrefix = topTip.level === "good" ? "✅ " : "💡 Dein größter Hebel gerade: ";
-    document.getElementById("teaser-tip").textContent = teaserPrefix + topTip.text;
+    const teaserLabel = topTip.level === "good" ? "Stärke" : "Größter Hebel";
+    document.getElementById("teaser-tip").innerHTML = `<span class="mark">✦ ${teaserLabel}</span> ${topTip.text}`;
 
     premiumResultsEl.hidden = true;
 
     const metersEl = document.getElementById("meters");
     metersEl.innerHTML = "";
     renderMeter(metersEl, { name: "Klangqualität / Sauberkeit", score: scores.technik });
-    renderMeter(metersEl, { name: "Lautheit / Radionorm", score: scores.lautheit });
+    renderMeter(metersEl, { name: "Lautheit / Star-Potential", score: scores.lautheit });
     renderMeter(metersEl, { name: "Frequenzbalance", score: scores.frequenz });
     renderMeter(metersEl, {
       name: "Hook",
