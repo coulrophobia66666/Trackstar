@@ -531,15 +531,17 @@ function renderBadges(container, badgeDefs) {
 // z. B. "https://trackstar-songtext-worker.<dein-account>.workers.dev". Leer = Funktion deaktiviert.
 const SONGTEXT_WORKER_URL = "https://trackstar.coulrophobia66666.workers.dev/";
 
-async function requestImprovedLyrics(title, lyrics) {
+let lastAnalysis = null;
+
+async function requestKiEinschaetzung(title, lyrics, metrics) {
   const res = await fetch(SONGTEXT_WORKER_URL, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ title, lyrics }),
+    body: JSON.stringify({ title, lyrics, metrics }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.error) throw new Error(data.error || "Unbekannter Fehler bei der KI-Anfrage.");
-  return data.improved;
+  return data;
 }
 
 /* ---------- Main flow ---------- */
@@ -552,7 +554,10 @@ const premiumResultsEl = document.getElementById("premium-results");
 const unlockBtn = document.getElementById("unlock-btn");
 const rewriteBtn = document.getElementById("rewrite-btn");
 const rewriteStatus = document.getElementById("rewrite-status");
+const rewriteResult = document.getElementById("rewrite-result");
 const rewriteOutput = document.getElementById("rewrite-output");
+const rewriteClassification = document.getElementById("rewrite-classification");
+const rewriteTitleIdeas = document.getElementById("rewrite-title-ideas");
 
 rewriteBtn.addEventListener("click", async () => {
   if (!SONGTEXT_WORKER_URL) {
@@ -563,13 +568,20 @@ rewriteBtn.addEventListener("click", async () => {
   const lyricsRaw = document.getElementById("track-lyrics").value;
 
   rewriteBtn.disabled = true;
-  rewriteStatus.textContent = "KI überarbeitet deinen Text…";
-  rewriteOutput.hidden = true;
+  rewriteStatus.textContent = "KI erstellt Einordnung, Titel-Ideen und verfeinerten Text…";
+  rewriteResult.hidden = true;
 
   try {
-    const improved = await requestImprovedLyrics(title, lyricsRaw);
-    rewriteOutput.textContent = improved;
-    rewriteOutput.hidden = false;
+    const result = await requestKiEinschaetzung(title, lyricsRaw, lastAnalysis || {});
+    rewriteClassification.textContent = result.classification || "Keine Einordnung erhalten.";
+    rewriteTitleIdeas.innerHTML = "";
+    for (const idea of result.titleIdeas || []) {
+      const li = document.createElement("li");
+      li.textContent = idea;
+      rewriteTitleIdeas.appendChild(li);
+    }
+    rewriteOutput.textContent = result.improved;
+    rewriteResult.hidden = false;
     rewriteStatus.textContent = "";
   } catch (err) {
     rewriteStatus.textContent = "Fehler: " + (err && err.message ? err.message : "Unbekannter Fehler.");
@@ -650,6 +662,14 @@ form.addEventListener("submit", async (e) => {
     const teaserLabel = topTip.level === "good" ? "Stärke" : "Größter Hebel";
     document.getElementById("teaser-tip").innerHTML = `<span class="mark">✦ ${teaserLabel}</span> ${topTip.text}`;
 
+    lastAnalysis = {
+      overallScore,
+      soundScore,
+      starPotentialScore,
+      hookScore,
+      topIssues: tips.filter((t) => t.level !== "good").map((t) => t.text),
+    };
+
     premiumResultsEl.hidden = true;
 
     const metersEl = document.getElementById("meters");
@@ -675,7 +695,7 @@ form.addEventListener("submit", async (e) => {
     const rewriteBlock = document.getElementById("rewrite-block");
     rewriteBlock.hidden = !lyrics.hasLyrics;
     document.getElementById("rewrite-status").textContent = "";
-    document.getElementById("rewrite-output").hidden = true;
+    document.getElementById("rewrite-result").hidden = true;
 
     const submissions = buildSubmissions(overallScore, targetStation);
     renderSubmissions(document.getElementById("submit-list"), document.getElementById("submit-hint"), submissions);

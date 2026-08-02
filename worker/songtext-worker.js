@@ -1,9 +1,10 @@
-// Cloudflare Worker: nimmt Songtitel + Songtext entgegen, lässt Claude den Text
-// verbessern und gibt ihn zurück. Hält den Anthropic API-Key serverseitig -
-// er darf nie im Frontend-Code der statischen Website landen.
+// Cloudflare Worker: nimmt Songtitel, Songtext und die technischen Kennzahlen entgegen
+// und laesst Claude daraus einen verbesserten Songtext, eine kurze Einordnung und
+// Titel-Ideen erzeugen. Haelt den Anthropic API-Key serverseitig - er darf nie im
+// Frontend-Code der statischen Website landen.
 //
-// Deploy: `npx wrangler deploy` (siehe wrangler.toml), danach den Secret setzen:
-// `npx wrangler secret put ANTHROPIC_API_KEY`
+// Deploy: ueber das an GitHub angebundene Cloudflare-Projekt (siehe README-Hinweise
+// im Chat) - Secret ANTHROPIC_API_KEY in den Worker-Settings hinterlegen.
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -16,6 +17,12 @@ function jsonResponse(obj, status = 200) {
     status,
     headers: { "content-type": "application/json", ...CORS_HEADERS },
   });
+}
+
+function stripCodeFence(text) {
+  const trimmed = text.trim();
+  const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return fenceMatch ? fenceMatch[1] : trimmed;
 }
 
 export default {
@@ -31,11 +38,12 @@ export default {
     try {
       body = await request.json();
     } catch {
-      return jsonResponse({ error: "Ungültiger Request-Body." }, 400);
+      return jsonResponse({ error: "Ungueltiger Request-Body." }, 400);
     }
 
     const title = typeof body.title === "string" ? body.title.slice(0, 200) : "";
     const lyrics = typeof body.lyrics === "string" ? body.lyrics : "";
+    const metrics = body.metrics && typeof body.metrics === "object" ? body.metrics : {};
 
     if (lyrics.trim().length < 10) {
       return jsonResponse({ error: "Songtext fehlt oder ist zu kurz." }, 400);
@@ -44,16 +52,29 @@ export default {
       return jsonResponse({ error: "Songtext ist zu lang (max. 6000 Zeichen)." }, 400);
     }
 
-    const promptLines = [
-      "Du bist ein erfahrener deutscher Songtexter und Ghostwriter fuer Deutschrap/Strassenmusik.",
-      "Ueberarbeite den folgenden Songtext: mach Reime runder, Zeilen praegnanter und die Hook einpraegsamer,",
-      "ohne Sprache, Stil, Silbenzahl pro Zeile oder Grundaussage grundlegend zu veraendern.",
-      "Vermeide generische Floskeln und Fuellzeilen.",
-    ];
-    if (title) {
-      promptLines.push('Der Songtitel ist "' + title + '" - lass ihn, falls sinnvoll, in der Hook anklingen.');
+    const metricLines = [];
+    if (typeof metrics.overallScore === "number") metricLines.push("Gesamtscore: " + metrics.overallScore + "/100");
+    if (typeof metrics.soundScore === "number") metricLines.push("Sound-Sauberkeit: " + Math.round(metrics.soundScore) + "/100");
+    if (typeof metrics.starPotentialScore === "number") metricLines.push("Lautheit/Star-Potential: " + Math.round(metrics.starPotentialScore) + "/100");
+    if (typeof metrics.hookScore === "number") metricLines.push("Hook-Staerke: " + Math.round(metrics.hookScore) + "/100");
+    if (Array.isArray(metrics.topIssues) && metrics.topIssues.length > 0) {
+      metricLines.push("Groesste technische Baustellen: " + metrics.topIssues.slice(0, 3).join(" | "));
     }
-    promptLines.push("Gib NUR den ueberarbeiteten Songtext zurueck, ohne Erklaerung, ohne Anfuehrungszeichen, ohne Ueberschrift.");
+
+    const promptLines = [
+      "Du bist ein erfahrener deutscher Songtexter, Ghostwriter und A&R-Berater fuer Deutschrap/Strassenmusik.",
+      "Du bekommst einen Songtext sowie automatisch gemessene technische Kennzahlen zum Track.",
+      "Antworte AUSSCHLIESSLICH mit einem gueltigen JSON-Objekt (keine Markdown-Codebloecke, kein Fliesstext davor oder danach) mit genau diesen drei Feldern:",
+      '"einordnung": 2-4 Saetze, die den Track fuer den Kuenstler einordnen (Genre/Vibe/Zielgruppe) und dabei die technischen Kennzahlen sinnvoll einbeziehen (z.B. ob er radio-/playlisttauglich klingt).',
+      '"titelvorschlaege": ein Array mit genau 3 alternativen Songtitel-Ideen, die zum Text und zur Hook passen, kurz und einpraegsam.',
+      '"verbesserterText": der ueberarbeitete Songtext - Reime runder, Zeilen praegnanter, Hook einpraegsamer, ohne Sprache, Stil, Silbenzahl pro Zeile oder Grundaussage grundlegend zu veraendern, keine generischen Floskeln oder Fuellzeilen.',
+      "",
+    ];
+    if (title) promptLines.push('Aktueller Songtitel: "' + title + '"');
+    if (metricLines.length > 0) {
+      promptLines.push("Technische Kennzahlen:");
+      promptLines.push(...metricLines.map((l) => "- " + l));
+    }
     promptLines.push("");
     promptLines.push("Songtext:");
     promptLines.push(lyrics);
@@ -70,7 +91,7 @@ export default {
         },
         body: JSON.stringify({
           model: "claude-sonnet-5",
-          max_tokens: 1200,
+          max_tokens: 1500,
           messages: [{ role: "user", content: prompt }],
         }),
       });
@@ -83,11 +104,26 @@ export default {
     }
 
     const data = await apiRes.json();
-    const improved = data?.content?.[0]?.text?.trim() || "";
-    if (!improved) {
+    const rawText = data?.content?.[0]?.text?.trim() || "";
+    if (!rawText) {
       return jsonResponse({ error: "Keine Antwort von der KI erhalten." }, 502);
     }
 
-    return jsonResponse({ improved });
+    let parsed;
+    try {
+      parsed = JSON.parse(stripCodeFence(rawText));
+    } catch {
+      return jsonResponse({ error: "KI-Antwort konnte nicht gelesen werden." }, 502);
+    }
+
+    const improved = typeof parsed.verbesserterText === "string" ? parsed.verbesserterText.trim() : "";
+    const classification = typeof parsed.einordnung === "string" ? parsed.einordnung.trim() : "";
+    const titleIdeas = Array.isArray(parsed.titelvorschlaege) ? parsed.titelvorschlaege.filter((t) => typeof t === "string").slice(0, 3) : [];
+
+    if (!improved) {
+      return jsonResponse({ error: "Keine verwertbare Antwort von der KI erhalten." }, 502);
+    }
+
+    return jsonResponse({ improved, classification, titleIdeas });
   },
 };

@@ -104,11 +104,25 @@
         </div>
 
         <div class="rewrite-block" id="rewrite-block" hidden>
-          <h3>Verbesserter Songtext</h3>
-          <p class="hint">Lass deine Hook und Zeilen von der KI verfeinern – Stil, Sprache und Aussage bleiben erhalten.</p>
-          <button type="button" id="rewrite-btn">Text verbessern lassen</button>
+          <h3>KI-Einschätzung</h3>
+          <p class="hint">Lass dir eine Einordnung, Titel-Ideen und einen verfeinerten Songtext von der KI erstellen – Stil, Sprache und Aussage bleiben erhalten.</p>
+          <button type="button" id="rewrite-btn">KI-Einschätzung anzeigen</button>
           <p class="rewrite-status" id="rewrite-status" role="status" aria-live="polite"></p>
-          <pre class="rewrite-output" id="rewrite-output" hidden></pre>
+
+          <div class="rewrite-result" id="rewrite-result" hidden>
+            <div class="rewrite-sub">
+              <h4>Einordnung</h4>
+              <p id="rewrite-classification"></p>
+            </div>
+            <div class="rewrite-sub">
+              <h4>Titel-Ideen</h4>
+              <ul class="title-ideas" id="rewrite-title-ideas"></ul>
+            </div>
+            <div class="rewrite-sub">
+              <h4>Verbesserter Songtext</h4>
+              <pre class="rewrite-output" id="rewrite-output"></pre>
+            </div>
+          </div>
         </div>
 
         <div class="submit-block">
