@@ -525,6 +525,23 @@ function renderBadges(container, badgeDefs) {
   }
 }
 
+/* ---------- KI-Songtextverbesserung (Cloudflare Worker, hält den API-Key serverseitig) ---------- */
+
+// Nach dem Deploy des Workers (siehe worker/songtext-worker.js) die Worker-URL eintragen,
+// z. B. "https://trackstar-songtext-worker.<dein-account>.workers.dev". Leer = Funktion deaktiviert.
+const SONGTEXT_WORKER_URL = "";
+
+async function requestImprovedLyrics(title, lyrics) {
+  const res = await fetch(SONGTEXT_WORKER_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ title, lyrics }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) throw new Error(data.error || "Unbekannter Fehler bei der KI-Anfrage.");
+  return data.improved;
+}
+
 /* ---------- Main flow ---------- */
 
 const form = document.getElementById("analyze-form");
@@ -533,6 +550,33 @@ const analyzeBtn = document.getElementById("analyze-btn");
 const freeResultsEl = document.getElementById("free-results");
 const premiumResultsEl = document.getElementById("premium-results");
 const unlockBtn = document.getElementById("unlock-btn");
+const rewriteBtn = document.getElementById("rewrite-btn");
+const rewriteStatus = document.getElementById("rewrite-status");
+const rewriteOutput = document.getElementById("rewrite-output");
+
+rewriteBtn.addEventListener("click", async () => {
+  if (!SONGTEXT_WORKER_URL) {
+    rewriteStatus.textContent = "Diese Funktion ist noch nicht eingerichtet (Backend fehlt noch).";
+    return;
+  }
+  const title = document.getElementById("track-title").value;
+  const lyricsRaw = document.getElementById("track-lyrics").value;
+
+  rewriteBtn.disabled = true;
+  rewriteStatus.textContent = "KI überarbeitet deinen Text…";
+  rewriteOutput.hidden = true;
+
+  try {
+    const improved = await requestImprovedLyrics(title, lyricsRaw);
+    rewriteOutput.textContent = improved;
+    rewriteOutput.hidden = false;
+    rewriteStatus.textContent = "";
+  } catch (err) {
+    rewriteStatus.textContent = "Fehler: " + (err && err.message ? err.message : "Unbekannter Fehler.");
+  } finally {
+    rewriteBtn.disabled = false;
+  }
+});
 
 unlockBtn.addEventListener("click", () => {
   premiumResultsEl.hidden = false;
@@ -627,6 +671,11 @@ form.addEventListener("submit", async (e) => {
     renderFreqChart(document.getElementById("freq-chart"), audioMetrics.bandPercents);
 
     renderTips(document.getElementById("tips-list"), tips);
+
+    const rewriteBlock = document.getElementById("rewrite-block");
+    rewriteBlock.hidden = !lyrics.hasLyrics;
+    document.getElementById("rewrite-status").textContent = "";
+    document.getElementById("rewrite-output").hidden = true;
 
     const submissions = buildSubmissions(overallScore, targetStation);
     renderSubmissions(document.getElementById("submit-list"), document.getElementById("submit-hint"), submissions);
