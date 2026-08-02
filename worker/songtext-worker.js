@@ -35,9 +35,50 @@ function stripCodeFence(text) {
   return fenceMatch ? fenceMatch[1] : trimmed;
 }
 
+async function handleVerifyPayment(request, env, cors, clientIp) {
+  if (env.RATE_LIMITER) {
+    const { success } = await env.RATE_LIMITER.limit({ key: "pay:" + clientIp });
+    if (!success) {
+      return jsonResponse({ error: "Zu viele Anfragen. Bitte in einer Minute nochmal versuchen." }, 429, cors);
+    }
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: "Ungueltiger Request-Body." }, 400, cors);
+  }
+
+  const sessionId = typeof body.sessionId === "string" ? body.sessionId.trim() : "";
+  if (!sessionId || !sessionId.startsWith("cs_")) {
+    return jsonResponse({ error: "Ungueltige Session-ID." }, 400, cors);
+  }
+  if (!env.STRIPE_SECRET_KEY) {
+    return jsonResponse({ error: "Zahlungspruefung ist noch nicht eingerichtet." }, 501, cors);
+  }
+
+  let stripeRes;
+  try {
+    stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions/" + encodeURIComponent(sessionId), {
+      headers: { Authorization: "Bearer " + env.STRIPE_SECRET_KEY },
+    });
+  } catch {
+    return jsonResponse({ error: "Zahlungsdienst nicht erreichbar." }, 502, cors);
+  }
+
+  if (!stripeRes.ok) {
+    return jsonResponse({ paid: false }, 200, cors);
+  }
+
+  const session = await stripeRes.json();
+  return jsonResponse({ paid: session.payment_status === "paid" }, 200, cors);
+}
+
 export default {
   async fetch(request, env) {
     const cors = corsHeadersFor(request);
+    const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
 
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: cors });
@@ -46,7 +87,11 @@ export default {
       return jsonResponse({ error: "Method not allowed" }, 405, cors);
     }
 
-    const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
+    const url = new URL(request.url);
+    if (url.pathname === "/verify-payment") {
+      return handleVerifyPayment(request, env, cors, clientIp);
+    }
+
     if (env.RATE_LIMITER) {
       const { success } = await env.RATE_LIMITER.limit({ key: clientIp });
       if (!success) {

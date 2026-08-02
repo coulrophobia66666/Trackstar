@@ -544,6 +544,27 @@ async function requestKiEinschaetzung(title, lyrics, metrics) {
   return data;
 }
 
+/* ---------- Stripe-Zahlung (echte serverseitige Prüfung über den Worker) ---------- */
+
+// Nach Einrichtung des Stripe Payment Links hier eintragen, z. B. "https://buy.stripe.com/xxxxxxxx".
+// Der Payment Link muss so konfiguriert sein, dass er nach Zahlung auf diese Seite mit
+// ?session_id={CHECKOUT_SESSION_ID} zurückleitet. Leer = Freischaltung bleibt kostenlose Demo.
+const STRIPE_PAYMENT_LINK_URL = "";
+
+const ANALYSIS_SNAPSHOT_KEY = "trackstar_analysis_snapshot";
+let currentAnalysisSnapshot = null;
+
+async function verifyPayment(sessionId) {
+  const verifyUrl = SONGTEXT_WORKER_URL.replace(/\/?$/, "/") + "verify-payment";
+  const res = await fetch(verifyUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ sessionId }),
+  });
+  const data = await res.json().catch(() => ({}));
+  return !!data.paid;
+}
+
 /* ---------- Main flow ---------- */
 
 const form = document.getElementById("analyze-form");
@@ -558,6 +579,92 @@ const rewriteResult = document.getElementById("rewrite-result");
 const rewriteOutput = document.getElementById("rewrite-output");
 const rewriteClassification = document.getElementById("rewrite-classification");
 const rewriteTitleIdeas = document.getElementById("rewrite-title-ideas");
+
+function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics }, { unlockedPremium }) {
+  const lyrics = analyzeLyrics(lyricsRaw, title);
+
+  const scores = {
+    technik: scoreTechnik(audioMetrics),
+    lautheit: scoreLautheit(audioMetrics),
+    frequenz: scoreFrequenz(audioMetrics),
+    hook: scoreHook(lyrics),
+    titel: scoreTitel(lyrics),
+  };
+
+  const weighted = [
+    { score: scores.technik, weight: 30 },
+    { score: scores.lautheit, weight: 20 },
+    { score: scores.frequenz, weight: 25 },
+    { score: scores.hook, weight: 12.5 },
+    { score: scores.titel, weight: 12.5 },
+  ].filter((x) => x.score !== null);
+
+  const totalWeight = weighted.reduce((a, x) => a + x.weight, 0);
+  const overallScore = Math.round(weighted.reduce((a, x) => a + x.score * x.weight, 0) / totalWeight);
+
+  const soundScore = combineScores([scores.technik, scores.frequenz]);
+  const starPotentialScore = scores.lautheit;
+  const hookScore = combineScores([scores.hook, scores.titel]);
+
+  const grade = gradeForScore(overallScore);
+  document.getElementById("star-rating").innerHTML = starRatingHtml(grade.stars);
+  const heroTitleEl = document.getElementById("hero-title");
+  heroTitleEl.textContent = grade.title;
+  heroTitleEl.style.color = grade.color;
+  document.getElementById("hero-desc").textContent = grade.desc;
+
+  renderBadges(document.getElementById("badges"), [
+    { label: "Sound", score: soundScore },
+    { label: "Star-Potential", score: starPotentialScore },
+    { label: "Hook", score: hookScore, mutedNote: "Songtext fehlt" },
+  ]);
+
+  const tips = buildTips(audioMetrics, lyrics, scores);
+  const topTip = pickTopTip(tips);
+  const teaserLabel = topTip.level === "good" ? "Stärke" : "Größter Hebel";
+  document.getElementById("teaser-tip").innerHTML = `<span class="mark">✦ ${teaserLabel}</span> ${topTip.text}`;
+
+  lastAnalysis = {
+    overallScore,
+    soundScore,
+    starPotentialScore,
+    hookScore,
+    topIssues: tips.filter((t) => t.level !== "good").map((t) => t.text),
+  };
+
+  currentAnalysisSnapshot = { title, lyricsRaw, targetStation, audioMetrics };
+
+  premiumResultsEl.hidden = !unlockedPremium;
+
+  const metersEl = document.getElementById("meters");
+  metersEl.innerHTML = "";
+  renderMeter(metersEl, { name: "Klangqualität / Sauberkeit", score: scores.technik });
+  renderMeter(metersEl, { name: "Lautheit / Star-Potential", score: scores.lautheit });
+  renderMeter(metersEl, { name: "Frequenzbalance", score: scores.frequenz });
+  renderMeter(metersEl, {
+    name: "Hook",
+    score: scores.hook,
+    statusText: scores.hook === null ? "Songtext fehlt" : "",
+  });
+  renderMeter(metersEl, {
+    name: "Songtitel erkennbar",
+    score: scores.titel,
+    statusText: scores.titel === null ? (lyrics.hasLyrics ? "Songtitel fehlt" : "Songtext fehlt") : "",
+  });
+
+  renderFreqChart(document.getElementById("freq-chart"), audioMetrics.bandPercents);
+  renderTips(document.getElementById("tips-list"), tips);
+
+  const rewriteBlock = document.getElementById("rewrite-block");
+  rewriteBlock.hidden = !lyrics.hasLyrics;
+  document.getElementById("rewrite-status").textContent = "";
+  document.getElementById("rewrite-result").hidden = true;
+
+  const submissions = buildSubmissions(overallScore, targetStation);
+  renderSubmissions(document.getElementById("submit-list"), document.getElementById("submit-hint"), submissions);
+
+  freeResultsEl.hidden = false;
+}
 
 rewriteBtn.addEventListener("click", async () => {
   if (!SONGTEXT_WORKER_URL) {
@@ -591,8 +698,14 @@ rewriteBtn.addEventListener("click", async () => {
 });
 
 unlockBtn.addEventListener("click", () => {
-  premiumResultsEl.hidden = false;
-  premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (!STRIPE_PAYMENT_LINK_URL) {
+    premiumResultsEl.hidden = false;
+    premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (!currentAnalysisSnapshot) return;
+  sessionStorage.setItem(ANALYSIS_SNAPSHOT_KEY, JSON.stringify(currentAnalysisSnapshot));
+  window.location.href = STRIPE_PAYMENT_LINK_URL;
 });
 
 form.addEventListener("submit", async (e) => {
@@ -619,88 +732,7 @@ form.addEventListener("submit", async (e) => {
     await new Promise((r) => setTimeout(r, 10));
     const audioMetrics = analyzeAudioBuffer(audioBuffer);
 
-    const lyrics = analyzeLyrics(lyricsRaw, title);
-
-    const scores = {
-      technik: scoreTechnik(audioMetrics),
-      lautheit: scoreLautheit(audioMetrics),
-      frequenz: scoreFrequenz(audioMetrics),
-      hook: scoreHook(lyrics),
-      titel: scoreTitel(lyrics),
-    };
-
-    const weighted = [
-      { score: scores.technik, weight: 30 },
-      { score: scores.lautheit, weight: 20 },
-      { score: scores.frequenz, weight: 25 },
-      { score: scores.hook, weight: 12.5 },
-      { score: scores.titel, weight: 12.5 },
-    ].filter((x) => x.score !== null);
-
-    const totalWeight = weighted.reduce((a, x) => a + x.weight, 0);
-    const overallScore = Math.round(weighted.reduce((a, x) => a + x.score * x.weight, 0) / totalWeight);
-
-    const soundScore = combineScores([scores.technik, scores.frequenz]);
-    const starPotentialScore = scores.lautheit;
-    const hookScore = combineScores([scores.hook, scores.titel]);
-
-    const grade = gradeForScore(overallScore);
-    document.getElementById("star-rating").innerHTML = starRatingHtml(grade.stars);
-    const heroTitleEl = document.getElementById("hero-title");
-    heroTitleEl.textContent = grade.title;
-    heroTitleEl.style.color = grade.color;
-    document.getElementById("hero-desc").textContent = grade.desc;
-
-    renderBadges(document.getElementById("badges"), [
-      { label: "Sound", score: soundScore },
-      { label: "Star-Potential", score: starPotentialScore },
-      { label: "Hook", score: hookScore, mutedNote: "Songtext fehlt" },
-    ]);
-
-    const tips = buildTips(audioMetrics, lyrics, scores);
-    const topTip = pickTopTip(tips);
-    const teaserLabel = topTip.level === "good" ? "Stärke" : "Größter Hebel";
-    document.getElementById("teaser-tip").innerHTML = `<span class="mark">✦ ${teaserLabel}</span> ${topTip.text}`;
-
-    lastAnalysis = {
-      overallScore,
-      soundScore,
-      starPotentialScore,
-      hookScore,
-      topIssues: tips.filter((t) => t.level !== "good").map((t) => t.text),
-    };
-
-    premiumResultsEl.hidden = true;
-
-    const metersEl = document.getElementById("meters");
-    metersEl.innerHTML = "";
-    renderMeter(metersEl, { name: "Klangqualität / Sauberkeit", score: scores.technik });
-    renderMeter(metersEl, { name: "Lautheit / Star-Potential", score: scores.lautheit });
-    renderMeter(metersEl, { name: "Frequenzbalance", score: scores.frequenz });
-    renderMeter(metersEl, {
-      name: "Hook",
-      score: scores.hook,
-      statusText: scores.hook === null ? "Songtext fehlt" : "",
-    });
-    renderMeter(metersEl, {
-      name: "Songtitel erkennbar",
-      score: scores.titel,
-      statusText: scores.titel === null ? (lyrics.hasLyrics ? "Songtitel fehlt" : "Songtext fehlt") : "",
-    });
-
-    renderFreqChart(document.getElementById("freq-chart"), audioMetrics.bandPercents);
-
-    renderTips(document.getElementById("tips-list"), tips);
-
-    const rewriteBlock = document.getElementById("rewrite-block");
-    rewriteBlock.hidden = !lyrics.hasLyrics;
-    document.getElementById("rewrite-status").textContent = "";
-    document.getElementById("rewrite-result").hidden = true;
-
-    const submissions = buildSubmissions(overallScore, targetStation);
-    renderSubmissions(document.getElementById("submit-list"), document.getElementById("submit-hint"), submissions);
-
-    freeResultsEl.hidden = false;
+    renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics }, { unlockedPremium: false });
     freeResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
     statusLine.textContent = "";
     ctx.close();
@@ -711,3 +743,31 @@ form.addEventListener("submit", async (e) => {
     analyzeBtn.disabled = false;
   }
 });
+
+/* ---------- Nach Rückkehr von der Stripe-Zahlung: Session prüfen und Analyse wiederherstellen ---------- */
+
+(async function restoreAfterPayment() {
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get("session_id");
+  if (!sessionId) return;
+
+  history.replaceState({}, "", window.location.pathname);
+
+  const snapshotRaw = sessionStorage.getItem(ANALYSIS_SNAPSHOT_KEY);
+  if (!snapshotRaw) return;
+
+  statusLine.textContent = "Zahlung wird geprüft…";
+  try {
+    const paid = await verifyPayment(sessionId);
+    if (!paid) {
+      statusLine.textContent = "Zahlung konnte nicht bestätigt werden. Falls du bezahlt hast, melde dich bei uns.";
+      return;
+    }
+    const snapshot = JSON.parse(snapshotRaw);
+    renderAnalysis(snapshot, { unlockedPremium: true });
+    statusLine.textContent = "";
+    premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (err) {
+    statusLine.textContent = "Zahlung konnte nicht geprüft werden: " + (err && err.message ? err.message : "Unbekannter Fehler.");
+  }
+})();
