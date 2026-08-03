@@ -1504,22 +1504,6 @@ if (albumBtn) {
   });
 }
 
-/* ---------- EQ-Visualizer: durchgehend pulsierende Balken im Header (rein dekorativ) ---------- */
-
-(function initEqVisualizer() {
-  const el = document.getElementById("eq-visualizer");
-  if (!el) return;
-  const barCount = 16;
-  for (let i = 0; i < barCount; i++) {
-    const bar = document.createElement("div");
-    bar.className = "eq-bar";
-    bar.style.setProperty("--duration", (0.6 + Math.random() * 0.9).toFixed(2) + "s");
-    bar.style.setProperty("--delay", (Math.random() * 0.8).toFixed(2) + "s");
-    bar.style.setProperty("--peak", (0.35 + Math.random() * 0.65).toFixed(2));
-    el.appendChild(bar);
-  }
-})();
-
 /* ---------- Ambient-Atmosphäre: sanfter generativer Pad-Sound (Web Audio, kein Audio-File) ----------
    Nur auf Klick startbar (Browser-Autoplay-Policy erzwingt das ohnehin) - bewusst opt-in statt
    automatisch abgespielt. */
@@ -1597,18 +1581,75 @@ function stopAmbient() {
 const ambientToggle = document.getElementById("ambient-toggle");
 if (ambientToggle) {
   ambientToggle.addEventListener("click", () => {
-    const eqEl = document.getElementById("eq-visualizer");
     if (ambientPlaying) {
       stopAmbient();
       ambientToggle.setAttribute("aria-pressed", "false");
-      if (eqEl) eqEl.classList.remove("active");
     } else {
       startAmbient();
       ambientToggle.setAttribute("aria-pressed", "true");
-      if (eqEl) eqEl.classList.add("active");
     }
   });
 }
+
+/* ---------- Seitenweiter Frequenzlinien-Hintergrund (Canvas) ----------
+   Laeuft durchgehend hinter dem gesamten Inhalt, nicht nur in einem kleinen Header-Widget -
+   das war explizites Feedback ("die ganze Seite soll in Bewegung sein"). Reagiert leicht auf
+   den Ambient-Toggle (etwas lebhafter, wenn der Sound laeuft). */
+
+(function initBgWaves() {
+  const canvas = document.getElementById("bg-waves");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let width = 0;
+  let height = 0;
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = width + "px";
+    canvas.style.height = height + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  const waves = [
+    { amp: 30, freq: 0.0016, speed: 0.35, phase: 0, yRatio: 0.14, color: "205,168,107", widthPx: 1.6, alpha: 0.55 },
+    { amp: 18, freq: 0.0024, speed: 0.5, phase: 2.1, yRatio: 0.24, color: "95,184,199", widthPx: 1.4, alpha: 0.42 },
+    { amp: 38, freq: 0.0011, speed: -0.28, phase: 4.2, yRatio: 0.42, color: "205,168,107", widthPx: 1.3, alpha: 0.3 },
+    { amp: 16, freq: 0.0028, speed: 0.6, phase: 1.3, yRatio: 0.66, color: "95,184,199", widthPx: 1.2, alpha: 0.24 },
+    { amp: 24, freq: 0.0018, speed: -0.4, phase: 5.5, yRatio: 0.86, color: "205,168,107", widthPx: 1.2, alpha: 0.2 },
+    { amp: 20, freq: 0.0021, speed: 0.45, phase: 3.3, yRatio: 1.05, color: "95,184,199", widthPx: 1.1, alpha: 0.16 },
+  ];
+
+  let t = 0;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    const intensity = ambientPlaying ? 1.6 : 1;
+    const step = width > 900 ? 5 : 8;
+    for (const w of waves) {
+      ctx.beginPath();
+      const y0 = height * w.yRatio;
+      for (let x = 0; x <= width; x += step) {
+        const y = y0 + Math.sin(x * w.freq + t * w.speed * intensity + w.phase) * w.amp * intensity;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = `rgba(${w.color}, ${w.alpha})`;
+      ctx.lineWidth = w.widthPx;
+      ctx.stroke();
+    }
+    t += 0.016;
+    if (!reduceMotion) requestAnimationFrame(draw);
+  }
+  draw();
+})();
 
 /* ---------- Nach Rückkehr von der Stripe-Zahlung: Konto aktualisieren und Analyse freischalten ---------- */
 
