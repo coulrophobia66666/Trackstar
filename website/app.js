@@ -571,30 +571,25 @@ function buildTips(a, lyrics, scores, profile) {
     });
   }
 
+  // Statt fuenf fast identischen "probier X dB bei Y Hz"-Tipps hintereinander (unverstaendlich
+  // ohne EQ-Vorwissen): ein einziger zusammenfassender Tipp, der auf den EQ-Editor verweist, wo
+  // die konkreten Werte bereits als Vorschlag vorausgefuellt sind und live anhoerbar.
+  const offBands = [];
   FREQ_BANDS.forEach((band, i) => {
     const val = a.bandPercents[i];
     const [lo, hi] = profile.refs[i];
-    const centerHz = Math.round(Math.sqrt(band.range[0] * band.range[1]));
-    if (val < lo - 3) {
-      const dbHint = (10 * Math.log10(Math.max(lo, 0.5) / Math.max(val, 0.1))).toFixed(1);
-      const fix = `Ca. +${dbHint} dB mit einem breiten EQ-Boost um ${centerHz} Hz probieren.`;
-      tips.push({
-        level: "warning",
-        problem: `Wenig Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz).`,
-        fix,
-        text: `Wenig Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz). Der Track könnte in diesem Bereich dünn/schwach klingen. ${fix}`,
-      });
-    } else if (val > hi + 3) {
-      const dbHint = (10 * Math.log10(Math.max(val, 0.1) / Math.max(hi, 0.5))).toFixed(1);
-      const fix = `Ca. -${dbHint} dB mit einem EQ-Cut um ${centerHz} Hz probieren.`;
-      tips.push({
-        level: "warning",
-        problem: `Viel Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz).`,
-        fix,
-        text: `Viel Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz). Kann matschig oder harsch wirken. ${fix}`,
-      });
-    }
+    if (val < lo - 3) offBands.push(`${band.name} (zu wenig)`);
+    else if (val > hi + 3) offBands.push(`${band.name} (zu viel)`);
   });
+  if (offBands.length > 0) {
+    const fix = "Nutze den EQ-Editor weiter unten – dort ist schon ein Vorschlag aus dieser Analyse vorausgefüllt, du kannst live reinhören und direkt anpassen.";
+    tips.push({
+      level: offBands.length >= 4 ? "critical" : "warning",
+      problem: `Frequenzbalance weicht in ${offBands.length} Bereich${offBands.length > 1 ? "en" : ""} vom Referenzbereich ab (${offBands.join(", ")}).`,
+      fix,
+      text: `Frequenzbalance weicht in ${offBands.length} Bereich${offBands.length > 1 ? "en" : ""} vom Referenzbereich ab: ${offBands.join(", ")}. ${fix}`,
+    });
+  }
 
   if (!lyrics.hasLyrics) {
     const fix = "Songtext ergänzen, dann können Hook & Songtitel mitbewertet werden.";
@@ -1140,6 +1135,8 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
   const achievements = buildAchievements(audioMetrics, scores, profile.loudnessTarget);
   renderAchievements(document.getElementById("achievements"), achievements);
 
+  initEqEditor(audioMetrics, profile);
+
   const tips = buildTips(audioMetrics, lyrics, scores, profile);
   const topTip = pickTopTip(tips);
   const teaserLabel = topTip.level === "good" ? "Stärke" : "Größtes Problem";
@@ -1459,6 +1456,252 @@ if (vocalsCheckBtn) {
   });
 }
 
+/* ---------- EQ-Editor: Frequenzen direkt im Browser anpassen (kein Mastering) ----------
+   Peaking-Filter (BiquadFilterNode) pro Frequenzband, live vorhoerbar und als WAV exportierbar.
+   Alles client-seitig ueber Web Audio, kein Upload noetig - passt zur bestehenden
+   "Audio verlaesst nie dein Geraet"-Architektur. */
+
+function suggestedEqGainDb(val, lo, hi) {
+  if (val < lo - 3) return +(10 * Math.log10(Math.max(lo, 0.5) / Math.max(val, 0.1))).toFixed(1);
+  if (val > hi + 3) return -(10 * Math.log10(Math.max(val, 0.1) / Math.max(hi, 0.5))).toFixed(1);
+  return 0;
+}
+
+const EQ_BAND_Q = 1;
+let eqAudioCtx = null;
+let eqSourceNode = null;
+let eqFilters = [];
+let eqPlaying = false;
+let eqGains = FREQ_BANDS.map(() => 0);
+let eqLastMetrics = null;
+let eqLastProfile = null;
+
+function ensureEqAudioCtx() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!eqAudioCtx) eqAudioCtx = new Ctx();
+  if (eqAudioCtx.state === "suspended") eqAudioCtx.resume();
+  return eqAudioCtx;
+}
+
+function buildEqFilterChain(ctx, destination, gains) {
+  const filters = FREQ_BANDS.map((band, i) => {
+    const f = ctx.createBiquadFilter();
+    f.type = "peaking";
+    f.frequency.value = bandCenterHz(band);
+    f.Q.value = EQ_BAND_Q;
+    f.gain.value = gains[i] || 0;
+    return f;
+  });
+  for (let i = 0; i < filters.length - 1; i++) filters[i].connect(filters[i + 1]);
+  filters[filters.length - 1].connect(destination);
+  return filters;
+}
+
+function stopEqPreview() {
+  if (eqSourceNode) {
+    try {
+      eqSourceNode.stop();
+    } catch {
+      /* schon gestoppt */
+    }
+    eqSourceNode.disconnect();
+    eqSourceNode = null;
+  }
+  eqFilters = [];
+  eqPlaying = false;
+  const btn = document.getElementById("eq-play-btn");
+  if (btn) btn.textContent = "▶ Vorschau abspielen";
+}
+
+function startEqPreview() {
+  if (!lastAudioBuffer) return;
+  stopEqPreview();
+  const ctx = ensureEqAudioCtx();
+  const source = ctx.createBufferSource();
+  source.buffer = lastAudioBuffer;
+  source.loop = true;
+  const filters = buildEqFilterChain(ctx, ctx.destination, eqGains);
+  source.connect(filters[0]);
+  source.start();
+  eqSourceNode = source;
+  eqFilters = filters;
+  eqPlaying = true;
+  const btn = document.getElementById("eq-play-btn");
+  if (btn) btn.textContent = "⏸ Stop";
+}
+
+function updateEqFilterGains() {
+  eqFilters.forEach((f, i) => {
+    f.gain.value = eqGains[i] || 0;
+  });
+}
+
+function audioBufferToWavBlob(buffer) {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const numFrames = buffer.length;
+  const bytesPerSample = 2;
+  const blockAlign = numChannels * bytesPerSample;
+  const dataSize = numFrames * blockAlign;
+  const arr = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(arr);
+
+  function writeString(offset, str) {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  }
+
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bytesPerSample * 8, true);
+  writeString(36, "data");
+  view.setUint32(40, dataSize, true);
+
+  const channelData = [];
+  for (let ch = 0; ch < numChannels; ch++) channelData.push(buffer.getChannelData(ch));
+
+  let offset = 44;
+  for (let i = 0; i < numFrames; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      let sample = Math.max(-1, Math.min(1, channelData[ch][i]));
+      sample = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+      view.setInt16(offset, sample, true);
+      offset += 2;
+    }
+  }
+  return new Blob([arr], { type: "audio/wav" });
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function renderEqSliders() {
+  const container = document.getElementById("eq-sliders");
+  if (!container) return;
+  container.innerHTML = "";
+  FREQ_BANDS.forEach((band, i) => {
+    const wrap = document.createElement("div");
+    wrap.className = "eq-slider";
+    wrap.innerHTML = `
+      <span class="eq-value" id="eq-value-${i}">${eqGains[i].toFixed(1)} dB</span>
+      <input type="range" id="eq-band-${i}" min="-12" max="12" step="0.5" value="${eqGains[i]}" />
+      <label for="eq-band-${i}">${band.name}</label>
+    `;
+    container.appendChild(wrap);
+    const input = wrap.querySelector("input");
+    input.addEventListener("input", () => {
+      eqGains[i] = Number(input.value);
+      document.getElementById(`eq-value-${i}`).textContent = `${eqGains[i].toFixed(1)} dB`;
+      if (eqPlaying) updateEqFilterGains();
+    });
+  });
+}
+
+function initEqEditor(audioMetrics, profile) {
+  eqLastMetrics = audioMetrics;
+  eqLastProfile = profile;
+  eqGains = FREQ_BANDS.map(() => 0);
+  stopEqPreview();
+  renderEqSliders();
+  const status = document.getElementById("eq-status");
+  if (status) status.textContent = "";
+}
+
+const eqSuggestBtn = document.getElementById("eq-suggest-btn");
+const eqResetBtn = document.getElementById("eq-reset-btn");
+const eqPlayBtn = document.getElementById("eq-play-btn");
+const eqDownloadBtn = document.getElementById("eq-download-btn");
+const eqStatus = document.getElementById("eq-status");
+
+if (eqSuggestBtn) {
+  eqSuggestBtn.addEventListener("click", () => {
+    if (!eqLastMetrics || !eqLastProfile) return;
+    eqGains = FREQ_BANDS.map((band, i) => {
+      const [lo, hi] = eqLastProfile.refs[i];
+      const suggested = suggestedEqGainDb(eqLastMetrics.bandPercents[i], lo, hi);
+      return Math.max(-12, Math.min(12, suggested));
+    });
+    renderEqSliders();
+    if (eqPlaying) updateEqFilterGains();
+    if (eqStatus) eqStatus.textContent = "Vorschlag aus der Analyse übernommen.";
+  });
+}
+
+if (eqResetBtn) {
+  eqResetBtn.addEventListener("click", () => {
+    eqGains = FREQ_BANDS.map(() => 0);
+    renderEqSliders();
+    if (eqPlaying) updateEqFilterGains();
+    if (eqStatus) eqStatus.textContent = "Zurückgesetzt.";
+  });
+}
+
+if (eqPlayBtn) {
+  eqPlayBtn.addEventListener("click", () => {
+    if (!lastAudioBuffer) {
+      if (eqStatus) eqStatus.textContent = "Bitte zuerst einen Track analysieren.";
+      return;
+    }
+    try {
+      if (eqPlaying) {
+        stopEqPreview();
+        if (eqStatus) eqStatus.textContent = "";
+      } else {
+        startEqPreview();
+        if (eqStatus) eqStatus.textContent = "Vorschau läuft (in Schleife) – Slider bewegen für Live-Vergleich.";
+      }
+    } catch (err) {
+      if (eqStatus) eqStatus.textContent = "Vorschau fehlgeschlagen: " + (err && err.message ? err.message : "Unbekannter Fehler.");
+    }
+  });
+}
+
+if (eqDownloadBtn) {
+  eqDownloadBtn.addEventListener("click", async () => {
+    if (!lastAudioBuffer) {
+      if (eqStatus) eqStatus.textContent = "Bitte zuerst einen Track analysieren.";
+      return;
+    }
+    eqDownloadBtn.disabled = true;
+    if (eqStatus) eqStatus.textContent = "Bearbeitete Version wird gerendert…";
+    try {
+      const offlineCtx = new OfflineAudioContext(
+        lastAudioBuffer.numberOfChannels,
+        lastAudioBuffer.length,
+        lastAudioBuffer.sampleRate
+      );
+      const source = offlineCtx.createBufferSource();
+      source.buffer = lastAudioBuffer;
+      const filters = buildEqFilterChain(offlineCtx, offlineCtx.destination, eqGains);
+      source.connect(filters[0]);
+      source.start();
+      const rendered = await offlineCtx.startRendering();
+      const blob = audioBufferToWavBlob(rendered);
+      downloadBlob(blob, "overhertz-eq-bearbeitet.wav");
+      if (eqStatus) eqStatus.textContent = "Download gestartet.";
+    } catch (err) {
+      if (eqStatus) eqStatus.textContent = "Rendern fehlgeschlagen: " + (err && err.message ? err.message : "Unbekannter Fehler.");
+    } finally {
+      eqDownloadBtn.disabled = false;
+    }
+  });
+}
+
 /* ---------- Album-Check (Pro-Feature: mehrere Tracks am Stück pruefen) ---------- */
 
 const albumBtn = document.getElementById("album-analyze-btn");
@@ -1564,14 +1807,17 @@ function startAmbient() {
   const master = ambientCtx.createGain();
   master.gain.value = 0;
   master.connect(ambientCtx.destination);
-  master.gain.linearRampToValueAtTime(0.2, ambientCtx.currentTime + 0.8);
+  master.gain.linearRampToValueAtTime(0.22, ambientCtx.currentTime + 0.6);
 
   const filter = ambientCtx.createBiquadFilter();
   filter.type = "lowpass";
-  filter.frequency.value = 1100;
+  filter.frequency.value = 2400;
   filter.connect(master);
 
-  const freqs = [110, 164.81, 220, 277.18];
+  // Eine Oktave hoeher als vorher: kleine Tablet-/Handy-Lautsprecher geben tiefe Baesse
+  // (110-277 Hz) oft kaum wieder, egal wie laut - in diesem Bereich (220-554 Hz) ist es
+  // auf schwachen Lautsprechern deutlich eher hoerbar.
+  const freqs = [220, 329.63, 440, 554.37];
   const oscs = freqs.map((f) => {
     const osc = ambientCtx.createOscillator();
     osc.type = "sine";
@@ -1587,7 +1833,7 @@ function startAmbient() {
   const lfo = ambientCtx.createOscillator();
   lfo.frequency.value = 0.05;
   const lfoGain = ambientCtx.createGain();
-  lfoGain.gain.value = 350;
+  lfoGain.gain.value = 500;
   lfo.connect(lfoGain);
   lfoGain.connect(filter.frequency);
   lfo.start();
@@ -1597,7 +1843,7 @@ function startAmbient() {
   const pulseLfo = ambientCtx.createOscillator();
   pulseLfo.frequency.value = 0.5;
   const pulseDepth = ambientCtx.createGain();
-  pulseDepth.gain.value = 0.055;
+  pulseDepth.gain.value = 0.06;
   pulseLfo.connect(pulseDepth);
   pulseDepth.connect(master.gain);
   pulseLfo.start();
@@ -1623,14 +1869,23 @@ function stopAmbient() {
 }
 
 const ambientToggle = document.getElementById("ambient-toggle");
+const ambientStatus = document.getElementById("ambient-status");
 if (ambientToggle) {
   ambientToggle.addEventListener("click", () => {
-    if (ambientPlaying) {
-      stopAmbient();
-      ambientToggle.setAttribute("aria-pressed", "false");
-    } else {
-      startAmbient();
-      ambientToggle.setAttribute("aria-pressed", "true");
+    try {
+      if (ambientPlaying) {
+        stopAmbient();
+        ambientToggle.setAttribute("aria-pressed", "false");
+        if (ambientStatus) ambientStatus.textContent = "";
+      } else {
+        startAmbient();
+        ambientToggle.setAttribute("aria-pressed", "true");
+        if (ambientStatus) ambientStatus.textContent = "Läuft – Gerätelautstärke prüfen, falls nichts zu hören ist.";
+      }
+    } catch (err) {
+      if (ambientStatus) {
+        ambientStatus.textContent = "Sound konnte nicht gestartet werden: " + (err && err.message ? err.message : "Unbekannter Fehler.");
+      }
     }
   });
 }

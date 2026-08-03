@@ -86,6 +86,7 @@
       <h1>Overhertz</h1>
       <p class="subtitle">Lad deinen Track hoch und finde heraus, ob er Star Potential hat. Der Kurzcheck ist kostenlos.</p>
       <button type="button" id="ambient-toggle" class="ambient-toggle" aria-pressed="false">🎵 Atmosphäre</button>
+      <p class="ambient-status" id="ambient-status"></p>
     </header>
 
     <main>
@@ -194,6 +195,22 @@
             <p class="hint">Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).</p>
             <div class="freq-chart" id="freq-chart"></div>
           </div>
+        </div>
+
+        <div class="eq-editor" id="eq-editor">
+          <h3>EQ-Editor <span class="beta-badge">Beta</span></h3>
+          <p class="hint">
+            Frequenzen direkt hier anpassen und live anhören – kein Mastering, nur ein schneller EQ-Pass.
+            Läuft komplett in deinem Browser, deine Audiodatei verlässt dabei nie dein Gerät.
+          </p>
+          <div class="eq-sliders" id="eq-sliders"></div>
+          <div class="eq-editor-controls">
+            <button type="button" id="eq-suggest-btn" class="account-btn">Vorschlag übernehmen</button>
+            <button type="button" id="eq-reset-btn" class="account-btn">Zurücksetzen</button>
+            <button type="button" id="eq-play-btn" class="account-btn account-btn-primary">▶ Vorschau abspielen</button>
+            <button type="button" id="eq-download-btn" class="account-btn">Bearbeitete Version herunterladen</button>
+          </div>
+          <p class="status-line" id="eq-status" role="status" aria-live="polite"></p>
         </div>
 
         <div class="zone">
