@@ -333,6 +333,41 @@ button#unlock-btn {
 
 .premium-heading svg { color: var(--gold); flex: none; }
 
+/* Fakten/Tipps-Zonen */
+.zone {
+  padding: 1.3rem 1.4rem;
+  margin-bottom: 1.9rem;
+  border-radius: 18px;
+  border: 1px solid var(--gridline);
+  background: var(--surface-2);
+}
+
+.zone .meters,
+.zone .freq-block,
+.zone .tips-block {
+  margin-bottom: 0;
+}
+
+.zone .freq-block {
+  margin-top: 1.6rem;
+}
+
+.zone-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin: 0 0 1.1rem;
+}
+
+.zone-label-facts {
+  color: var(--gold-bright);
+}
+
+.zone-label-tips {
+  color: var(--text-muted);
+}
+
 /* Meters */
 .meters {
   display: flex;
