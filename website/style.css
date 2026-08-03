@@ -673,16 +673,18 @@ button#rewrite-btn:disabled {
   margin-bottom: 1.9rem;
 }
 
-button#vocals-check-btn {
-  font: inherit;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  padding: 0.75rem 1.4rem;
-  border: 1px solid var(--gold);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--gold-bright);
-  cursor: pointer;
+.vocals-choice-hint {
+  margin-bottom: 0.9rem;
+}
+
+.vocals-choice-buttons {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.vocals-choice-buttons .account-btn {
+  flex: 1 1 160px;
 }
 
 button#vocals-check-btn:disabled {

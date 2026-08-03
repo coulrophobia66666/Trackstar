@@ -247,7 +247,16 @@
             (z. B. Suno, Udio) aufzuspüren. Automatische Spracherkennung von Gesang ist selbst fehleranfällig
             (Autotune, Beat im Hintergrund, Slang) – als Hinweis lesen, nicht als harten Fakt.
           </p>
-          <button type="button" id="vocals-check-btn">Vocals transkribieren &amp; vergleichen</button>
+          <div class="vocals-choice" id="vocals-choice">
+            <p class="hint vocals-choice-hint">
+              Lädt einmalig ein KI-Modell (~140&nbsp;MB) herunter und rechnet direkt auf diesem Gerät – auf dem Handy
+              kann das dauern und Datenvolumen/Akku kosten. Am Laptop/PC läuft's meist schneller.
+            </p>
+            <div class="vocals-choice-buttons">
+              <button type="button" id="vocals-skip-btn" class="account-btn">Auf dem Handy bleiben</button>
+              <button type="button" id="vocals-check-btn" class="account-btn account-btn-primary">Trotzdem transkribieren</button>
+            </div>
+          </div>
           <p class="status-line" id="vocals-status" role="status" aria-live="polite"></p>
 
           <div class="vocals-result" id="vocals-result" hidden>
