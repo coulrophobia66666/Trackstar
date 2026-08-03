@@ -248,6 +248,38 @@ function hann(n) {
   return w;
 }
 
+// Ungegatete Ganzsong-RMS zieht den Durchschnitt bei jedem Track mit Intro/Outro/Pausen
+// systematisch nach unten (fast jeder Song hat davon etwas) - das fuehrte dazu, dass praktisch
+// jeder Track als "zu leise" markiert wurde, unabhaengig vom tatsaechlichen Master. Eine grobe
+// Annaeherung an gegatete Lautheit (aehnlich dem Prinzip hinter LUFS-Messung, ohne vollstaendige
+// K-Gewichtung) behebt den systematischen Bias: nur Passagen mit tatsaechlichem Signal zaehlen.
+function computeGatedLoudnessDb(mono, sampleRate) {
+  const blockSamples = Math.max(1, Math.round(sampleRate * 0.4));
+  const blocks = [];
+  for (let i = 0; i + blockSamples <= mono.length; i += blockSamples) {
+    let sum = 0;
+    for (let j = i; j < i + blockSamples; j++) sum += mono[j] * mono[j];
+    blocks.push(sum / blockSamples);
+  }
+  if (blocks.length === 0) {
+    let sum = 0;
+    for (let i = 0; i < mono.length; i++) sum += mono[i] * mono[i];
+    return 10 * Math.log10(sum / Math.max(1, mono.length) || 1e-18);
+  }
+
+  const absoluteGateMS = Math.pow(10, -70 / 10);
+  const afterAbsolute = blocks.filter((ms) => ms > absoluteGateMS);
+  const gated1 = afterAbsolute.length > 0 ? afterAbsolute : blocks;
+
+  const meanMS = gated1.reduce((a, b) => a + b, 0) / gated1.length;
+  const relativeGateMS = meanMS * Math.pow(10, -20 / 10);
+  const afterRelative = gated1.filter((ms) => ms > relativeGateMS);
+  const finalBlocks = afterRelative.length > 0 ? afterRelative : gated1;
+
+  const finalMeanMS = finalBlocks.reduce((a, b) => a + b, 0) / finalBlocks.length;
+  return 10 * Math.log10(finalMeanMS || 1e-18);
+}
+
 function analyzeAudioBuffer(buffer) {
   const sampleRate = buffer.sampleRate;
   const numChannels = buffer.numberOfChannels;
@@ -270,7 +302,7 @@ function analyzeAudioBuffer(buffer) {
   }
   const rms = Math.sqrt(sumSquares / length);
   const clippingRatio = clippedSamples / length;
-  const loudnessDb = 20 * Math.log10(rms || 1e-9);
+  const loudnessDb = computeGatedLoudnessDb(mono, sampleRate);
   const crestFactorDb = 20 * Math.log10((peak || 1e-9) / (rms || 1e-9));
 
   const window = hann(FFT_SIZE);
@@ -418,15 +450,14 @@ function analyzeLyrics(lyricsRaw, titleRaw) {
 /* ---------- Scoring ---------- */
 
 function scoreTechnik(a) {
-  // Kontinuierliche statt stufenweise Bewertung - auch technisch saubere Tracks bekommen
-  // so einen nuancierten Wert statt pauschal 100%, das wirkt sonst unglaubwürdig grob.
+  // Bewertung um einen Idealpunkt statt einem "Idealfenster" - ein flacher Bereich, in dem
+  // jeder Wert 100% gibt, wirkt schnell unglaubwuerdig grob (fast jeder saubere Track landet
+  // sonst exakt bei 100%). So gibt's fast nie eine glatte Bestnote, sondern einen nuancierten Wert.
   const clipPenalty = Math.min(60, a.clippingRatio * 2800);
 
-  const idealCrestLo = 9;
-  const idealCrestHi = 16;
-  let crestPenalty = 0;
-  if (a.crestFactorDb < idealCrestLo) crestPenalty = (idealCrestLo - a.crestFactorDb) * 3.2;
-  else if (a.crestFactorDb > idealCrestHi) crestPenalty = (a.crestFactorDb - idealCrestHi) * 1.4;
+  const idealCrest = 12.5;
+  const crestDeviation = Math.abs(a.crestFactorDb - idealCrest);
+  const crestPenalty = crestDeviation * crestDeviation * 0.22;
 
   return Math.max(0, Math.min(100, 100 - clipPenalty - crestPenalty));
 }
@@ -463,129 +494,142 @@ function scoreTitel(lyrics) {
 
 /* ---------- Tips ---------- */
 
-function buildTips(a, lyrics, scores, hookTimingSec, profile) {
+function buildTips(a, lyrics, scores, profile) {
   const tips = [];
   const loudnessTarget = profile.loudnessTarget;
 
   if (a.clippingRatio > 0.005) {
+    const fix = "Reduziere den Gain vor dem Limiter oder senke das Limiter-Ceiling auf ca. -1 dBTP.";
     tips.push({
       level: "critical",
       problem: `Der Track clippt hörbar (${(a.clippingRatio * 100).toFixed(2)}% der Samples am Limit).`,
-      text: `Der Track clippt hörbar (${(a.clippingRatio * 100).toFixed(2)}% der Samples am Limit). Reduziere den Gain vor dem Limiter oder senke das Limiter-Ceiling auf ca. -1 dBTP.`,
+      fix,
+      text: `Der Track clippt hörbar (${(a.clippingRatio * 100).toFixed(2)}% der Samples am Limit). ${fix}`,
     });
   } else if (a.clippingRatio > 0.0005) {
+    const fix = "Für Streaming-Plattformen etwas mehr Headroom lassen (True-Peak-Limiter, Ceiling ca. -1 dBTP).";
     tips.push({
       level: "warning",
       problem: "Vereinzelte Samples liegen am Limit.",
-      text: "Vereinzelte Samples liegen am Limit. Für Streaming-Plattformen etwas mehr Headroom lassen (True-Peak-Limiter, Ceiling ca. -1 dBTP).",
+      fix,
+      text: `Vereinzelte Samples liegen am Limit. ${fix}`,
     });
   }
 
   if (a.crestFactorDb < 6) {
+    const fix = "Etwas lockerer limitieren, damit mehr Dynamik erhalten bleibt.";
     tips.push({
       level: "critical",
       problem: `Der Track ist stark überkomprimiert (Crest Factor ${a.crestFactorDb.toFixed(1)} dB).`,
-      text: `Der Track ist stark überkomprimiert (Crest Factor ${a.crestFactorDb.toFixed(1)} dB). Das killt Dynamik und wirkt beim Mastering oft müde – etwas lockerer limitieren.`,
+      fix,
+      text: `Der Track ist stark überkomprimiert (Crest Factor ${a.crestFactorDb.toFixed(1)} dB). Das killt Dynamik und wirkt beim Mastering oft müde – ${fix.charAt(0).toLowerCase()}${fix.slice(1)}`,
     });
   } else if (a.crestFactorDb > 22) {
+    const fix = "Ggf. etwas mehr komprimieren, damit leise Parts auf kleinen Boxen nicht untergehen.";
     tips.push({
       level: "warning",
       problem: `Der Track ist sehr dynamisch (Crest Factor ${a.crestFactorDb.toFixed(1)} dB).`,
-      text: `Der Track ist sehr dynamisch (Crest Factor ${a.crestFactorDb.toFixed(1)} dB). Auf kleinen Boxen könnten leise Parts untergehen – ggf. etwas mehr komprimieren.`,
+      fix,
+      text: `Der Track ist sehr dynamisch (Crest Factor ${a.crestFactorDb.toFixed(1)} dB). ${fix}`,
     });
   }
 
   if (a.loudnessDb < loudnessTarget - 4) {
+    const fix = `Auf ca. ${loudnessTarget} dB zumastern.`;
     tips.push({
       level: "warning",
-      problem: `Der Track ist recht leise (~${a.loudnessDb.toFixed(1)} dB RMS).`,
-      text: `Der Track ist recht leise (~${a.loudnessDb.toFixed(1)} dB RMS). Spotify, Apple Music & Co. normalisieren zwar automatisch auf ein Zielniveau, aber wenn dein Master schon sehr leise angeliefert wird, verlierst du dabei Punch im Vergleich zu lauter gemasterten Tracks in derselben Playlist. Auf ca. ${loudnessTarget} dB (LUFS-ähnlich) zumastern.`,
+      problem: `Der Track ist recht leise (~${a.loudnessDb.toFixed(1)} dB).`,
+      fix,
+      text: `Der Track ist recht leise (~${a.loudnessDb.toFixed(1)} dB). Spotify, Apple Music & Co. normalisieren zwar automatisch auf ein Zielniveau, aber wenn dein Master schon sehr leise angeliefert wird, verlierst du dabei Punch im Vergleich zu lauter gemasterten Tracks in derselben Playlist. ${fix}`,
     });
   } else if (a.loudnessDb > loudnessTarget + 4) {
+    const fix = "Beim Mastern nicht zusätzlich lauter fahren - die Extra-Lautheit wird eh weggenormalisiert, kostet nur Dynamik.";
     tips.push({
       level: "warning",
-      problem: `Der Track ist sehr laut ausgesteuert (~${a.loudnessDb.toFixed(1)} dB RMS).`,
-      text: `Der Track ist sehr laut ausgesteuert (~${a.loudnessDb.toFixed(1)} dB RMS). Streaming-Plattformen wie Spotify (Ziel ca. -14 LUFS) und YouTube normalisieren automatisch nach unten – die Extra-Lautheit bringt dann nichts mehr, kostet aber Dynamik.`,
+      problem: `Der Track ist sehr laut ausgesteuert (~${a.loudnessDb.toFixed(1)} dB).`,
+      fix,
+      text: `Der Track ist sehr laut ausgesteuert (~${a.loudnessDb.toFixed(1)} dB). Streaming-Plattformen wie Spotify (Ziel ca. -14 LUFS) und YouTube normalisieren automatisch nach unten. ${fix}`,
     });
   }
 
   if (a.introSilenceMs > 1500) {
+    const fix = "Stille am Anfang kürzen oder direkt mit Sound starten.";
     tips.push({
       level: "warning",
       problem: `Der Track startet mit ca. ${(a.introSilenceMs / 1000).toFixed(1)} Sekunden Stille.`,
-      text: `Der Track startet mit ca. ${(a.introSilenceMs / 1000).toFixed(1)} Sekunden Stille. Auf Playlists/Radio, wo Tracks oft direkt ineinander übergehen, kann das wie ein Fehler wirken oder Hörer verlieren, bevor überhaupt was passiert.`,
+      fix,
+      text: `Der Track startet mit ca. ${(a.introSilenceMs / 1000).toFixed(1)} Sekunden Stille. Auf Playlists/Radio, wo Tracks oft direkt ineinander übergehen, kann das wie ein Fehler wirken oder Hörer verlieren, bevor überhaupt was passiert. ${fix}`,
     });
   }
   if (a.outroEndsAbruptly) {
+    const fix = "Ein bewusstes Ende setzen oder ein kurzes Fade-out einbauen.";
     tips.push({
       level: "warning",
       problem: "Der Track endet abrupt/hart, ohne Fade-out oder klaren Schluss.",
-      text: "Der Track endet abrupt/hart, ohne Fade-out oder klaren Schluss. Für saubere Übergänge (Playlists, DJ-Sets, Radio) wirkt ein bewusstes Ende oder ein kurzes Fade-out professioneller.",
+      fix,
+      text: `Der Track endet abrupt/hart, ohne Fade-out oder klaren Schluss. Für saubere Übergänge (Playlists, DJ-Sets, Radio) wirkt das professioneller. ${fix}`,
     });
-  }
-
-  if (typeof hookTimingSec === "number" && !Number.isNaN(hookTimingSec)) {
-    if (hookTimingSec > 30) {
-      tips.push({
-        level: "critical",
-        problem: `Deine Hook setzt erst bei Sekunde ${Math.round(hookTimingSec)} ein.`,
-        text: `Deine Hook setzt erst bei Sekunde ${Math.round(hookTimingSec)} ein. Auf Spotify steigen viele Hörer schon nach ca. 30 Sekunden aus, wenn der Track sie bis dahin nicht gepackt hat – überleg, ob du früher einen Haken reinbringst (z. B. einen Ausschnitt der Hook direkt am Anfang).`,
-      });
-    } else {
-      tips.push({
-        level: "good",
-        problem: `Deine Hook setzt bei Sekunde ${Math.round(hookTimingSec)} ein – das liegt innerhalb der kritischen ersten 30 Sekunden auf Spotify, guter Wert.`,
-        text: `Deine Hook setzt bei Sekunde ${Math.round(hookTimingSec)} ein – das liegt innerhalb der kritischen ersten 30 Sekunden auf Spotify, guter Wert.`,
-      });
-    }
   }
 
   FREQ_BANDS.forEach((band, i) => {
     const val = a.bandPercents[i];
     const [lo, hi] = profile.refs[i];
+    const centerHz = Math.round(Math.sqrt(band.range[0] * band.range[1]));
     if (val < lo - 3) {
       const dbHint = (10 * Math.log10(Math.max(lo, 0.5) / Math.max(val, 0.1))).toFixed(1);
+      const fix = `Ca. +${dbHint} dB mit einem breiten EQ-Boost um ${centerHz} Hz probieren.`;
       tips.push({
         level: "warning",
         problem: `Wenig Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz).`,
-        text: `Wenig Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz). Der Track könnte in diesem Bereich dünn/schwach klingen – probier ca. +${dbHint} dB mit einem breiten EQ-Boost um ${Math.round(Math.sqrt(band.range[0] * band.range[1]))} Hz.`,
+        fix,
+        text: `Wenig Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz). Der Track könnte in diesem Bereich dünn/schwach klingen. ${fix}`,
       });
     } else if (val > hi + 3) {
       const dbHint = (10 * Math.log10(Math.max(val, 0.1) / Math.max(hi, 0.5))).toFixed(1);
+      const fix = `Ca. -${dbHint} dB mit einem EQ-Cut um ${centerHz} Hz probieren.`;
       tips.push({
         level: "warning",
         problem: `Viel Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz).`,
-        text: `Viel Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz). Kann matschig oder harsch wirken – probier ca. -${dbHint} dB mit einem EQ-Cut um ${Math.round(Math.sqrt(band.range[0] * band.range[1]))} Hz.`,
+        fix,
+        text: `Viel Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz). Kann matschig oder harsch wirken. ${fix}`,
       });
     }
   });
 
   if (!lyrics.hasLyrics) {
+    const fix = "Songtext ergänzen, dann können Hook & Songtitel mitbewertet werden.";
     tips.push({
       level: "warning",
       problem: "Kein Songtext eingegeben – Hook- und Songtitel-Erkennbarkeit konnten nicht geprüft werden.",
-      text: "Kein Songtext eingegeben – Hook- und Songtitel-Erkennbarkeit konnten nicht geprüft werden. Für eine vollständige Analyse den Text ergänzen.",
+      fix,
+      text: `Kein Songtext eingegeben – Hook- und Songtitel-Erkennbarkeit konnten nicht geprüft werden. ${fix}`,
     });
   } else {
     if (scores.hook !== null && scores.hook < 70) {
+      const fix = "Eine Zeile (idealerweise mit dem Songtitel) 2–3x wiederholen, um eine klare Hook zu schaffen.";
       tips.push({
         level: "warning",
         problem: "Im Text ist keine klar wiederholte Hookline erkennbar.",
-        text: "Im Text ist keine klar wiederholte Hookline erkennbar. Eine Zeile (idealerweise mit dem Songtitel) 2–3x zu wiederholen erhöht den Wiedererkennungswert.",
+        fix,
+        text: `Im Text ist keine klar wiederholte Hookline erkennbar. ${fix} Das erhöht den Wiedererkennungswert.`,
       });
     }
     if (lyrics.hasTitle && scores.titel !== null && scores.titel < 100) {
       if (!lyrics.titleInLyrics) {
+        const fix = "Den Songtitel tatsächlich im Text singen/erwähnen.";
         tips.push({
           level: "critical",
           problem: "Der Songtitel taucht im Text gar nicht auf.",
-          text: "Der Songtitel taucht im Text gar nicht auf. Hörer erinnern sich deutlich leichter, wenn der Titel tatsächlich gesungen wird.",
+          fix,
+          text: `Der Songtitel taucht im Text gar nicht auf. Hörer erinnern sich deutlich leichter, wenn der Titel tatsächlich gesungen wird. ${fix}`,
         });
       } else {
+        const fix = "Den Titel in die am häufigsten wiederholte Zeile (Hook) holen.";
         tips.push({
           level: "warning",
           problem: "Der Songtitel kommt zwar im Text vor, aber nicht in der Hook.",
-          text: "Der Songtitel kommt zwar im Text vor, aber nicht in der am häufigsten wiederholten Zeile (Hook). Titel in die Hook zu holen stärkt den Wiedererkennungswert.",
+          fix,
+          text: `Der Songtitel kommt zwar im Text vor, aber nicht in der am häufigsten wiederholten Zeile (Hook). ${fix} Das stärkt den Wiedererkennungswert.`,
         });
       }
     }
@@ -595,6 +639,7 @@ function buildTips(a, lyrics, scores, hookTimingSec, profile) {
     tips.push({
       level: "good",
       problem: "Keine größeren technischen oder inhaltlichen Auffälligkeiten gefunden – solide Basis.",
+      fix: "",
       text: "Keine größeren technischen oder inhaltlichen Auffälligkeiten gefunden – solide Basis.",
     });
   }
@@ -622,7 +667,9 @@ function buildFazit(overallScore, tips) {
       ? "Arbeite die Punkte einfach von oben nach unten ab, dann bist du dem einreichfertigen Ergebnis jedes Mal ein Stück näher – dein Fahrplan, kein Grund zur Sorge."
       : "Keine größeren offenen Punkte – dein Track ist bereit für die Einreichung.";
 
-  return { intro, stepsIntro, steps: actionable.map((t) => t.text), closing };
+  // fix statt text: nur die Handlungsanweisung, ohne die Diagnose aus der Tipps-Liste oben
+  // wortgleich zu wiederholen - macht den Wegweiser zu einer eigenstaendigen Checkliste.
+  return { intro, stepsIntro, steps: actionable.map((t) => t.fix || t.problem), closing };
 }
 
 function renderFazit(container, fazit) {
@@ -636,14 +683,11 @@ function renderFazit(container, fazit) {
 
 /* ---------- Erfolge & Belohnung ---------- */
 
-function buildAchievements(audioMetrics, scores, hookTimingSec, loudnessTarget) {
+function buildAchievements(audioMetrics, scores, loudnessTarget) {
   const list = [];
   if (audioMetrics.clippingRatio < 0.0005) list.push({ emoji: "🧼", label: "Kristallklar" });
   if (Math.abs(audioMetrics.loudnessDb - loudnessTarget) <= 1) list.push({ emoji: "🎯", label: "Punktgenau" });
   if (scores.hook === 100) list.push({ emoji: "🪝", label: "Hook sitzt" });
-  if (typeof hookTimingSec === "number" && !Number.isNaN(hookTimingSec) && hookTimingSec <= 15) {
-    list.push({ emoji: "⚡", label: "Sofort im Ohr" });
-  }
   if (scores.frequenz >= 85) list.push({ emoji: "🌈", label: "Ausgewogen" });
   if (scores.titel === 100) list.push({ emoji: "🏷️", label: "Wiedererkennbar" });
   return list;
@@ -755,7 +799,7 @@ function renderMeter(container, { name, score, statusText }) {
   el.innerHTML = `
     <div class="meter-head">
       <span class="meter-name">${name}</span>
-      <span class="meter-status" style="color:${status.color}">${iconFor(status.key)} ${status.label} · ${Math.round(score)}/100</span>
+      <span class="meter-status" style="color:${status.color}">${iconFor(status.key)} ${status.label} · ${score.toFixed(1)}/100</span>
     </div>
     <div class="meter-track"><div class="meter-fill" style="width:0%;background:${status.color}"></div></div>
   `;
@@ -1047,7 +1091,7 @@ trackGenreSelect.addEventListener("change", () => {
   }
 });
 
-function renderAnalysis({ title, lyricsRaw, audioMetrics, hookTimingSec, genre }, { unlockedPremium }) {
+function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPremium }) {
   const lyrics = analyzeLyrics(lyricsRaw, title);
   const profile = genreProfile(genre);
 
@@ -1059,12 +1103,14 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, hookTimingSec, genre }
     titel: scoreTitel(lyrics),
   };
 
+  // Hook & Songtitel sind die wichtigsten Wiedererkennungs-Hebel, deshalb zusammen die Haelfte
+  // des Gesamtscores - nicht nur ein Nebenaspekt neben den technischen Werten.
   const weighted = [
-    { score: scores.technik, weight: 30 },
-    { score: scores.lautheit, weight: 20 },
-    { score: scores.frequenz, weight: 25 },
-    { score: scores.hook, weight: 12.5 },
-    { score: scores.titel, weight: 12.5 },
+    { score: scores.technik, weight: 18 },
+    { score: scores.lautheit, weight: 12 },
+    { score: scores.frequenz, weight: 20 },
+    { score: scores.hook, weight: 25 },
+    { score: scores.titel, weight: 25 },
   ].filter((x) => x.score !== null);
 
   const totalWeight = weighted.reduce((a, x) => a + x.weight, 0);
@@ -1091,10 +1137,10 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, hookTimingSec, genre }
     { label: "Hook", score: hookScore, mutedNote: "Songtext fehlt" },
   ]);
 
-  const achievements = buildAchievements(audioMetrics, scores, hookTimingSec, profile.loudnessTarget);
+  const achievements = buildAchievements(audioMetrics, scores, profile.loudnessTarget);
   renderAchievements(document.getElementById("achievements"), achievements);
 
-  const tips = buildTips(audioMetrics, lyrics, scores, hookTimingSec, profile);
+  const tips = buildTips(audioMetrics, lyrics, scores, profile);
   const topTip = pickTopTip(tips);
   const teaserLabel = topTip.level === "good" ? "Stärke" : "Größtes Problem";
   document.getElementById("teaser-tip").innerHTML = `<span class="mark">✦ ${teaserLabel}</span> ${topTip.problem}`;
@@ -1107,7 +1153,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, hookTimingSec, genre }
     topIssues: tips.filter((t) => t.level !== "good").map((t) => t.text),
   };
 
-  currentAnalysisSnapshot = { title, lyricsRaw, audioMetrics, hookTimingSec, genre };
+  currentAnalysisSnapshot = { title, lyricsRaw, audioMetrics, genre };
 
   premiumResultsEl.hidden = !unlockedPremium;
 
@@ -1221,8 +1267,6 @@ form.addEventListener("submit", async (e) => {
 
   const title = document.getElementById("track-title").value;
   const lyricsRaw = document.getElementById("track-lyrics").value;
-  const hookTimingRaw = document.getElementById("hook-timing").value;
-  const hookTimingSec = hookTimingRaw !== "" ? Number(hookTimingRaw) : undefined;
   const genreSelectEl = document.getElementById("track-genre");
 
   analyzeBtn.disabled = true;
@@ -1243,7 +1287,7 @@ form.addEventListener("submit", async (e) => {
     const genre = genreManuallySet ? genreSelectEl.value : audioMetrics.estimatedGenre || "";
     genreSelectEl.value = genre;
 
-    renderAnalysis({ title, lyricsRaw, audioMetrics, hookTimingSec, genre }, { unlockedPremium: false });
+    renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPremium: false });
     freeResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
     statusLine.textContent = "";
     ctx.close();
@@ -1481,7 +1525,7 @@ if (albumBtn) {
         ];
         const overallScore = Math.round(weighted.reduce((a, x) => a + x.score * x.weight, 0) / 100);
         const grade = gradeForScore(overallScore);
-        const tips = buildTips(audioMetrics, { hasLyrics: false, hasTitle: false }, scores, undefined, profile);
+        const tips = buildTips(audioMetrics, { hasLyrics: false, hasTitle: false }, scores, profile);
         const topTip = pickTopTip(tips);
 
         card.innerHTML = `
