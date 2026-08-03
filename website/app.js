@@ -1051,6 +1051,13 @@ function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTim
   document.getElementById("rewrite-status").textContent = "";
   document.getElementById("rewrite-result").hidden = true;
 
+  const vocalsBlockEl = document.getElementById("vocals-block");
+  if (vocalsBlockEl) {
+    vocalsBlockEl.hidden = !lyrics.hasLyrics;
+    document.getElementById("vocals-status").textContent = "";
+    document.getElementById("vocals-result").hidden = true;
+  }
+
   const submissions = buildSubmissions(overallScore, targetStation);
   renderSubmissions(document.getElementById("submit-list"), document.getElementById("submit-hint"), submissions);
 
@@ -1130,6 +1137,7 @@ form.addEventListener("submit", async (e) => {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     const ctx = new AudioCtx();
     const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+    lastAudioBuffer = audioBuffer;
 
     statusLine.textContent = "Analysiere Frequenzen, Lautheit & Genre…";
     await new Promise((r) => setTimeout(r, 10));
@@ -1149,6 +1157,154 @@ form.addEventListener("submit", async (e) => {
     analyzeBtn.disabled = false;
   }
 });
+
+/* ---------- Vocals-Check: Transkription der Gesangsspur im Browser (kein Upload) ----------
+   Läuft komplett client-seitig über ein Whisper-Modell (transformers.js), das erst bei Klick
+   nachgeladen wird (kein Effekt auf die normale Ladezeit der Seite). Das Audio verlässt dabei
+   nie das Gerät - nur die Modell-Datei kommt von einem externen CDN (Hugging Face/jsDelivr),
+   das ist keine Nutzerdaten-Übertragung. Transkription von Gesang ist von Natur aus
+   fehleranfällig (Autotune, Beat, Slang) - Ergebnis wird bewusst als Hinweis, nicht als Fakt
+   dargestellt. */
+
+let lastAudioBuffer = null;
+let transcriberPromise = null;
+
+async function getTranscriber(onProgress) {
+  if (!transcriberPromise) {
+    transcriberPromise = (async () => {
+      const { pipeline } = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm");
+      return pipeline("automatic-speech-recognition", "Xenova/whisper-base", {
+        progress_callback: onProgress,
+      });
+    })();
+  }
+  return transcriberPromise;
+}
+
+async function resampleTo16kMono(audioBuffer) {
+  const targetRate = 16000;
+  const offlineCtx = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * targetRate), targetRate);
+  const src = offlineCtx.createBufferSource();
+  src.buffer = audioBuffer;
+  src.connect(offlineCtx.destination);
+  src.start();
+  const rendered = await offlineCtx.startRendering();
+  return rendered.getChannelData(0);
+}
+
+function tokenizeWords(text) {
+  return normalizeText(text || "").split(/\s+/).filter(Boolean);
+}
+
+// Laengste gemeinsame Teilfolge (LCS) auf Wortebene: markiert, welche Woerter aus den
+// eingegebenen Lyrics sich (in Reihenfolge) auch im Transkript wiederfinden lassen.
+function lcsMatchedMask(intendedWords, transcribedWords) {
+  const n = intendedWords.length;
+  const m = transcribedWords.length;
+  const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      dp[i][j] =
+        intendedWords[i - 1] === transcribedWords[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  const matched = new Array(n).fill(false);
+  let i = n, j = m;
+  while (i > 0 && j > 0) {
+    if (intendedWords[i - 1] === transcribedWords[j - 1]) {
+      matched[i - 1] = true;
+      i--; j--;
+    } else if (dp[i - 1][j] >= dp[i][j - 1]) {
+      i--;
+    } else {
+      j--;
+    }
+  }
+  return matched;
+}
+
+function renderVocalsComparison(lyricsRaw, transcribedText) {
+  const intendedWords = tokenizeWords(lyricsRaw);
+  const transcribedWords = tokenizeWords(transcribedText);
+  const matched = lcsMatchedMask(intendedWords, transcribedWords);
+  const matchedCount = matched.filter(Boolean).length;
+  const ratio = intendedWords.length > 0 ? matchedCount / intendedWords.length : 1;
+
+  let summary;
+  if (intendedWords.length === 0) {
+    summary = "Kein Songtext zum Abgleich vorhanden.";
+  } else if (ratio >= 0.85) {
+    summary = `${Math.round(ratio * 100)}% deines Songtexts finden sich im automatischen Vocal-Transkript wieder – kein Hinweis auf grobe Aussprache-Artefakte.`;
+  } else if (ratio >= 0.6) {
+    summary = `${Math.round(ratio * 100)}% deines Songtexts finden sich im Transkript wieder. Die markierten Stellen unten kommen im Gesang anders/unklar rüber – kann an der KI-Aussprache liegen, kann aber auch ein Transkriptionsfehler sein (bei Gesang normal).`;
+  } else {
+    summary = `Nur ${Math.round(ratio * 100)}% deines Songtexts finden sich im Transkript wieder. Entweder hat die Spracherkennung hier größere Probleme (Autotune, Beat, Slang), oder die Vocals weichen stark vom Text ab – lohnt sich, dir das Rohtranskript unten anzuhören/anzusehen.`;
+  }
+
+  const highlighted = intendedWords
+    .map((w, idx) => (matched[idx] ? w : `<mark>${w}</mark>`))
+    .join(" ");
+
+  return { summary, highlightedHtml: highlighted || "(kein Text)" };
+}
+
+const vocalsCheckBtn = document.getElementById("vocals-check-btn");
+const vocalsStatus = document.getElementById("vocals-status");
+const vocalsResult = document.getElementById("vocals-result");
+
+if (vocalsCheckBtn) {
+  vocalsCheckBtn.addEventListener("click", async () => {
+    if (!lastAudioBuffer) {
+      vocalsStatus.textContent = "Kein Audio verfügbar – bitte Track erneut analysieren.";
+      return;
+    }
+    const lyricsRaw = document.getElementById("track-lyrics").value;
+    if (!lyricsRaw.trim()) {
+      vocalsStatus.textContent = "Kein Songtext eingegeben – nichts zum Abgleichen.";
+      return;
+    }
+
+    vocalsCheckBtn.disabled = true;
+    vocalsResult.hidden = true;
+    vocalsStatus.textContent = "Lade Transkriptions-Modell (einmalig, danach gecacht)…";
+
+    try {
+      const transcriber = await getTranscriber((info) => {
+        if (info && info.status === "progress" && typeof info.progress === "number") {
+          vocalsStatus.textContent = `Lade Transkriptions-Modell… ${Math.round(info.progress)}%`;
+        }
+      });
+
+      vocalsStatus.textContent = "Bereite Audio auf (16kHz Mono)…";
+      const audioData = await resampleTo16kMono(lastAudioBuffer);
+
+      vocalsStatus.textContent = "Transkribiere Vocals (kann bei längeren Tracks etwas dauern)…";
+      const result = await transcriber(audioData, {
+        language: "german",
+        task: "transcribe",
+        chunk_length_s: 30,
+        stride_length_s: 5,
+      });
+      const transcribedText = (result && result.text ? result.text : "").trim();
+
+      if (!transcribedText) {
+        vocalsStatus.textContent = "Keine verwertbare Transkription erhalten (evtl. sehr leiser/instrumentaler Track).";
+        return;
+      }
+
+      const { summary, highlightedHtml } = renderVocalsComparison(lyricsRaw, transcribedText);
+      document.getElementById("vocals-summary").textContent = summary;
+      document.getElementById("vocals-lyrics-highlighted").innerHTML = highlightedHtml;
+      document.getElementById("vocals-transcript").textContent = transcribedText;
+      vocalsResult.hidden = false;
+      vocalsStatus.textContent = "";
+    } catch (err) {
+      vocalsStatus.textContent = "Transkription fehlgeschlagen: " + (err && err.message ? err.message : "Unbekannter Fehler.");
+    } finally {
+      vocalsCheckBtn.disabled = false;
+    }
+  });
+}
 
 /* ---------- Album-Check (Pro-Feature: mehrere Tracks am Stück pruefen) ---------- */
 

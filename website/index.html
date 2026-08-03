@@ -239,6 +239,26 @@
           </div>
         </div>
 
+        <div class="vocals-block" id="vocals-block" hidden>
+          <h3>Vocals-Check <span class="beta-badge">Beta</span></h3>
+          <p class="hint">
+            Transkribiert die gesungenen Vocals per KI direkt in deinem Browser (Audio verlässt dabei nie dein Gerät)
+            und vergleicht sie mit deinem eingegebenen Songtext – praktisch, um Aussprache-/Text-Artefakte von KI-Gesang
+            (z. B. Suno, Udio) aufzuspüren. Automatische Spracherkennung von Gesang ist selbst fehleranfällig
+            (Autotune, Beat im Hintergrund, Slang) – als Hinweis lesen, nicht als harten Fakt.
+          </p>
+          <button type="button" id="vocals-check-btn">Vocals transkribieren &amp; vergleichen</button>
+          <p class="status-line" id="vocals-status" role="status" aria-live="polite"></p>
+
+          <div class="vocals-result" id="vocals-result" hidden>
+            <h4>Textabgleich</h4>
+            <p class="vocals-summary" id="vocals-summary"></p>
+            <div class="vocals-lyrics" id="vocals-lyrics-highlighted"></div>
+            <h4>Rohes Transkript <span class="optional">(automatisch, KI-generiert)</span></h4>
+            <pre class="vocals-transcript" id="vocals-transcript"></pre>
+          </div>
+        </div>
+
         <div class="submit-block">
           <h3>Wo einreichen?</h3>
           <p class="hint" id="submit-hint"></p>
