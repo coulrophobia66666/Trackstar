@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Overhertz – Hat dein Track Star Potential?</title>
-  <meta name="description" content="Lad deinen Track hoch und finde heraus, ob er Star Potential hat – Kurzcheck gratis, Tiefenanalyse optional." />
+  <title data-i18n="pageTitle">Overhertz – Hat dein Track Star Potential?</title>
+  <meta name="description" content="Lad deinen Track hoch und finde heraus, ob er Star Potential hat – Kurzcheck gratis, Tiefenanalyse optional." data-i18n-attr="content:pageDescription" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -14,63 +14,67 @@
   <div class="page-shine-streak" id="page-shine-streak" aria-hidden="true"></div>
   <canvas id="bg-waves" class="bg-waves" aria-hidden="true"></canvas>
   <div class="page">
+    <div class="lang-switch" id="lang-switch">
+      <button type="button" data-lang="de" class="lang-btn" aria-pressed="true">DE</button>
+      <button type="button" data-lang="en" class="lang-btn" aria-pressed="false">EN</button>
+    </div>
     <div class="account-bar" id="account-bar"></div>
 
     <section class="card auth-card" id="auth-card" hidden>
       <div class="auth-tabs">
-        <h2>Konto</h2>
-        <p class="hint">Login oder neues Konto anlegen, um Credits/Pro-Abo zu nutzen.</p>
+        <h2 data-i18n="authHeading">Konto</h2>
+        <p class="hint" data-i18n="authHint">Login oder neues Konto anlegen, um Credits/Pro-Abo zu nutzen.</p>
       </div>
       <div class="auth-forms">
         <form id="login-form" class="auth-form">
-          <h3>Login</h3>
+          <h3 data-i18n="loginHeading">Login</h3>
           <div class="field">
-            <label for="login-email">E-Mail</label>
+            <label for="login-email" data-i18n="emailLabel">E-Mail</label>
             <input type="email" id="login-email" required />
           </div>
           <div class="field">
-            <label for="login-password">Passwort</label>
+            <label for="login-password" data-i18n="passwordLabel">Passwort</label>
             <input type="password" id="login-password" required minlength="8" />
           </div>
-          <button type="submit" class="account-btn account-btn-primary">Einloggen</button>
+          <button type="submit" class="account-btn account-btn-primary" data-i18n="loginBtn">Einloggen</button>
         </form>
         <form id="register-form" class="auth-form">
-          <h3>Registrieren</h3>
+          <h3 data-i18n="registerHeading">Registrieren</h3>
           <div class="field">
-            <label for="register-email">E-Mail</label>
+            <label for="register-email" data-i18n="emailLabel">E-Mail</label>
             <input type="email" id="register-email" required />
           </div>
           <div class="field">
-            <label for="register-password">Passwort <span class="optional">(mind. 8 Zeichen)</span></label>
+            <label for="register-password"><span data-i18n="passwordLabel">Passwort</span> <span class="optional" data-i18n="passwordHint">(mind. 8 Zeichen)</span></label>
             <input type="password" id="register-password" required minlength="8" />
           </div>
-          <button type="submit" class="account-btn account-btn-primary">Konto erstellen</button>
+          <button type="submit" class="account-btn account-btn-primary" data-i18n="registerBtn">Konto erstellen</button>
         </form>
       </div>
       <p class="status-line" id="auth-status" role="status" aria-live="polite"></p>
     </section>
 
     <section class="card pricing-card" id="pricing-card" hidden>
-      <h2>Preise</h2>
-      <p class="hint">Der Kurzcheck (Ampel-Urteil + größtes Problem) ist immer kostenlos. Für die Tiefenanalyse:</p>
+      <h2 data-i18n="pricingHeading">Preise</h2>
+      <p class="hint" data-i18n="pricingHint">Der Kurzcheck (Ampel-Urteil + größtes Problem) ist immer kostenlos. Für die Tiefenanalyse:</p>
       <div class="plans">
         <div class="plan">
-          <h3>Credits</h3>
-          <p class="plan-price">7&nbsp;€ <span>einmalig</span></p>
-          <p class="plan-desc">5 Tiefenanalysen, kein Abo</p>
-          <button type="button" class="plan-select-btn account-btn" data-plan="credits">Auswählen</button>
+          <h3 data-i18n="planCreditsTitle">Credits</h3>
+          <p class="plan-price">7&nbsp;€ <span data-i18n="planCreditsUnit">einmalig</span></p>
+          <p class="plan-desc" data-i18n="planCreditsDesc">5 Tiefenanalysen, kein Abo</p>
+          <button type="button" class="plan-select-btn account-btn" data-plan="credits" data-i18n="planSelectBtn">Auswählen</button>
         </div>
         <div class="plan plan-highlight">
-          <h3>Pro</h3>
-          <p class="plan-price">9,50&nbsp;€ <span>/ Monat</span></p>
-          <p class="plan-desc">50 Checks/Monat, voller Report, Hook/Titel/Lyrics/Platzierungstipps, Album-Upload</p>
-          <button type="button" class="plan-select-btn account-btn account-btn-primary" data-plan="pro">Auswählen</button>
+          <h3 data-i18n="planProTitle">Pro</h3>
+          <p class="plan-price">9,50&nbsp;€ <span data-i18n="planProUnit">/ Monat</span></p>
+          <p class="plan-desc" data-i18n="planProDesc">50 Checks/Monat, voller Report, Hook/Titel/Lyrics/Platzierungstipps, Album-Upload</p>
+          <button type="button" class="plan-select-btn account-btn account-btn-primary" data-plan="pro" data-i18n="planSelectBtn">Auswählen</button>
         </div>
         <div class="plan">
-          <h3>Pro jährlich</h3>
-          <p class="plan-price">79&nbsp;€ <span>/ Jahr</span></p>
-          <p class="plan-desc">Wie Pro, mit Rabatt im Jahresabo</p>
-          <button type="button" class="plan-select-btn account-btn" data-plan="pro_annual">Auswählen</button>
+          <h3 data-i18n="planProAnnualTitle">Pro jährlich</h3>
+          <p class="plan-price">79&nbsp;€ <span data-i18n="planProAnnualUnit">/ Jahr</span></p>
+          <p class="plan-desc" data-i18n="planProAnnualDesc">Wie Pro, mit Rabatt im Jahresabo</p>
+          <button type="button" class="plan-select-btn account-btn" data-plan="pro_annual" data-i18n="planSelectBtn">Auswählen</button>
         </div>
       </div>
       <p class="status-line" id="pricing-status" role="status" aria-live="polite"></p>
@@ -83,9 +87,9 @@
         <path d="M2.00,12.00 L2.50,12.80 L3.00,13.54 L3.50,14.19 L4.00,14.70 L4.50,15.04 L5.00,15.19 L5.50,15.14 L6.00,14.90 L6.50,14.47 L7.00,13.88 L7.50,13.18 L8.00,12.40 L8.50,11.60 L9.00,10.82 L9.50,10.12 L10.00,9.53 L10.50,9.10 L11.00,8.86 L11.50,8.81 L12.00,8.96 L12.50,9.30 L13.00,9.81 L13.50,10.46 L14.00,11.20 L14.50,12.00 L15.00,12.80 L15.50,13.54 L16.00,14.19 L16.50,14.70 L17.00,15.04 L17.50,15.19 L18.00,15.14 L18.50,14.90 L19.00,14.47 L19.50,13.88 L20.00,13.18 L20.50,12.40 L21.00,11.60 L21.50,10.82 L22.00,10.12" stroke="var(--accent-2, currentColor)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M2.00,12.07 L2.50,11.43 L3.00,10.87 L3.50,10.45 L4.00,10.23 L4.50,10.23 L5.00,10.47 L5.50,10.90 L6.00,11.48 L6.50,12.12 L7.00,12.75 L7.50,13.28 L8.00,13.64 L8.50,13.80 L9.00,13.72 L9.50,13.42 L10.00,12.93 L10.50,12.33 L11.00,11.68 L11.50,11.08 L12.00,10.59 L12.50,10.29 L13.00,10.20 L13.50,10.35 L14.00,10.71 L14.50,11.24 L15.00,11.87 L15.50,12.51 L16.00,13.09 L16.50,13.53 L17.00,13.76 L17.50,13.78 L18.00,13.56 L18.50,13.14 L19.00,12.57 L19.50,11.93 L20.00,11.30 L20.50,10.76 L21.00,10.38 L21.50,10.21 L22.00,10.27" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
       </svg>
-      <p class="eyebrow">KI Songcheck</p>
+      <p class="eyebrow" data-i18n="eyebrow">KI Songcheck</p>
       <h1>Overhertz</h1>
-      <p class="subtitle">Lad deinen Track hoch und finde heraus, ob er Star Potential hat. Der Kurzcheck ist kostenlos.</p>
+      <p class="subtitle" data-i18n="subtitle">Lad deinen Track hoch und finde heraus, ob er Star Potential hat. Der Kurzcheck ist kostenlos.</p>
     </header>
 
     <main>
@@ -94,7 +98,7 @@
           <div class="field">
             <label for="audio-file">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 12.5a1.8 1.8 0 1 1-1.8-1.8" stroke="currentColor" stroke-width="1.3"/><path d="M6 12.5V3.8L12.5 2v8.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 10.2a1.8 1.8 0 1 1-1.8 1.8" stroke="currentColor" stroke-width="1.3"/></svg>
-              Dein Track
+              <span data-i18n="trackLabel">Dein Track</span>
             </label>
             <input type="file" id="audio-file" accept="audio/*" required />
           </div>
@@ -102,35 +106,35 @@
           <div class="field">
             <label for="track-title">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10.5 2.5l3 3-8 8-3.4.6.6-3.4 7.8-8.2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-              Songtitel
+              <span data-i18n="titleLabel">Songtitel</span>
             </label>
-            <input type="text" id="track-title" placeholder="z. B. Natriumlicht" />
+            <input type="text" id="track-title" placeholder="z. B. Natriumlicht" data-i18n-placeholder="titlePlaceholder" />
           </div>
 
           <div class="field">
             <label for="track-lyrics">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 2.5h6l2.5 2.5v8.5H4V2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6 8h4M6 10.5h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
-              Songtext <span class="optional">(optional – für den Hook-Check)</span>
+              <span data-i18n="lyricsLabel">Songtext</span> <span class="optional" data-i18n="lyricsOptional">(optional – für den Hook-Check)</span>
             </label>
-            <textarea id="track-lyrics" rows="5" placeholder="Text reinkopieren, dann prüfen wir auch, ob dein Titel in der Hook hängen bleibt…"></textarea>
+            <textarea id="track-lyrics" rows="5" placeholder="Text reinkopieren, dann prüfen wir auch, ob dein Titel in der Hook hängen bleibt…" data-i18n-placeholder="lyricsPlaceholder"></textarea>
           </div>
 
           <div class="field">
             <label for="track-genre">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 12.5V4l7-1.5v8" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="4" cy="12.5" r="1.7" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="10.5" r="1.7" stroke="currentColor" stroke-width="1.3"/></svg>
-              Genre <span class="optional">(wird automatisch geschätzt – hier überschreibbar)</span>
+              <span data-i18n="genreLabel">Genre</span> <span class="optional" data-i18n="genreOptional">(wird automatisch geschätzt – hier überschreibbar)</span>
             </label>
             <select id="track-genre">
-              <option value="">Allgemein / kein Genre</option>
-              <option value="hiphop">Hip-Hop / Rap</option>
-              <option value="pop">Pop</option>
-              <option value="edm">Electronic / EDM</option>
-              <option value="rock">Rock / Metal</option>
-              <option value="acoustic">Akustik / Singer-Songwriter</option>
+              <option value="" data-i18n="genreGeneral">Allgemein / kein Genre</option>
+              <option value="hiphop" data-i18n="genreHiphop">Hip-Hop / Rap</option>
+              <option value="pop" data-i18n="genrePop">Pop</option>
+              <option value="edm" data-i18n="genreEdm">Electronic / EDM</option>
+              <option value="rock" data-i18n="genreRock">Rock / Metal</option>
+              <option value="acoustic" data-i18n="genreAcoustic">Akustik / Singer-Songwriter</option>
             </select>
           </div>
 
-          <button type="submit" id="analyze-btn">Analyse starten</button>
+          <button type="submit" id="analyze-btn" data-i18n="analyzeBtn">Analyse starten</button>
           <p class="status-line" id="status-line" role="status" aria-live="polite"></p>
         </form>
       </section>
@@ -138,14 +142,14 @@
       <section class="card album-card" id="album-card">
         <h2 class="premium-heading">
           <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="2.5" width="9" height="9" rx="1.2" stroke="currentColor" stroke-width="1.2"/><rect x="5" y="5.5" width="9" height="9" rx="1.2" stroke="currentColor" stroke-width="1.2" fill="var(--bg-plane)"/></svg>
-          Album-Check <span class="pro-badge">Pro</span>
+          <span data-i18n="albumHeading">Album-Check</span> <span class="pro-badge">Pro</span>
         </h2>
-        <p class="hint">Mehrere Tracks auf einmal prüfen (Kurz-Check: Klangqualität, Lautheit, Frequenzbalance). Teil des Pro-Plans – jeder Track zählt als ein Check von deinem Monats-Kontingent.</p>
+        <p class="hint" data-i18n="albumHint">Mehrere Tracks auf einmal prüfen (Kurz-Check: Klangqualität, Lautheit, Frequenzbalance). Teil des Pro-Plans – jeder Track zählt als ein Check von deinem Monats-Kontingent.</p>
         <div class="field">
-          <label for="album-files">Tracks auswählen</label>
+          <label for="album-files" data-i18n="albumFilesLabel">Tracks auswählen</label>
           <input type="file" id="album-files" accept="audio/*" multiple />
         </div>
-        <button type="button" id="album-analyze-btn" class="account-btn account-btn-primary">Album analysieren</button>
+        <button type="button" id="album-analyze-btn" class="account-btn account-btn-primary" data-i18n="albumAnalyzeBtn">Album analysieren</button>
         <p class="status-line" id="album-status" role="status" aria-live="polite"></p>
         <div class="album-results" id="album-results"></div>
       </section>
@@ -153,7 +157,7 @@
       <section class="card free-card" id="free-results" hidden>
         <div class="hero-tile">
           <div class="confetti-layer" id="confetti-layer" aria-hidden="true"></div>
-          <p class="hero-eyebrow">Dein Ergebnis</p>
+          <p class="hero-eyebrow" data-i18n="heroEyebrow">Dein Ergebnis</p>
           <div class="star-rating" id="star-rating"></div>
           <div class="hero-title" id="hero-title">–</div>
           <p class="hero-desc" id="hero-desc"></p>
@@ -167,48 +171,48 @@
 
         <div class="unlock-card">
           <svg class="unlock-mark" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3.5" y="7.5" width="9" height="6" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5" stroke="currentColor" stroke-width="1.3"/></svg>
-          <div class="unlock-title">Willst du wissen, woran's genau liegt – und wie du's behebst?</div>
-          <p class="unlock-desc">
+          <div class="unlock-title" data-i18n="unlockTitle">Willst du wissen, woran's genau liegt – und wie du's behebst?</div>
+          <p class="unlock-desc" data-i18n="unlockDesc">
             Frequenzkurve im Detail, alle Verbesserungstipps und wohin du den Track am besten einreichst.
           </p>
-          <button type="button" id="unlock-btn">Vollanalyse ansehen</button>
-          <p class="unlock-note">5 Credits für 7&nbsp;€ oder Pro-Abo ab 9,50&nbsp;€/Monat</p>
+          <button type="button" id="unlock-btn" data-i18n="unlockBtn">Vollanalyse ansehen</button>
+          <p class="unlock-note" data-i18n="unlockNote">5 Credits für 7&nbsp;€ oder Pro-Abo ab 9,50&nbsp;€/Monat</p>
         </div>
       </section>
 
       <section class="card" id="premium-results" hidden>
         <h2 class="premium-heading">
           <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M12.5 3.5l-1.4 1.4M4.9 11.1l-1.4 1.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="8" r="2.4" stroke="currentColor" stroke-width="1.2"/></svg>
-          Die Tiefenanalyse
+          <span data-i18n="premiumHeading">Die Tiefenanalyse</span>
         </h2>
         <p class="streak-note" id="streak-note"></p>
 
         <div class="zone">
-          <p class="zone-label zone-label-facts">Die Fakten — objektiv gemessen</p>
+          <p class="zone-label zone-label-facts" data-i18n="zoneFacts">Die Fakten — objektiv gemessen</p>
           <p class="detected-genre" id="detected-genre"></p>
 
           <div class="meters" id="meters"></div>
 
           <div class="freq-block">
-            <h3>Frequenzbalance</h3>
-            <p class="hint">Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).</p>
+            <h3 data-i18n="freqBlockHeading">Frequenzbalance</h3>
+            <p class="hint" data-i18n="freqBlockHint">Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).</p>
             <div class="freq-chart" id="freq-chart"></div>
           </div>
         </div>
 
         <div class="eq-editor" id="eq-editor">
-          <h3>EQ-Editor <span class="pro-badge">Pro</span> <span class="beta-badge">Beta</span></h3>
-          <p class="hint">
+          <h3><span data-i18n="eqHeading">EQ-Editor</span> <span class="pro-badge">Pro</span> <span class="beta-badge">Beta</span></h3>
+          <p class="hint" data-i18n="eqIntro">
             Frequenzen direkt hier anpassen und live anhören – kein Mastering, nur ein schneller EQ-Pass.
             Läuft komplett in deinem Browser, deine Audiodatei verlässt dabei nie dein Gerät.
           </p>
 
           <div class="eq-editor-locked" id="eq-editor-locked" hidden>
-            <p class="hint">
+            <p class="hint" data-i18n="eqLockedHint">
               Das Beheben (EQ, De-Esser, Lautheit angleichen, Stille kürzen, Fade-out) ist Teil des Pro-Plans.
               Die Vollanalyse siehst du auch mit Credits – fürs direkte Bearbeiten hier brauchst du Pro.
             </p>
-            <button type="button" id="eq-editor-upgrade-btn" class="account-btn account-btn-primary">Auf Pro upgraden</button>
+            <button type="button" id="eq-editor-upgrade-btn" class="account-btn account-btn-primary" data-i18n="eqUpgradeBtn">Auf Pro upgraden</button>
           </div>
 
           <div class="eq-editor-body" id="eq-editor-body">
@@ -217,14 +221,14 @@
           <div class="eq-deesser">
             <label class="eq-deesser-toggle">
               <input type="checkbox" id="eq-deesser-enabled" />
-              Zischlaute reduzieren (De-Esser)
+              <span data-i18n="eqDeesserToggle">Zischlaute reduzieren (De-Esser)</span>
             </label>
             <div class="eq-deesser-strength" id="eq-deesser-strength-wrap" hidden>
-              <label for="eq-deesser-strength">Stärke</label>
+              <label for="eq-deesser-strength" data-i18n="eqDeesserStrength">Stärke</label>
               <input type="range" id="eq-deesser-strength" min="0" max="100" step="5" value="50" />
               <span id="eq-deesser-strength-value">50%</span>
             </div>
-            <p class="hint eq-deesser-hint">
+            <p class="hint eq-deesser-hint" data-i18n="eqDeesserHint">
               Reduziert scharfe Zischlaute (typ. 5–8 kHz) nur dann, wenn sie tatsächlich spitzen – im Gegensatz zu
               den Reglern oben, die pauschal einen Bereich absenken.
             </p>
@@ -232,108 +236,108 @@
 
           <div class="eq-extra">
             <div class="eq-gain-row">
-              <label for="eq-gain">Lautheit anpassen</label>
+              <label for="eq-gain" data-i18n="eqGainLabel">Lautheit anpassen</label>
               <input type="range" id="eq-gain" min="-12" max="12" step="0.5" value="0" />
               <span id="eq-gain-value">0.0 dB</span>
             </div>
-            <button type="button" id="eq-gain-match-btn" class="account-btn">Auf Zielwert angleichen</button>
+            <button type="button" id="eq-gain-match-btn" class="account-btn" data-i18n="eqGainMatchBtn">Auf Zielwert angleichen</button>
 
             <label class="eq-checkbox-row">
               <input type="checkbox" id="eq-trim-intro" />
-              Stille am Anfang entfernen
+              <span data-i18n="eqTrimIntro">Stille am Anfang entfernen</span>
             </label>
             <label class="eq-checkbox-row">
               <input type="checkbox" id="eq-fadeout" />
-              Fade-out am Ende hinzufügen <span class="optional">(Vorschau spielt dann einmalig statt in Schleife)</span>
+              <span data-i18n="eqFadeout">Fade-out am Ende hinzufügen</span> <span class="optional" data-i18n="eqFadeoutHint">(Vorschau spielt dann einmalig statt in Schleife)</span>
             </label>
-            <p class="hint eq-limits-hint">
+            <p class="hint eq-limits-hint" data-i18n="eqLimitsHint">
               Clipping und Überkomprimierung lassen sich nachträglich nicht reparieren – das steckt schon fest im
               Signal. Dafür müsste der Track aus dem unkomprimierten Original neu gemastert werden.
             </p>
           </div>
 
           <div class="eq-editor-controls">
-            <button type="button" id="eq-suggest-btn" class="account-btn">Vorschlag übernehmen</button>
-            <button type="button" id="eq-reset-btn" class="account-btn">Zurücksetzen</button>
-            <button type="button" id="eq-play-btn" class="account-btn account-btn-primary">▶ Vorschau abspielen</button>
-            <button type="button" id="eq-download-btn" class="account-btn">Bearbeitete Version herunterladen</button>
+            <button type="button" id="eq-suggest-btn" class="account-btn" data-i18n="eqSuggestBtn">Vorschlag übernehmen</button>
+            <button type="button" id="eq-reset-btn" class="account-btn" data-i18n="eqResetBtn">Zurücksetzen</button>
+            <button type="button" id="eq-play-btn" class="account-btn account-btn-primary" data-i18n="eqPlayBtn">▶ Vorschau abspielen</button>
+            <button type="button" id="eq-download-btn" class="account-btn" data-i18n="eqDownloadBtn">Bearbeitete Version herunterladen</button>
           </div>
           <p class="status-line" id="eq-status" role="status" aria-live="polite"></p>
           </div>
         </div>
 
         <div class="zone">
-          <p class="zone-label zone-label-tips">Tipps dazu — unsere Einschätzung</p>
+          <p class="zone-label zone-label-tips" data-i18n="zoneTips">Tipps dazu — unsere Einschätzung</p>
 
           <div class="tips-block">
-            <h3>Verbesserungsvorschläge</h3>
+            <h3 data-i18n="tipsHeading">Verbesserungsvorschläge</h3>
             <ul class="tips" id="tips-list"></ul>
           </div>
         </div>
 
         <div class="fazit-wrap">
-          <h3>Fazit — dein Wegweiser</h3>
+          <h3 data-i18n="fazitHeading">Fazit — dein Wegweiser</h3>
           <div id="fazit-block"></div>
         </div>
 
         <div class="rewrite-block" id="rewrite-block" hidden>
-          <h3>KI-Einschätzung</h3>
-          <p class="hint">Lass dir eine Einordnung, Titel-Ideen und einen verfeinerten Songtext von der KI erstellen – Stil, Sprache und Aussage bleiben erhalten.</p>
-          <button type="button" id="rewrite-btn">KI-Einschätzung anzeigen</button>
+          <h3 data-i18n="rewriteHeading">KI-Einschätzung</h3>
+          <p class="hint" data-i18n="rewriteHint">Lass dir eine Einordnung, Titel-Ideen und einen verfeinerten Songtext von der KI erstellen – Stil, Sprache und Aussage bleiben erhalten.</p>
+          <button type="button" id="rewrite-btn" data-i18n="rewriteBtn">KI-Einschätzung anzeigen</button>
           <p class="rewrite-status" id="rewrite-status" role="status" aria-live="polite"></p>
 
           <div class="rewrite-result" id="rewrite-result" hidden>
             <div class="rewrite-sub">
-              <h4>Einordnung</h4>
+              <h4 data-i18n="rewriteClassificationHeading">Einordnung</h4>
               <p id="rewrite-classification"></p>
             </div>
             <div class="rewrite-sub">
-              <h4>Titel-Ideen</h4>
+              <h4 data-i18n="rewriteTitleIdeasHeading">Titel-Ideen</h4>
               <ul class="title-ideas" id="rewrite-title-ideas"></ul>
             </div>
             <div class="rewrite-sub">
-              <h4>Verbesserter Songtext</h4>
+              <h4 data-i18n="rewriteOutputHeading">Verbesserter Songtext</h4>
               <pre class="rewrite-output" id="rewrite-output"></pre>
             </div>
           </div>
         </div>
 
         <div class="vocals-block" id="vocals-block" hidden>
-          <h3>Vocals-Check <span class="beta-badge">Beta</span></h3>
-          <p class="hint">
+          <h3><span data-i18n="vocalsHeading">Vocals-Check</span> <span class="beta-badge">Beta</span></h3>
+          <p class="hint" data-i18n="vocalsIntro">
             Transkribiert die gesungenen Vocals per KI direkt in deinem Browser (Audio verlässt dabei nie dein Gerät)
             und vergleicht sie mit deinem eingegebenen Songtext – praktisch, um Aussprache-/Text-Artefakte von KI-Gesang
             (z. B. Suno, Udio) aufzuspüren. Automatische Spracherkennung von Gesang ist selbst fehleranfällig
             (Autotune, Beat im Hintergrund, Slang) – als Hinweis lesen, nicht als harten Fakt.
           </p>
           <div class="vocals-choice" id="vocals-choice">
-            <p class="hint vocals-choice-hint">
+            <p class="hint vocals-choice-hint" data-i18n="vocalsChoiceHint">
               Lädt einmalig ein KI-Modell (~140&nbsp;MB) herunter und rechnet direkt auf diesem Gerät – auf dem Handy
               kann das dauern und Datenvolumen/Akku kosten. Am Laptop/PC läuft's meist schneller.
             </p>
             <div class="vocals-choice-buttons">
-              <button type="button" id="vocals-skip-btn" class="account-btn">Auf dem Handy bleiben</button>
-              <button type="button" id="vocals-check-btn" class="account-btn account-btn-primary">Trotzdem transkribieren</button>
+              <button type="button" id="vocals-skip-btn" class="account-btn" data-i18n="vocalsSkipBtn">Auf dem Handy bleiben</button>
+              <button type="button" id="vocals-check-btn" class="account-btn account-btn-primary" data-i18n="vocalsCheckBtn">Trotzdem transkribieren</button>
             </div>
           </div>
           <p class="status-line" id="vocals-status" role="status" aria-live="polite"></p>
 
           <div class="vocals-result" id="vocals-result" hidden>
-            <h4>Textabgleich</h4>
+            <h4 data-i18n="vocalsResultHeading">Textabgleich</h4>
             <p class="vocals-summary" id="vocals-summary"></p>
             <div class="vocals-lyrics" id="vocals-lyrics-highlighted"></div>
-            <h4>Rohes Transkript <span class="optional">(automatisch, KI-generiert)</span></h4>
+            <h4><span data-i18n="vocalsTranscriptHeading">Rohes Transkript</span> <span class="optional" data-i18n="vocalsTranscriptHint">(automatisch, KI-generiert)</span></h4>
             <pre class="vocals-transcript" id="vocals-transcript"></pre>
           </div>
         </div>
 
         <div class="submit-block">
-          <h3>Wo einreichen?</h3>
+          <h3 data-i18n="submitHeading">Wo einreichen?</h3>
           <p class="hint" id="submit-hint"></p>
           <ul class="submit-list" id="submit-list"></ul>
         </div>
 
-        <p class="disclaimer">
+        <p class="disclaimer" data-i18n="disclaimer">
           Diese Analyse basiert auf automatischer Signalverarbeitung (Frequenzspektrum, Lautheit, Dynamik) sowie einer
           einfachen Textanalyse deines Songtexts. Sie ersetzt kein professionelles Mastering-Ohr oder A&amp;R-Urteil,
           gibt dir aber eine schnelle Ersteinschätzung.
@@ -342,9 +346,10 @@
     </main>
 
     <footer class="site-footer">
-      <a href="impressum.html">Impressum</a>
+      <a href="impressum.html" data-i18n="footerImpressum">Impressum</a>
       <span aria-hidden="true">·</span>
-      <a href="datenschutz.html">Datenschutz</a>
+      <a href="datenschutz.html" data-i18n="footerDatenschutz">Datenschutz</a>
+      <span class="footer-legal-note" data-i18n="footerLegalNote">(rechtlich verbindlich nur auf Deutsch)</span>
     </footer>
   </div>
 

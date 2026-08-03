@@ -1,5 +1,642 @@
 "use strict";
 
+/* ---------- i18n: Sprachumschalter DE/EN ----------
+   Statische Texte laufen ueber data-i18n-Attribute im HTML (applyStaticTranslations), alle
+   dynamisch generierten Texte (Tipps, Fazit, Status-Meldungen etc.) ueber t(key, vars). Sprache
+   wird per ?lang= URL-Parameter, danach localStorage, danach Browsersprache bestimmt - so lassen
+   sich beide Sprachversionen unter eigener URL verlinken/veroeffentlichen, ohne zwei HTML-Dateien
+   parallel pflegen zu muessen. Rechtstexte (Impressum/Datenschutz) bleiben bewusst nur Deutsch. */
+
+const LANG_KEY = "overhertz_lang";
+
+const I18N = {
+  de: {
+    pageTitle: "Overhertz – Hat dein Track Star Potential?",
+    pageDescription: "Lad deinen Track hoch und finde heraus, ob er Star Potential hat – Kurzcheck gratis, Tiefenanalyse optional.",
+    authHeading: "Konto",
+    authHint: "Login oder neues Konto anlegen, um Credits/Pro-Abo zu nutzen.",
+    loginHeading: "Login",
+    emailLabel: "E-Mail",
+    passwordLabel: "Passwort",
+    loginBtn: "Einloggen",
+    registerHeading: "Registrieren",
+    passwordHint: "(mind. 8 Zeichen)",
+    registerBtn: "Konto erstellen",
+    pricingHeading: "Preise",
+    pricingHint: "Der Kurzcheck (Ampel-Urteil + größtes Problem) ist immer kostenlos. Für die Tiefenanalyse:",
+    planCreditsTitle: "Credits",
+    planCreditsUnit: "einmalig",
+    planCreditsDesc: "5 Tiefenanalysen, kein Abo",
+    planSelectBtn: "Auswählen",
+    planProTitle: "Pro",
+    planProUnit: "/ Monat",
+    planProDesc: "50 Checks/Monat, voller Report, Hook/Titel/Lyrics/Platzierungstipps, Album-Upload",
+    planProAnnualTitle: "Pro jährlich",
+    planProAnnualUnit: "/ Jahr",
+    planProAnnualDesc: "Wie Pro, mit Rabatt im Jahresabo",
+    eyebrow: "KI Songcheck",
+    subtitle: "Lad deinen Track hoch und finde heraus, ob er Star Potential hat. Der Kurzcheck ist kostenlos.",
+    trackLabel: "Dein Track",
+    titleLabel: "Songtitel",
+    titlePlaceholder: "z. B. Natriumlicht",
+    lyricsLabel: "Songtext",
+    lyricsOptional: "(optional – für den Hook-Check)",
+    lyricsPlaceholder: "Text reinkopieren, dann prüfen wir auch, ob dein Titel in der Hook hängen bleibt…",
+    genreLabel: "Genre",
+    genreOptional: "(wird automatisch geschätzt – hier überschreibbar)",
+    genreGeneral: "Allgemein / kein Genre",
+    genreHiphop: "Hip-Hop / Rap",
+    genrePop: "Pop",
+    genreEdm: "Electronic / EDM",
+    genreRock: "Rock / Metal",
+    genreAcoustic: "Akustik / Singer-Songwriter",
+    analyzeBtn: "Analyse starten",
+    albumHeading: "Album-Check",
+    albumHint: "Mehrere Tracks auf einmal prüfen (Kurz-Check: Klangqualität, Lautheit, Frequenzbalance). Teil des Pro-Plans – jeder Track zählt als ein Check von deinem Monats-Kontingent.",
+    albumFilesLabel: "Tracks auswählen",
+    albumAnalyzeBtn: "Album analysieren",
+    heroEyebrow: "Dein Ergebnis",
+    unlockTitle: "Willst du wissen, woran's genau liegt – und wie du's behebst?",
+    unlockDesc: "Frequenzkurve im Detail, alle Verbesserungstipps und wohin du den Track am besten einreichst.",
+    unlockBtn: "Vollanalyse ansehen",
+    unlockNote: "5 Credits für 7 € oder Pro-Abo ab 9,50 €/Monat",
+    premiumHeading: "Die Tiefenanalyse",
+    zoneFacts: "Die Fakten — objektiv gemessen",
+    freqBlockHeading: "Frequenzbalance",
+    freqBlockHint: "Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).",
+    eqHeading: "EQ-Editor",
+    eqIntro: "Frequenzen direkt hier anpassen und live anhören – kein Mastering, nur ein schneller EQ-Pass. Läuft komplett in deinem Browser, deine Audiodatei verlässt dabei nie dein Gerät.",
+    eqLockedHint: "Das Beheben (EQ, De-Esser, Lautheit angleichen, Stille kürzen, Fade-out) ist Teil des Pro-Plans. Die Vollanalyse siehst du auch mit Credits – fürs direkte Bearbeiten hier brauchst du Pro.",
+    eqUpgradeBtn: "Auf Pro upgraden",
+    eqDeesserToggle: "Zischlaute reduzieren (De-Esser)",
+    eqDeesserStrength: "Stärke",
+    eqDeesserHint: "Reduziert scharfe Zischlaute (typ. 5–8 kHz) nur dann, wenn sie tatsächlich spitzen – im Gegensatz zu den Reglern oben, die pauschal einen Bereich absenken.",
+    eqGainLabel: "Lautheit anpassen",
+    eqGainMatchBtn: "Auf Zielwert angleichen",
+    eqTrimIntro: "Stille am Anfang entfernen",
+    eqFadeout: "Fade-out am Ende hinzufügen",
+    eqFadeoutHint: "(Vorschau spielt dann einmalig statt in Schleife)",
+    eqLimitsHint: "Clipping und Überkomprimierung lassen sich nachträglich nicht reparieren – das steckt schon fest im Signal. Dafür müsste der Track aus dem unkomprimierten Original neu gemastert werden.",
+    eqSuggestBtn: "Vorschlag übernehmen",
+    eqResetBtn: "Zurücksetzen",
+    eqPlayBtn: "▶ Vorschau abspielen",
+    eqPlayBtnStop: "⏸ Stop",
+    eqDownloadBtn: "Bearbeitete Version herunterladen",
+    zoneTips: "Tipps dazu — unsere Einschätzung",
+    tipsHeading: "Verbesserungsvorschläge",
+    fazitHeading: "Fazit — dein Wegweiser",
+    rewriteHeading: "KI-Einschätzung",
+    rewriteHint: "Lass dir eine Einordnung, Titel-Ideen und einen verfeinerten Songtext von der KI erstellen – Stil, Sprache und Aussage bleiben erhalten.",
+    rewriteBtn: "KI-Einschätzung anzeigen",
+    rewriteClassificationHeading: "Einordnung",
+    rewriteTitleIdeasHeading: "Titel-Ideen",
+    rewriteOutputHeading: "Verbesserter Songtext",
+    vocalsHeading: "Vocals-Check",
+    vocalsIntro: "Transkribiert die gesungenen Vocals per KI direkt in deinem Browser (Audio verlässt dabei nie dein Gerät) und vergleicht sie mit deinem eingegebenen Songtext – praktisch, um Aussprache-/Text-Artefakte von KI-Gesang (z. B. Suno, Udio) aufzuspüren. Automatische Spracherkennung von Gesang ist selbst fehleranfällig (Autotune, Beat im Hintergrund, Slang) – als Hinweis lesen, nicht als harten Fakt.",
+    vocalsChoiceHint: "Lädt einmalig ein KI-Modell (~140 MB) herunter und rechnet direkt auf diesem Gerät – auf dem Handy kann das dauern und Datenvolumen/Akku kosten. Am Laptop/PC läuft's meist schneller.",
+    vocalsSkipBtn: "Auf dem Handy bleiben",
+    vocalsCheckBtn: "Trotzdem transkribieren",
+    vocalsResultHeading: "Textabgleich",
+    vocalsTranscriptHeading: "Rohes Transkript",
+    vocalsTranscriptHint: "(automatisch, KI-generiert)",
+    submitHeading: "Wo einreichen?",
+    disclaimer: "Diese Analyse basiert auf automatischer Signalverarbeitung (Frequenzspektrum, Lautheit, Dynamik) sowie einer einfachen Textanalyse deines Songtexts. Sie ersetzt kein professionelles Mastering-Ohr oder A&R-Urteil, gibt dir aber eine schnelle Ersteinschätzung.",
+    footerImpressum: "Impressum",
+    footerDatenschutz: "Datenschutz",
+    footerLegalNote: "",
+
+    statusGood: "Gut",
+    statusOk: "Ausbaufähig",
+    statusWeak: "Schwach",
+
+    gradeTopTitle: "Star Potential",
+    gradeTopDesc: "Richtig stark! Dein Track ist bereit für die große Bühne – so kannst du ihn einreichen.",
+    gradeHighTitle: "Fast am Ziel",
+    gradeHighDesc: "Du bist auf einem richtig guten Weg – mit ein paar Handgriffen holst du das letzte Stück raus.",
+    gradeMidTitle: "Noch Feinschliff nötig",
+    gradeMidDesc: "Die Basis stimmt schon – mit den Tipps unten machst du daraus einen echten Kracher.",
+    gradeLowTitle: "Baustelle",
+    gradeLowDesc: "Der Kern ist da, jetzt geht's ans Feilen – jeder Hit hat mal so angefangen.",
+
+    badgeMissingInfo: "Fehlt Info",
+    badgeStrong: "Stark",
+    badgeSolid: "Solide",
+    badgeNeedsWork: "Ausbaufähig",
+
+    band_subbass: "Sub-Bass",
+    band_bass: "Bass",
+    band_lowmid: "Low-Mid",
+    band_mid: "Mid",
+    band_highmid: "High-Mid",
+    band_presence: "Presence",
+    band_brilliance: "Brillanz",
+
+    tipClipCriticalProblem: "Der Track clippt hörbar ({pct}% der Samples am Limit).",
+    tipClipCriticalFix: "Reduziere den Gain vor dem Limiter oder senke das Limiter-Ceiling auf ca. -1 dBTP.",
+    tipClipWarningProblem: "Vereinzelte Samples liegen am Limit.",
+    tipClipWarningFix: "Für Streaming-Plattformen etwas mehr Headroom lassen (True-Peak-Limiter, Ceiling ca. -1 dBTP).",
+    tipCrestLowProblem: "Der Track ist stark überkomprimiert (Crest Factor {db} dB).",
+    tipCrestLowDetail: "Das killt Dynamik und wirkt beim Mastering oft müde.",
+    tipCrestLowFix: "Etwas lockerer limitieren, damit mehr Dynamik erhalten bleibt.",
+    tipCrestHighProblem: "Der Track ist sehr dynamisch (Crest Factor {db} dB).",
+    tipCrestHighFix: "Ggf. etwas mehr komprimieren, damit leise Parts auf kleinen Boxen nicht untergehen.",
+    tipLoudnessLowProblem: "Der Track ist recht leise (~{db} dB).",
+    tipLoudnessLowDetail: "Spotify, Apple Music & Co. normalisieren zwar automatisch auf ein Zielniveau, aber wenn dein Master schon sehr leise angeliefert wird, verlierst du dabei Punch im Vergleich zu lauter gemasterten Tracks in derselben Playlist.",
+    tipLoudnessLowFix: "Auf ca. {target} dB zumastern.",
+    tipLoudnessHighProblem: "Der Track ist sehr laut ausgesteuert (~{db} dB).",
+    tipLoudnessHighDetail: "Streaming-Plattformen wie Spotify (Ziel ca. -14 LUFS) und YouTube normalisieren automatisch nach unten.",
+    tipLoudnessHighFix: "Beim Mastern nicht zusätzlich lauter fahren - die Extra-Lautheit wird eh weggenormalisiert, kostet nur Dynamik.",
+    tipIntroSilenceProblem: "Der Track startet mit ca. {sec} Sekunden Stille.",
+    tipIntroSilenceDetail: "Auf Playlists/Radio, wo Tracks oft direkt ineinander übergehen, kann das wie ein Fehler wirken oder Hörer verlieren, bevor überhaupt was passiert.",
+    tipIntroSilenceFix: "Stille am Anfang kürzen oder direkt mit Sound starten.",
+    tipOutroAbruptProblem: "Der Track endet abrupt/hart, ohne Fade-out oder klaren Schluss.",
+    tipOutroAbruptDetail: "Für saubere Übergänge (Playlists, DJ-Sets, Radio) wirkt das professioneller.",
+    tipOutroAbruptFix: "Ein bewusstes Ende setzen oder ein kurzes Fade-out einbauen.",
+    tipFreqOffBandsProblem: "Frequenzbalance weicht in {count} {unit} vom Referenzbereich ab ({bands}).",
+    tipFreqOffBandsFix: "Nutze den EQ-Editor weiter unten – dort ist schon ein Vorschlag aus dieser Analyse vorausgefüllt, du kannst live reinhören und direkt anpassen.",
+    tipFreqUnitSingular: "Bereich",
+    tipFreqUnitPlural: "Bereichen",
+    tipBandTooLow: "{band} (zu wenig)",
+    tipBandTooHigh: "{band} (zu viel)",
+    tipNoLyricsProblem: "Kein Songtext eingegeben – Hook- und Songtitel-Erkennbarkeit konnten nicht geprüft werden.",
+    tipNoLyricsFix: "Songtext ergänzen, dann können Hook & Songtitel mitbewertet werden.",
+    tipHookWeakProblem: "Im Text ist keine klar wiederholte Hookline erkennbar.",
+    tipHookWeakDetail: "Das erhöht den Wiedererkennungswert.",
+    tipHookWeakFix: "Eine Zeile (idealerweise mit dem Songtitel) 2–3x wiederholen, um eine klare Hook zu schaffen.",
+    tipTitleMissingProblem: "Der Songtitel taucht im Text gar nicht auf.",
+    tipTitleMissingDetail: "Hörer erinnern sich deutlich leichter, wenn der Titel tatsächlich gesungen wird.",
+    tipTitleMissingFix: "Den Songtitel tatsächlich im Text singen/erwähnen.",
+    tipTitleNotInHookProblem: "Der Songtitel kommt zwar im Text vor, aber nicht in der Hook.",
+    tipTitleNotInHookDetail: "Das stärkt den Wiedererkennungswert.",
+    tipTitleNotInHookFix: "Den Titel in die am häufigsten wiederholte Zeile (Hook) holen.",
+    tipAllGood: "Keine größeren technischen oder inhaltlichen Auffälligkeiten gefunden – solide Basis.",
+
+    fazitIntroGood: "Dein Track steht technisch und inhaltlich solide da (Score {score}/100).",
+    fazitIntroMid: "Dein Track hat eine gute Basis, aber noch Luft nach oben (Score {score}/100).",
+    fazitIntroLow: "Dein Track braucht vor einer Einreichung noch Arbeit (Score {score}/100).",
+    fazitStepsIntro: "So gehst du vor, der Reihe nach:",
+    fazitClosingSteps: "Arbeite die Punkte einfach von oben nach unten ab, dann bist du dem einreichfertigen Ergebnis jedes Mal ein Stück näher – dein Fahrplan, kein Grund zur Sorge.",
+    fazitClosingDone: "Keine größeren offenen Punkte – dein Track ist bereit für die Einreichung.",
+
+    achClean: "Kristallklar",
+    achOnTarget: "Punktgenau",
+    achHook: "Hook sitzt",
+    achBalanced: "Ausgewogen",
+    achRecognizable: "Wiedererkennbar",
+
+    streakFirst: "✦ Dein erster Check auf Overhertz – willkommen!",
+    streakN: "🔥 Das ist bereits dein {n}. Check auf Overhertz!",
+
+    submitGrooverName: "Groover",
+    submitGrooverReasonReady: "Score {score}/100{genreSuffix} ist stark genug, um bezahltes Kuratoren-Feedback wirklich auszunutzen.",
+    submitGrooverReasonNotReady: "Bei {score}/100 lohnt sich das bezahlte Feedback erst, nachdem die Tipps oben umgesetzt sind – sonst zahlst du für Hinweise, die du hier schon kostenlos hast.",
+    submitHubName: "SubmitHub",
+    submitHubReasonGenre: "Kuratoren lassen sich dort nach Genre filtern – für {genre} findest du gezielt passende.",
+    submitHubReasonNoGenre: "Kuratoren lassen sich dort nach Genre filtern, sobald eins feststeht (oben im Formular wählbar).",
+    submitMusoSoupName: "MusoSoup",
+    submitMusoSoupReason: "Guter Zweitkanal parallel zu SubmitHub – andere Kuratoren-Datenbank, kostet nichts extra, sich bei beiden einzutragen.",
+    submitSpotifyName: "Spotify for Artists – Playlist-Einreichung",
+    submitSpotifyReasonReady: "Bei {score}/100 realistische Chance auf redaktionelle Playlists – kostet nichts, unbedingt mitnehmen.",
+    submitSpotifyReasonMid: "Bei {score}/100 ist die Chance auf redaktionelle Playlists noch begrenzt, aber die Einreichung ist kostenlos – schadet nicht, auch parallel an den Tipps oben zu arbeiten.",
+    submitSpotifyReasonLow: "Bei {score}/100 realistisch eher nicht – Einreichung ist zwar kostenlos, aber die Tipps oben zuerst umsetzen erhöht die Chancen deutlich.",
+    submitNoteReady: "Der technische und inhaltliche Score ist solide ({score}/100){genreSuffix} – eine Einreichung ist aus heutiger Sicht realistisch.",
+    submitNoteMid: "Der Track ist einreichbar ({score}/100){genreSuffix}, hat aber noch Luft nach oben – die Verbesserungsvorschläge oben zuerst umsetzen erhöht die Chancen.",
+    submitNoteLow: "Vor einer Einreichung (aktuell {score}/100{genreSuffix}) lohnt es sich, erst die wichtigsten Verbesserungsvorschläge oben umzusetzen.",
+
+    meterTechnik: "Klangqualität / Sauberkeit",
+    meterLautheit: "Lautheit / Star-Potential",
+    meterFrequenz: "Frequenzbalance",
+    meterHook: "Hook",
+    meterTitel: "Songtitel erkennbar",
+    meterLyricsMissing: "Songtext fehlt",
+    meterTitleMissing: "Songtitel fehlt",
+    badgeSound: "Sound",
+    badgeStarPotential: "Star-Potential",
+    badgeHook: "Hook",
+    teaserProblem: "Größtes Problem",
+    teaserStrength: "Stärke",
+
+    detectedGenreAuto: "Automatisch erkannt: {genre}{bpm} (Schätzung anhand Tempo, Klangfarbe & Bassanteil – oben im Formular korrigierbar).",
+    detectedGenreBpmOnly: "Tempo gemessen: ~{bpm} BPM. Genre nicht eindeutig automatisch bestimmbar – oben im Formular manuell wählen für passendere Referenzwerte.",
+
+    rewriteNotConfigured: "Diese Funktion ist noch nicht eingerichtet (Backend fehlt noch).",
+    rewriteLoading: "KI erstellt Einordnung, Titel-Ideen und verfeinerten Text…",
+    rewriteNoClassification: "Keine Einordnung erhalten.",
+    rewriteError: "Fehler: {msg}",
+    unknownError: "Unbekannter Fehler.",
+    kiRequestUnknownError: "Unbekannter Fehler bei der KI-Anfrage.",
+
+    unlockNeedLogin: "Bitte zuerst einloggen oder registrieren, um die Vollanalyse freizuschalten.",
+    unlockNoCredits: "Keine Credits mehr übrig – wähle ein Paket, um die Vollanalyse freizuschalten.",
+
+    statusLoadingAudio: "Lade Audio…",
+    statusDecoding: "Decodiere Audio…",
+    statusAnalyzing: "Analysiere Frequenzen, Lautheit & Genre…",
+    statusAnalyzeFailed: "Analyse fehlgeschlagen: {msg}",
+
+    accountLoginRegisterBtn: "Login / Registrieren",
+    accountLogoutBtn: "Abmelden",
+    accountFreePlanLabel: "Free",
+    accountProLabel: "Pro",
+    accountProAnnualLabel: "Pro (jährlich)",
+    accountChecksThisMonth: "{remaining}/{quota} Checks diesen Monat",
+    accountCreditsOne: "{n} Credit",
+    accountCreditsMany: "{n} Credits",
+
+    authLoggingIn: "Einloggen…",
+    authLoginFailed: "Login fehlgeschlagen.",
+    authRegistering: "Konto wird erstellt…",
+    authRegisterFailed: "Registrierung fehlgeschlagen.",
+    authPleaseLoginFirst: "Bitte zuerst einloggen oder registrieren.",
+
+    pricingRedirecting: "Weiterleitung zur Zahlung…",
+    pricingFailed: "Zahlung konnte nicht gestartet werden.",
+    serverUnreachable: "Server nicht erreichbar.",
+
+    eqGainMatched: "Lautheit an Zielwert angeglichen.",
+    eqSuggestionApplied: "Vorschlag aus der Analyse übernommen.",
+    eqResetDone: "Zurückgesetzt.",
+    eqNeedTrackFirst: "Bitte zuerst einen Track analysieren.",
+    eqPreviewPlaying: "Vorschau läuft (in Schleife) – Slider bewegen für Live-Vergleich.",
+    eqPreviewFailed: "Vorschau fehlgeschlagen: {msg}",
+    eqRendering: "Bearbeitete Version wird gerendert…",
+    eqDownloadStarted: "Download gestartet.",
+    eqRenderFailed: "Rendern fehlgeschlagen: {msg}",
+    eqEditorProOnlyMsg: "Das Beheben (EQ-Editor, De-Esser) ist Teil des Pro-Plans.",
+
+    vocalsSkipMsg: "Kein Problem – lässt sich jederzeit später (z. B. am Laptop) nachholen.",
+    vocalsNoAudio: "Kein Audio verfügbar – bitte Track erneut analysieren.",
+    vocalsNoLyrics: "Kein Songtext eingegeben – nichts zum Abgleichen.",
+    vocalsLoadingModel: "Lade Transkriptions-Modell (einmalig, danach gecacht)…",
+    vocalsLoadingModelProgress: "Lade Transkriptions-Modell… {pct}%",
+    vocalsPreparingAudio: "Bereite Audio auf (16kHz Mono)…",
+    vocalsTranscribing: "Transkribiere Vocals (kann bei längeren Tracks etwas dauern)…",
+    vocalsNoUsableTranscript: "Keine verwertbare Transkription erhalten (evtl. sehr leiser/instrumentaler Track).",
+    vocalsFailed: "Transkription fehlgeschlagen: {msg}",
+    vocalsNoLyricsForCompare: "Kein Songtext zum Abgleich vorhanden.",
+    vocalsSummaryHigh: "{pct}% deines Songtexts finden sich im automatischen Vocal-Transkript wieder – kein Hinweis auf grobe Aussprache-Artefakte.",
+    vocalsSummaryMid: "{pct}% deines Songtexts finden sich im Transkript wieder. Die markierten Stellen unten kommen im Gesang anders/unklar rüber – kann an der KI-Aussprache liegen, kann aber auch ein Transkriptionsfehler sein (bei Gesang normal).",
+    vocalsSummaryLow: "Nur {pct}% deines Songtexts finden sich im Transkript wieder. Entweder hat die Spracherkennung hier größere Probleme (Autotune, Beat, Slang), oder die Vocals weichen stark vom Text ab – lohnt sich, dir das Rohtranskript unten anzuhören/anzusehen.",
+    vocalsNoText: "(kein Text)",
+
+    albumNeedFile: "Bitte mindestens einen Track auswählen.",
+    albumNeedLogin: "Bitte zuerst einloggen oder registrieren.",
+    albumProOnly: "Album-Check ist Teil des Pro-Plans.",
+    albumChecking: "Track {i}/{total}: „{name}“ wird geprüft…",
+    albumQuotaExhausted: "Kontingent aufgebraucht bei Track {i}/{total} ({err}).",
+    albumNoChecksLeft: "keine Checks mehr übrig",
+    albumTrackError: "Fehler: {msg}",
+    albumAnalysisFailed: "Analyse fehlgeschlagen.",
+
+    checkoutProcessing: "Zahlung wird verarbeitet…",
+    checkoutStillProcessing: "Zahlung wird noch verarbeitet ({err}) – gleich nochmal auf 'Vollanalyse ansehen' klicken.",
+    checkoutPleaseWait: "bitte kurz warten",
+
+    freqRefZoneTitle: "Referenzbereich: {lo}–{hi}%",
+    freqBarTitle: "{name}: {val}% (Referenz {lo}–{hi}%)",
+  },
+  en: {
+    pageTitle: "Overhertz – Does Your Track Have Star Potential?",
+    pageDescription: "Upload your track and find out if it has star potential – free quick check, in-depth analysis optional.",
+    authHeading: "Account",
+    authHint: "Log in or create an account to use Credits/Pro plan.",
+    loginHeading: "Log in",
+    emailLabel: "Email",
+    passwordLabel: "Password",
+    loginBtn: "Log in",
+    registerHeading: "Sign up",
+    passwordHint: "(min. 8 characters)",
+    registerBtn: "Create account",
+    pricingHeading: "Pricing",
+    pricingHint: "The quick check (traffic-light verdict + biggest problem) is always free. For the in-depth analysis:",
+    planCreditsTitle: "Credits",
+    planCreditsUnit: "one-time",
+    planCreditsDesc: "5 in-depth analyses, no subscription",
+    planSelectBtn: "Select",
+    planProTitle: "Pro",
+    planProUnit: "/ month",
+    planProDesc: "50 checks/month, full report, hook/title/lyrics/placement tips, album upload",
+    planProAnnualTitle: "Pro annual",
+    planProAnnualUnit: "/ year",
+    planProAnnualDesc: "Same as Pro, discounted annual plan",
+    eyebrow: "AI Song Check",
+    subtitle: "Upload your track and find out if it has star potential. The quick check is free.",
+    trackLabel: "Your track",
+    titleLabel: "Song title",
+    titlePlaceholder: "e.g. Sodium Light",
+    lyricsLabel: "Lyrics",
+    lyricsOptional: "(optional – for the hook check)",
+    lyricsPlaceholder: "Paste your lyrics here, and we'll also check whether your title sticks in the hook…",
+    genreLabel: "Genre",
+    genreOptional: "(auto-detected – can be overridden here)",
+    genreGeneral: "General / no genre",
+    genreHiphop: "Hip-Hop / Rap",
+    genrePop: "Pop",
+    genreEdm: "Electronic / EDM",
+    genreRock: "Rock / Metal",
+    genreAcoustic: "Acoustic / Singer-Songwriter",
+    analyzeBtn: "Start analysis",
+    albumHeading: "Album check",
+    albumHint: "Check multiple tracks at once (quick check: sound quality, loudness, frequency balance). Part of the Pro plan – each track counts as one check from your monthly quota.",
+    albumFilesLabel: "Select tracks",
+    albumAnalyzeBtn: "Analyze album",
+    heroEyebrow: "Your result",
+    unlockTitle: "Want to know exactly what's wrong – and how to fix it?",
+    unlockDesc: "Detailed frequency curve, all improvement tips, and where best to submit your track.",
+    unlockBtn: "View full analysis",
+    unlockNote: "5 credits for €7 or Pro plan from €9.50/month",
+    premiumHeading: "The in-depth analysis",
+    zoneFacts: "The facts — objectively measured",
+    freqBlockHeading: "Frequency balance",
+    freqBlockHint: "Share of energy per frequency band, compared with a balanced reference range (grey zone).",
+    eqHeading: "EQ editor",
+    eqIntro: "Adjust frequencies right here and listen live – not mastering, just a quick EQ pass. Runs entirely in your browser, your audio file never leaves your device.",
+    eqLockedHint: "Fixing things (EQ, de-esser, loudness matching, trimming silence, fade-out) is part of the Pro plan. You can see the full analysis with Credits too – editing directly here needs Pro.",
+    eqUpgradeBtn: "Upgrade to Pro",
+    eqDeesserToggle: "Reduce sibilance (de-esser)",
+    eqDeesserStrength: "Strength",
+    eqDeesserHint: "Reduces sharp sibilance (typ. 5–8 kHz) only when it actually spikes – unlike the sliders above, which flatly lower a whole range.",
+    eqGainLabel: "Adjust loudness",
+    eqGainMatchBtn: "Match to target",
+    eqTrimIntro: "Remove silence at the start",
+    eqFadeout: "Add fade-out at the end",
+    eqFadeoutHint: "(preview then plays once instead of looping)",
+    eqLimitsHint: "Clipping and over-compression can't be fixed after the fact – they're already baked into the signal. That would require remastering from the uncompressed original.",
+    eqSuggestBtn: "Apply suggestion",
+    eqResetBtn: "Reset",
+    eqPlayBtn: "▶ Play preview",
+    eqPlayBtnStop: "⏸ Stop",
+    eqDownloadBtn: "Download edited version",
+    zoneTips: "Tips on this — our assessment",
+    tipsHeading: "Improvement suggestions",
+    fazitHeading: "Summary — your roadmap",
+    rewriteHeading: "AI assessment",
+    rewriteHint: "Get an assessment, title ideas, and a refined lyric version from the AI – style, language, and meaning are preserved.",
+    rewriteBtn: "Show AI assessment",
+    rewriteClassificationHeading: "Assessment",
+    rewriteTitleIdeasHeading: "Title ideas",
+    rewriteOutputHeading: "Improved lyrics",
+    vocalsHeading: "Vocals check",
+    vocalsIntro: "Transcribes the sung vocals via AI directly in your browser (audio never leaves your device) and compares them with the lyrics you entered – useful for spotting pronunciation/text artifacts from AI vocals (e.g. Suno, Udio). Automatic speech recognition on singing is itself error-prone (autotune, background beat, slang) – read it as a hint, not a hard fact.",
+    vocalsChoiceHint: "Downloads an AI model (~140 MB) once and runs it right on this device – on mobile this can take a while and cost data/battery. Usually faster on laptop/desktop.",
+    vocalsSkipBtn: "Stay on mobile",
+    vocalsCheckBtn: "Transcribe anyway",
+    vocalsResultHeading: "Lyrics comparison",
+    vocalsTranscriptHeading: "Raw transcript",
+    vocalsTranscriptHint: "(automatic, AI-generated)",
+    submitHeading: "Where to submit?",
+    disclaimer: "This analysis is based on automatic signal processing (frequency spectrum, loudness, dynamics) plus a simple text analysis of your lyrics. It doesn't replace a professional mastering ear or A&R judgment, but gives you a quick first assessment.",
+    footerImpressum: "Legal notice",
+    footerDatenschutz: "Privacy policy",
+    footerLegalNote: "(legally binding version: German only)",
+
+    statusGood: "Good",
+    statusOk: "Needs work",
+    statusWeak: "Weak",
+
+    gradeTopTitle: "Star Potential",
+    gradeTopDesc: "Really strong! Your track is ready for the big stage – here's how to submit it.",
+    gradeHighTitle: "Almost there",
+    gradeHighDesc: "You're on a really good path – a few tweaks and you'll get that last bit out.",
+    gradeMidTitle: "Needs some polish",
+    gradeMidDesc: "The foundation is solid – with the tips below you'll turn this into a real banger.",
+    gradeLowTitle: "Work in progress",
+    gradeLowDesc: "The core is there, now it's time to refine – every hit started somewhere.",
+
+    badgeMissingInfo: "Missing info",
+    badgeStrong: "Strong",
+    badgeSolid: "Solid",
+    badgeNeedsWork: "Needs work",
+
+    band_subbass: "Sub-Bass",
+    band_bass: "Bass",
+    band_lowmid: "Low-Mid",
+    band_mid: "Mid",
+    band_highmid: "High-Mid",
+    band_presence: "Presence",
+    band_brilliance: "Air",
+
+    tipClipCriticalProblem: "The track audibly clips ({pct}% of samples at the limit).",
+    tipClipCriticalFix: "Reduce the gain before the limiter or lower the limiter ceiling to about -1 dBTP.",
+    tipClipWarningProblem: "A few isolated samples sit right at the limit.",
+    tipClipWarningFix: "Leave a bit more headroom for streaming platforms (true-peak limiter, ceiling around -1 dBTP).",
+    tipCrestLowProblem: "The track is heavily over-compressed (crest factor {db} dB).",
+    tipCrestLowDetail: "This kills dynamics and often sounds tired after mastering.",
+    tipCrestLowFix: "Limit a bit more loosely so more dynamics survive.",
+    tipCrestHighProblem: "The track is very dynamic (crest factor {db} dB).",
+    tipCrestHighFix: "Consider compressing a bit more so quiet parts don't disappear on small speakers.",
+    tipLoudnessLowProblem: "The track is quite quiet (~{db} dB).",
+    tipLoudnessLowDetail: "Spotify, Apple Music & co. do normalize automatically to a target level, but if your master arrives very quiet to begin with, you lose punch compared to louder-mastered tracks in the same playlist.",
+    tipLoudnessLowFix: "Master up to about {target} dB.",
+    tipLoudnessHighProblem: "The track is driven very loud (~{db} dB).",
+    tipLoudnessHighDetail: "Streaming platforms like Spotify (target around -14 LUFS) and YouTube normalize downward automatically.",
+    tipLoudnessHighFix: "Don't push it louder during mastering – the extra loudness gets normalized away anyway and only costs you dynamics.",
+    tipIntroSilenceProblem: "The track starts with about {sec} seconds of silence.",
+    tipIntroSilenceDetail: "On playlists/radio, where tracks often flow directly into each other, this can look like an error or lose listeners before anything even happens.",
+    tipIntroSilenceFix: "Trim the silence at the start or start right with sound.",
+    tipOutroAbruptProblem: "The track ends abruptly/hard, without a fade-out or clear ending.",
+    tipOutroAbruptDetail: "For clean transitions (playlists, DJ sets, radio), that looks more professional.",
+    tipOutroAbruptFix: "Set a deliberate ending or add a short fade-out.",
+    tipFreqOffBandsProblem: "Frequency balance is off in {count} {unit} from the reference range ({bands}).",
+    tipFreqOffBandsFix: "Use the EQ editor further down – a suggestion from this analysis is already pre-filled there, you can listen live and adjust directly.",
+    tipFreqUnitSingular: "area",
+    tipFreqUnitPlural: "areas",
+    tipBandTooLow: "{band} (too little)",
+    tipBandTooHigh: "{band} (too much)",
+    tipNoLyricsProblem: "No lyrics entered – hook and song-title recognizability couldn't be checked.",
+    tipNoLyricsFix: "Add lyrics so the hook and song title can be scored too.",
+    tipHookWeakProblem: "No clearly repeated hook line is recognizable in the lyrics.",
+    tipHookWeakDetail: "This boosts memorability.",
+    tipHookWeakFix: "Repeat one line (ideally containing the song title) 2–3 times to create a clear hook.",
+    tipTitleMissingProblem: "The song title doesn't appear in the lyrics at all.",
+    tipTitleMissingDetail: "Listeners remember much more easily when the title is actually sung.",
+    tipTitleMissingFix: "Actually sing/mention the song title in the lyrics.",
+    tipTitleNotInHookProblem: "The song title appears in the lyrics, but not in the hook.",
+    tipTitleNotInHookDetail: "This strengthens memorability.",
+    tipTitleNotInHookFix: "Move the title into the most frequently repeated line (the hook).",
+    tipAllGood: "No major technical or content issues found – solid foundation.",
+
+    fazitIntroGood: "Your track is technically and content-wise solid (score {score}/100).",
+    fazitIntroMid: "Your track has a good foundation, but still room to grow (score {score}/100).",
+    fazitIntroLow: "Your track needs more work before submitting (score {score}/100).",
+    fazitStepsIntro: "Here's how to proceed, step by step:",
+    fazitClosingSteps: "Just work through the points from top to bottom, and you'll get a step closer to submission-ready each time – your roadmap, nothing to worry about.",
+    fazitClosingDone: "No major open points – your track is ready for submission.",
+
+    achClean: "Crystal clear",
+    achOnTarget: "Right on target",
+    achHook: "Hook lands",
+    achBalanced: "Balanced",
+    achRecognizable: "Recognizable",
+
+    streakFirst: "✦ Your first check on Overhertz – welcome!",
+    streakN: "🔥 This is already check #{n} on Overhertz!",
+
+    submitGrooverName: "Groover",
+    submitGrooverReasonReady: "A score of {score}/100{genreSuffix} is strong enough to really make paid curator feedback worth it.",
+    submitGrooverReasonNotReady: "At {score}/100, paid feedback is only worth it once you've applied the tips above – otherwise you're paying for pointers you already have here for free.",
+    submitHubName: "SubmitHub",
+    submitHubReasonGenre: "Curators there can be filtered by genre – for {genre} you'll find a good match.",
+    submitHubReasonNoGenre: "Curators there can be filtered by genre once one is set (selectable in the form above).",
+    submitMusoSoupName: "MusoSoup",
+    submitMusoSoupReason: "A good second channel alongside SubmitHub – a different curator database, and it costs nothing extra to sign up for both.",
+    submitSpotifyName: "Spotify for Artists – Playlist Submission",
+    submitSpotifyReasonReady: "At {score}/100 you have a realistic shot at editorial playlists – costs nothing, definitely worth it.",
+    submitSpotifyReasonMid: "At {score}/100 your odds for editorial playlists are still limited, but submitting is free – doesn't hurt to work on the tips above in parallel.",
+    submitSpotifyReasonLow: "At {score}/100 realistically unlikely – submission is free, but applying the tips above first significantly improves your odds.",
+    submitNoteReady: "The technical and content score is solid ({score}/100){genreSuffix} – submitting looks realistic at this point.",
+    submitNoteMid: "The track is submittable ({score}/100){genreSuffix}, but still has room to grow – applying the improvement tips above first increases your odds.",
+    submitNoteLow: "Before submitting (currently {score}/100{genreSuffix}), it's worth applying the most important improvement tips above first.",
+
+    meterTechnik: "Sound quality / cleanliness",
+    meterLautheit: "Loudness / star potential",
+    meterFrequenz: "Frequency balance",
+    meterHook: "Hook",
+    meterTitel: "Song title recognizable",
+    meterLyricsMissing: "Lyrics missing",
+    meterTitleMissing: "Song title missing",
+    badgeSound: "Sound",
+    badgeStarPotential: "Star potential",
+    badgeHook: "Hook",
+    teaserProblem: "Biggest problem",
+    teaserStrength: "Strength",
+
+    detectedGenreAuto: "Auto-detected: {genre}{bpm} (estimate based on tempo, tone, and bass ratio – adjustable in the form above).",
+    detectedGenreBpmOnly: "Tempo measured: ~{bpm} BPM. Genre couldn't be determined automatically with confidence – select manually in the form above for more accurate reference values.",
+
+    rewriteNotConfigured: "This feature isn't set up yet (backend missing).",
+    rewriteLoading: "AI is creating an assessment, title ideas, and a refined lyric version…",
+    rewriteNoClassification: "No assessment received.",
+    rewriteError: "Error: {msg}",
+    unknownError: "Unknown error.",
+    kiRequestUnknownError: "Unknown error during the AI request.",
+
+    unlockNeedLogin: "Please log in or register first to unlock the full analysis.",
+    unlockNoCredits: "No credits left – choose a plan to unlock the full analysis.",
+
+    statusLoadingAudio: "Loading audio…",
+    statusDecoding: "Decoding audio…",
+    statusAnalyzing: "Analyzing frequencies, loudness & genre…",
+    statusAnalyzeFailed: "Analysis failed: {msg}",
+
+    accountLoginRegisterBtn: "Log in / Sign up",
+    accountLogoutBtn: "Log out",
+    accountFreePlanLabel: "Free",
+    accountProLabel: "Pro",
+    accountProAnnualLabel: "Pro (annual)",
+    accountChecksThisMonth: "{remaining}/{quota} checks this month",
+    accountCreditsOne: "{n} credit",
+    accountCreditsMany: "{n} credits",
+
+    authLoggingIn: "Logging in…",
+    authLoginFailed: "Login failed.",
+    authRegistering: "Creating account…",
+    authRegisterFailed: "Registration failed.",
+    authPleaseLoginFirst: "Please log in or register first.",
+
+    pricingRedirecting: "Redirecting to payment…",
+    pricingFailed: "Payment couldn't be started.",
+    serverUnreachable: "Server unreachable.",
+
+    eqGainMatched: "Loudness matched to target.",
+    eqSuggestionApplied: "Suggestion from the analysis applied.",
+    eqResetDone: "Reset.",
+    eqNeedTrackFirst: "Please analyze a track first.",
+    eqPreviewPlaying: "Preview playing (looping) – move the sliders for a live comparison.",
+    eqPreviewFailed: "Preview failed: {msg}",
+    eqRendering: "Rendering edited version…",
+    eqDownloadStarted: "Download started.",
+    eqRenderFailed: "Rendering failed: {msg}",
+    eqEditorProOnlyMsg: "Fixing things (EQ editor, de-esser) is part of the Pro plan.",
+
+    vocalsSkipMsg: "No problem – you can do this later (e.g. on a laptop).",
+    vocalsNoAudio: "No audio available – please analyze the track again.",
+    vocalsNoLyrics: "No lyrics entered – nothing to compare.",
+    vocalsLoadingModel: "Loading transcription model (one-time, then cached)…",
+    vocalsLoadingModelProgress: "Loading transcription model… {pct}%",
+    vocalsPreparingAudio: "Preparing audio (16kHz mono)…",
+    vocalsTranscribing: "Transcribing vocals (can take a while for longer tracks)…",
+    vocalsNoUsableTranscript: "No usable transcription received (maybe a very quiet/instrumental track).",
+    vocalsFailed: "Transcription failed: {msg}",
+    vocalsNoLyricsForCompare: "No lyrics available to compare.",
+    vocalsSummaryHigh: "{pct}% of your lyrics show up in the automatic vocal transcript – no sign of major pronunciation artifacts.",
+    vocalsSummaryMid: "{pct}% of your lyrics show up in the transcript. The highlighted spots below come across differently/unclearly in the vocals – could be the AI pronunciation, but could also just be a transcription error (normal for singing).",
+    vocalsSummaryLow: "Only {pct}% of your lyrics show up in the transcript. Either speech recognition is struggling here (autotune, beat, slang), or the vocals deviate significantly from the lyrics – worth checking the raw transcript below.",
+    vocalsNoText: "(no text)",
+
+    albumNeedFile: "Please select at least one track.",
+    albumNeedLogin: "Please log in or register first.",
+    albumProOnly: "Album check is part of the Pro plan.",
+    albumChecking: "Track {i}/{total}: “{name}” being checked…",
+    albumQuotaExhausted: "Quota used up at track {i}/{total} ({err}).",
+    albumNoChecksLeft: "no checks left",
+    albumTrackError: "Error: {msg}",
+    albumAnalysisFailed: "Analysis failed.",
+
+    checkoutProcessing: "Processing payment…",
+    checkoutStillProcessing: "Payment is still processing ({err}) – try clicking 'View full analysis' again in a moment.",
+    checkoutPleaseWait: "please wait a moment",
+
+    freqRefZoneTitle: "Reference range: {lo}–{hi}%",
+    freqBarTitle: "{name}: {val}% (reference {lo}–{hi}%)",
+  },
+};
+
+function detectLang() {
+  const params = new URLSearchParams(window.location.search);
+  const urlLang = params.get("lang");
+  if (urlLang === "en" || urlLang === "de") return urlLang;
+  const stored = localStorage.getItem(LANG_KEY);
+  if (stored === "en" || stored === "de") return stored;
+  return navigator.language && navigator.language.toLowerCase().startsWith("de") ? "de" : "en";
+}
+
+let currentLang = detectLang();
+localStorage.setItem(LANG_KEY, currentLang);
+
+function t(key, vars) {
+  const table = I18N[currentLang] || I18N.de;
+  let str = key in table ? table[key] : key in I18N.de ? I18N.de[key] : key;
+  if (vars) {
+    Object.keys(vars).forEach((k) => {
+      str = str.replace(new RegExp("\\{" + k + "\\}", "g"), vars[k]);
+    });
+  }
+  return str;
+}
+
+function applyStaticTranslations() {
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    el.textContent = t(el.getAttribute("data-i18n"));
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    el.placeholder = t(el.getAttribute("data-i18n-placeholder"));
+  });
+  document.title = t("pageTitle");
+  const metaDesc = document.querySelector('meta[name="description"]');
+  if (metaDesc) metaDesc.setAttribute("content", t("pageDescription"));
+  document.documentElement.lang = currentLang;
+  document.querySelectorAll(".lang-btn").forEach((btn) => {
+    btn.setAttribute("aria-pressed", String(btn.dataset.lang === currentLang));
+  });
+}
+
+function setLang(lang) {
+  if (lang !== "de" && lang !== "en") return;
+  currentLang = lang;
+  localStorage.setItem(LANG_KEY, lang);
+  applyStaticTranslations();
+  if (typeof currentAnalysisSnapshot !== "undefined" && currentAnalysisSnapshot) {
+    const unlockedNow = premiumResultsEl && !premiumResultsEl.hidden;
+    renderAnalysis(currentAnalysisSnapshot, { unlockedPremium: unlockedNow });
+  }
+}
+
+document.querySelectorAll(".lang-btn").forEach((btn) => {
+  btn.addEventListener("click", () => setLang(btn.dataset.lang));
+});
+applyStaticTranslations();
+
 /* ---------- Icons (inline SVG, currentColor, always paired with a text label) ---------- */
 
 const ICONS = {
@@ -9,9 +646,9 @@ const ICONS = {
 };
 
 function statusForScore(score) {
-  if (score >= 75) return { key: "good", color: "var(--status-good)", label: "Gut" };
-  if (score >= 50) return { key: "warning", color: "var(--status-warning)", label: "Ausbaufähig" };
-  return { key: "critical", color: "var(--status-critical)", label: "Schwach" };
+  if (score >= 75) return { key: "good", color: "var(--status-good)", label: t("statusGood") };
+  if (score >= 50) return { key: "warning", color: "var(--status-warning)", label: t("statusOk") };
+  return { key: "critical", color: "var(--status-critical)", label: t("statusWeak") };
 }
 
 /* ---------- Entertainment layer: grades, badges, teaser (for the free view) ---------- */
@@ -20,8 +657,8 @@ function gradeForScore(score) {
   if (score >= 80) {
     return {
       stars: 5,
-      title: "Star Potential",
-      desc: "Richtig stark! Dein Track ist bereit für die große Bühne – so kannst du ihn einreichen.",
+      title: t("gradeTopTitle"),
+      desc: t("gradeTopDesc"),
       color: "var(--status-good)",
       celebrate: true,
     };
@@ -29,23 +666,23 @@ function gradeForScore(score) {
   if (score >= 60) {
     return {
       stars: 4,
-      title: "Fast am Ziel",
-      desc: "Du bist auf einem richtig guten Weg – mit ein paar Handgriffen holst du das letzte Stück raus.",
+      title: t("gradeHighTitle"),
+      desc: t("gradeHighDesc"),
       color: "var(--status-good)",
     };
   }
   if (score >= 40) {
     return {
       stars: 3,
-      title: "Noch Feinschliff nötig",
-      desc: "Die Basis stimmt schon – mit den Tipps unten machst du daraus einen echten Kracher.",
+      title: t("gradeMidTitle"),
+      desc: t("gradeMidDesc"),
       color: "var(--status-warning)",
     };
   }
   return {
     stars: 2,
-    title: "Baustelle",
-    desc: "Der Kern ist da, jetzt geht's ans Feilen – jeder Hit hat mal so angefangen.",
+    title: t("gradeLowTitle"),
+    desc: t("gradeLowDesc"),
     color: "var(--status-critical)",
   };
 }
@@ -59,10 +696,10 @@ function starRatingHtml(stars) {
 }
 
 function badgeTier(score) {
-  if (score === null || score === undefined) return { dots: "○ ○ ○", label: "Fehlt Info" };
-  if (score >= 75) return { dots: "● ● ●", label: "Stark" };
-  if (score >= 50) return { dots: "● ● ○", label: "Solide" };
-  return { dots: "● ○ ○", label: "Ausbaufähig" };
+  if (score === null || score === undefined) return { dots: "○ ○ ○", label: t("badgeMissingInfo") };
+  if (score >= 75) return { dots: "● ● ●", label: t("badgeStrong") };
+  if (score >= 50) return { dots: "● ● ○", label: t("badgeSolid") };
+  return { dots: "● ○ ○", label: t("badgeNeedsWork") };
 }
 
 function combineScores(scores) {
@@ -118,46 +755,63 @@ const FFT_SIZE = 4096;
 const MAX_FRAMES = 200;
 
 const FREQ_BANDS = [
-  { name: "Sub-Bass", range: [20, 60] },
-  { name: "Bass", range: [60, 250] },
-  { name: "Low-Mid", range: [250, 500] },
-  { name: "Mid", range: [500, 2000] },
-  { name: "High-Mid", range: [2000, 4000] },
-  { name: "Presence", range: [4000, 6000] },
-  { name: "Brillanz", range: [6000, 16000] },
+  { key: "subbass", range: [20, 60] },
+  { key: "bass", range: [60, 250] },
+  { key: "lowmid", range: [250, 500] },
+  { key: "mid", range: [500, 2000] },
+  { key: "highmid", range: [2000, 4000] },
+  { key: "presence", range: [4000, 6000] },
+  { key: "brilliance", range: [6000, 16000] },
 ];
+
+function bandLabel(band) {
+  return t("band_" + band.key);
+}
+
+const GENRE_LABEL_KEYS = {
+  "": "genreGeneral",
+  hiphop: "genreHiphop",
+  pop: "genrePop",
+  edm: "genreEdm",
+  rock: "genreRock",
+  acoustic: "genreAcoustic",
+};
+
+function genreLabel(genreKey) {
+  return t(GENRE_LABEL_KEYS[genreKey] || "genreGeneral");
+}
 
 /* Referenzbereiche (% Energieanteil je Band) und Lautheits-Ziel je Genre. "" = allgemeiner
    Referenzbereich, wenn kein Genre gewählt wurde. Grobe, praxisnahe Richtwerte, keine exakte
    Norm - dienen als Orientierung, nicht als harte Regel. */
 const GENRE_PROFILES = {
-  "": { label: "Allgemein", loudnessTarget: -14, refs: [[2, 8], [14, 26], [10, 18], [20, 32], [10, 18], [5, 12], [4, 12]] },
+  "": { key: "", loudnessTarget: -14, refs: [[2, 8], [14, 26], [10, 18], [20, 32], [10, 18], [5, 12], [4, 12]] },
   hiphop: {
-    label: "Hip-Hop / Rap",
+    key: "hiphop",
     loudnessTarget: -9,
     refs: [[4, 10], [18, 30], [9, 16], [18, 28], [9, 16], [5, 11], [3, 9]],
     fingerprint: { bpmRange: [70, 100], brightnessRange: [700, 1800], bassRatioRange: [20, 38], crestRange: [6, 15] },
   },
   pop: {
-    label: "Pop",
+    key: "pop",
     loudnessTarget: -11,
     refs: [[2, 7], [13, 22], [10, 18], [22, 34], [11, 19], [6, 13], [5, 13]],
     fingerprint: { bpmRange: [95, 130], brightnessRange: [1100, 2300], bassRatioRange: [14, 27], crestRange: [7, 16] },
   },
   edm: {
-    label: "Electronic / EDM",
+    key: "edm",
     loudnessTarget: -8,
     refs: [[6, 14], [20, 32], [8, 15], [16, 26], [9, 15], [4, 10], [4, 11]],
     fingerprint: { bpmRange: [118, 150], brightnessRange: [900, 2000], bassRatioRange: [24, 42], crestRange: [5, 11] },
   },
   rock: {
-    label: "Rock / Metal",
+    key: "rock",
     loudnessTarget: -9,
     refs: [[2, 6], [12, 20], [12, 20], [22, 32], [12, 20], [6, 13], [3, 9]],
     fingerprint: { bpmRange: [95, 145], brightnessRange: [1000, 2100], bassRatioRange: [13, 25], crestRange: [8, 17] },
   },
   acoustic: {
-    label: "Akustik / Singer-Songwriter",
+    key: "acoustic",
     loudnessTarget: -16,
     refs: [[1, 5], [10, 18], [12, 20], [22, 34], [12, 20], [6, 13], [4, 11]],
     fingerprint: { bpmRange: [55, 115], brightnessRange: [850, 1900], bassRatioRange: [9, 22], crestRange: [10, 22] },
@@ -507,81 +1161,58 @@ function scoreTitel(lyrics) {
 
 /* ---------- Tips ---------- */
 
+function tipText(problem, detail, fix) {
+  return detail ? `${problem} ${detail} ${fix}`.trim() : `${problem}${fix ? " " + fix : ""}`.trim();
+}
+
 function buildTips(a, lyrics, scores, profile) {
   const tips = [];
   const loudnessTarget = profile.loudnessTarget;
 
   if (a.clippingRatio > 0.005) {
-    const fix = "Reduziere den Gain vor dem Limiter oder senke das Limiter-Ceiling auf ca. -1 dBTP.";
-    tips.push({
-      level: "critical",
-      problem: `Der Track clippt hörbar (${(a.clippingRatio * 100).toFixed(2)}% der Samples am Limit).`,
-      fix,
-      text: `Der Track clippt hörbar (${(a.clippingRatio * 100).toFixed(2)}% der Samples am Limit). ${fix}`,
-    });
+    const problem = t("tipClipCriticalProblem", { pct: (a.clippingRatio * 100).toFixed(2) });
+    const fix = t("tipClipCriticalFix");
+    tips.push({ level: "critical", problem, fix, text: tipText(problem, null, fix) });
   } else if (a.clippingRatio > 0.0005) {
-    const fix = "Für Streaming-Plattformen etwas mehr Headroom lassen (True-Peak-Limiter, Ceiling ca. -1 dBTP).";
-    tips.push({
-      level: "warning",
-      problem: "Vereinzelte Samples liegen am Limit.",
-      fix,
-      text: `Vereinzelte Samples liegen am Limit. ${fix}`,
-    });
+    const problem = t("tipClipWarningProblem");
+    const fix = t("tipClipWarningFix");
+    tips.push({ level: "warning", problem, fix, text: tipText(problem, null, fix) });
   }
 
   if (a.crestFactorDb < 6) {
-    const fix = "Etwas lockerer limitieren, damit mehr Dynamik erhalten bleibt.";
-    tips.push({
-      level: "critical",
-      problem: `Der Track ist stark überkomprimiert (Crest Factor ${a.crestFactorDb.toFixed(1)} dB).`,
-      fix,
-      text: `Der Track ist stark überkomprimiert (Crest Factor ${a.crestFactorDb.toFixed(1)} dB). Das killt Dynamik und wirkt beim Mastering oft müde – ${fix.charAt(0).toLowerCase()}${fix.slice(1)}`,
-    });
+    const problem = t("tipCrestLowProblem", { db: a.crestFactorDb.toFixed(1) });
+    const detail = t("tipCrestLowDetail");
+    const fix = t("tipCrestLowFix");
+    tips.push({ level: "critical", problem, fix, text: tipText(problem, detail, fix) });
   } else if (a.crestFactorDb > 22) {
-    const fix = "Ggf. etwas mehr komprimieren, damit leise Parts auf kleinen Boxen nicht untergehen.";
-    tips.push({
-      level: "warning",
-      problem: `Der Track ist sehr dynamisch (Crest Factor ${a.crestFactorDb.toFixed(1)} dB).`,
-      fix,
-      text: `Der Track ist sehr dynamisch (Crest Factor ${a.crestFactorDb.toFixed(1)} dB). ${fix}`,
-    });
+    const problem = t("tipCrestHighProblem", { db: a.crestFactorDb.toFixed(1) });
+    const fix = t("tipCrestHighFix");
+    tips.push({ level: "warning", problem, fix, text: tipText(problem, null, fix) });
   }
 
   if (a.loudnessDb < loudnessTarget - 4) {
-    const fix = `Auf ca. ${loudnessTarget} dB zumastern.`;
-    tips.push({
-      level: "warning",
-      problem: `Der Track ist recht leise (~${a.loudnessDb.toFixed(1)} dB).`,
-      fix,
-      text: `Der Track ist recht leise (~${a.loudnessDb.toFixed(1)} dB). Spotify, Apple Music & Co. normalisieren zwar automatisch auf ein Zielniveau, aber wenn dein Master schon sehr leise angeliefert wird, verlierst du dabei Punch im Vergleich zu lauter gemasterten Tracks in derselben Playlist. ${fix}`,
-    });
+    const problem = t("tipLoudnessLowProblem", { db: a.loudnessDb.toFixed(1) });
+    const detail = t("tipLoudnessLowDetail");
+    const fix = t("tipLoudnessLowFix", { target: loudnessTarget });
+    tips.push({ level: "warning", problem, fix, text: tipText(problem, detail, fix) });
   } else if (a.loudnessDb > loudnessTarget + 4) {
-    const fix = "Beim Mastern nicht zusätzlich lauter fahren - die Extra-Lautheit wird eh weggenormalisiert, kostet nur Dynamik.";
-    tips.push({
-      level: "warning",
-      problem: `Der Track ist sehr laut ausgesteuert (~${a.loudnessDb.toFixed(1)} dB).`,
-      fix,
-      text: `Der Track ist sehr laut ausgesteuert (~${a.loudnessDb.toFixed(1)} dB). Streaming-Plattformen wie Spotify (Ziel ca. -14 LUFS) und YouTube normalisieren automatisch nach unten. ${fix}`,
-    });
+    const problem = t("tipLoudnessHighProblem", { db: a.loudnessDb.toFixed(1) });
+    const detail = t("tipLoudnessHighDetail");
+    const fix = t("tipLoudnessHighFix");
+    tips.push({ level: "warning", problem, fix, text: tipText(problem, detail, fix) });
   }
 
   if (a.introSilenceMs > 1500) {
-    const fix = "Stille am Anfang kürzen oder direkt mit Sound starten.";
-    tips.push({
-      level: "warning",
-      problem: `Der Track startet mit ca. ${(a.introSilenceMs / 1000).toFixed(1)} Sekunden Stille.`,
-      fix,
-      text: `Der Track startet mit ca. ${(a.introSilenceMs / 1000).toFixed(1)} Sekunden Stille. Auf Playlists/Radio, wo Tracks oft direkt ineinander übergehen, kann das wie ein Fehler wirken oder Hörer verlieren, bevor überhaupt was passiert. ${fix}`,
-    });
+    const problem = t("tipIntroSilenceProblem", { sec: (a.introSilenceMs / 1000).toFixed(1) });
+    const detail = t("tipIntroSilenceDetail");
+    const fix = t("tipIntroSilenceFix");
+    tips.push({ level: "warning", problem, fix, text: tipText(problem, detail, fix) });
   }
   if (a.outroEndsAbruptly) {
-    const fix = "Ein bewusstes Ende setzen oder ein kurzes Fade-out einbauen.";
-    tips.push({
-      level: "warning",
-      problem: "Der Track endet abrupt/hart, ohne Fade-out oder klaren Schluss.",
-      fix,
-      text: `Der Track endet abrupt/hart, ohne Fade-out oder klaren Schluss. Für saubere Übergänge (Playlists, DJ-Sets, Radio) wirkt das professioneller. ${fix}`,
-    });
+    const problem = t("tipOutroAbruptProblem");
+    const detail = t("tipOutroAbruptDetail");
+    const fix = t("tipOutroAbruptFix");
+    tips.push({ level: "warning", problem, fix, text: tipText(problem, detail, fix) });
   }
 
   // Statt fuenf fast identischen "probier X dB bei Y Hz"-Tipps hintereinander (unverstaendlich
@@ -591,65 +1222,45 @@ function buildTips(a, lyrics, scores, profile) {
   FREQ_BANDS.forEach((band, i) => {
     const val = a.bandPercents[i];
     const [lo, hi] = profile.refs[i];
-    if (val < lo - 3) offBands.push(`${band.name} (zu wenig)`);
-    else if (val > hi + 3) offBands.push(`${band.name} (zu viel)`);
+    if (val < lo - 3) offBands.push(t("tipBandTooLow", { band: bandLabel(band) }));
+    else if (val > hi + 3) offBands.push(t("tipBandTooHigh", { band: bandLabel(band) }));
   });
   if (offBands.length > 0) {
-    const fix = "Nutze den EQ-Editor weiter unten – dort ist schon ein Vorschlag aus dieser Analyse vorausgefüllt, du kannst live reinhören und direkt anpassen.";
-    tips.push({
-      level: offBands.length >= 4 ? "critical" : "warning",
-      problem: `Frequenzbalance weicht in ${offBands.length} Bereich${offBands.length > 1 ? "en" : ""} vom Referenzbereich ab (${offBands.join(", ")}).`,
-      fix,
-      text: `Frequenzbalance weicht in ${offBands.length} Bereich${offBands.length > 1 ? "en" : ""} vom Referenzbereich ab: ${offBands.join(", ")}. ${fix}`,
-    });
+    const unit = t(offBands.length > 1 ? "tipFreqUnitPlural" : "tipFreqUnitSingular");
+    const problem = t("tipFreqOffBandsProblem", { count: offBands.length, unit, bands: offBands.join(", ") });
+    const fix = t("tipFreqOffBandsFix");
+    tips.push({ level: offBands.length >= 4 ? "critical" : "warning", problem, fix, text: tipText(problem, null, fix) });
   }
 
   if (!lyrics.hasLyrics) {
-    const fix = "Songtext ergänzen, dann können Hook & Songtitel mitbewertet werden.";
-    tips.push({
-      level: "warning",
-      problem: "Kein Songtext eingegeben – Hook- und Songtitel-Erkennbarkeit konnten nicht geprüft werden.",
-      fix,
-      text: `Kein Songtext eingegeben – Hook- und Songtitel-Erkennbarkeit konnten nicht geprüft werden. ${fix}`,
-    });
+    const problem = t("tipNoLyricsProblem");
+    const fix = t("tipNoLyricsFix");
+    tips.push({ level: "warning", problem, fix, text: tipText(problem, null, fix) });
   } else {
     if (scores.hook !== null && scores.hook < 70) {
-      const fix = "Eine Zeile (idealerweise mit dem Songtitel) 2–3x wiederholen, um eine klare Hook zu schaffen.";
-      tips.push({
-        level: "warning",
-        problem: "Im Text ist keine klar wiederholte Hookline erkennbar.",
-        fix,
-        text: `Im Text ist keine klar wiederholte Hookline erkennbar. ${fix} Das erhöht den Wiedererkennungswert.`,
-      });
+      const problem = t("tipHookWeakProblem");
+      const detail = t("tipHookWeakDetail");
+      const fix = t("tipHookWeakFix");
+      tips.push({ level: "warning", problem, fix, text: tipText(problem, detail, fix) });
     }
     if (lyrics.hasTitle && scores.titel !== null && scores.titel < 100) {
       if (!lyrics.titleInLyrics) {
-        const fix = "Den Songtitel tatsächlich im Text singen/erwähnen.";
-        tips.push({
-          level: "critical",
-          problem: "Der Songtitel taucht im Text gar nicht auf.",
-          fix,
-          text: `Der Songtitel taucht im Text gar nicht auf. Hörer erinnern sich deutlich leichter, wenn der Titel tatsächlich gesungen wird. ${fix}`,
-        });
+        const problem = t("tipTitleMissingProblem");
+        const detail = t("tipTitleMissingDetail");
+        const fix = t("tipTitleMissingFix");
+        tips.push({ level: "critical", problem, fix, text: tipText(problem, detail, fix) });
       } else {
-        const fix = "Den Titel in die am häufigsten wiederholte Zeile (Hook) holen.";
-        tips.push({
-          level: "warning",
-          problem: "Der Songtitel kommt zwar im Text vor, aber nicht in der Hook.",
-          fix,
-          text: `Der Songtitel kommt zwar im Text vor, aber nicht in der am häufigsten wiederholten Zeile (Hook). ${fix} Das stärkt den Wiedererkennungswert.`,
-        });
+        const problem = t("tipTitleNotInHookProblem");
+        const detail = t("tipTitleNotInHookDetail");
+        const fix = t("tipTitleNotInHookFix");
+        tips.push({ level: "warning", problem, fix, text: tipText(problem, detail, fix) });
       }
     }
   }
 
   if (tips.length === 0) {
-    tips.push({
-      level: "good",
-      problem: "Keine größeren technischen oder inhaltlichen Auffälligkeiten gefunden – solide Basis.",
-      fix: "",
-      text: "Keine größeren technischen oder inhaltlichen Auffälligkeiten gefunden – solide Basis.",
-    });
+    const problem = t("tipAllGood");
+    tips.push({ level: "good", problem, fix: "", text: problem });
   }
 
   return tips;
@@ -659,25 +1270,22 @@ function buildTips(a, lyrics, scores, profile) {
 
 function buildFazit(overallScore, tips) {
   const actionable = tips
-    .filter((t) => t.level !== "good")
+    .filter((tip) => tip.level !== "good")
     .sort((a, b) => TIP_LEVEL_RANK[a.level] - TIP_LEVEL_RANK[b.level])
     .slice(0, 5);
 
   let intro;
-  if (overallScore >= 70) intro = `Dein Track steht technisch und inhaltlich solide da (Score ${overallScore}/100).`;
-  else if (overallScore >= 45) intro = `Dein Track hat eine gute Basis, aber noch Luft nach oben (Score ${overallScore}/100).`;
-  else intro = `Dein Track braucht vor einer Einreichung noch Arbeit (Score ${overallScore}/100).`;
+  if (overallScore >= 70) intro = t("fazitIntroGood", { score: overallScore });
+  else if (overallScore >= 45) intro = t("fazitIntroMid", { score: overallScore });
+  else intro = t("fazitIntroLow", { score: overallScore });
 
-  const stepsIntro = actionable.length > 0 ? "So gehst du vor, der Reihe nach:" : "";
+  const stepsIntro = actionable.length > 0 ? t("fazitStepsIntro") : "";
 
-  const closing =
-    actionable.length > 0
-      ? "Arbeite die Punkte einfach von oben nach unten ab, dann bist du dem einreichfertigen Ergebnis jedes Mal ein Stück näher – dein Fahrplan, kein Grund zur Sorge."
-      : "Keine größeren offenen Punkte – dein Track ist bereit für die Einreichung.";
+  const closing = actionable.length > 0 ? t("fazitClosingSteps") : t("fazitClosingDone");
 
   // fix statt text: nur die Handlungsanweisung, ohne die Diagnose aus der Tipps-Liste oben
   // wortgleich zu wiederholen - macht den Wegweiser zu einer eigenstaendigen Checkliste.
-  return { intro, stepsIntro, steps: actionable.map((t) => t.fix || t.problem), closing };
+  return { intro, stepsIntro, steps: actionable.map((tip) => tip.fix || tip.problem), closing };
 }
 
 function renderFazit(container, fazit) {
@@ -693,11 +1301,11 @@ function renderFazit(container, fazit) {
 
 function buildAchievements(audioMetrics, scores, loudnessTarget) {
   const list = [];
-  if (audioMetrics.clippingRatio < 0.0005) list.push({ emoji: "🧼", label: "Kristallklar" });
-  if (Math.abs(audioMetrics.loudnessDb - loudnessTarget) <= 1) list.push({ emoji: "🎯", label: "Punktgenau" });
-  if (scores.hook === 100) list.push({ emoji: "🪝", label: "Hook sitzt" });
-  if (scores.frequenz >= 85) list.push({ emoji: "🌈", label: "Ausgewogen" });
-  if (scores.titel === 100) list.push({ emoji: "🏷️", label: "Wiedererkennbar" });
+  if (audioMetrics.clippingRatio < 0.0005) list.push({ emoji: "🧼", label: t("achClean") });
+  if (Math.abs(audioMetrics.loudnessDb - loudnessTarget) <= 1) list.push({ emoji: "🎯", label: t("achOnTarget") });
+  if (scores.hook === 100) list.push({ emoji: "🪝", label: t("achHook") });
+  if (scores.frequenz >= 85) list.push({ emoji: "🌈", label: t("achBalanced") });
+  if (scores.titel === 100) list.push({ emoji: "🏷️", label: t("achRecognizable") });
   return list;
 }
 
@@ -742,56 +1350,48 @@ function renderStreakNote(n) {
     el.textContent = "";
     return;
   }
-  el.textContent =
-    n === 1
-      ? "✦ Dein erster Check auf Overhertz – willkommen!"
-      : `🔥 Das ist bereits dein ${n}. Check auf Overhertz!`;
+  el.textContent = n === 1 ? t("streakFirst") : t("streakN", { n });
 }
 
-function buildSubmissions(overallScore, genreLabel) {
-  const hasGenre = genreLabel && genreLabel !== "Allgemein";
-  const genreSuffix = hasGenre ? ` (${genreLabel})` : "";
+function buildSubmissions(overallScore, genreKey) {
+  const hasGenre = !!genreKey;
+  const genre = genreLabel(genreKey);
+  const genreSuffix = hasGenre ? ` (${genre})` : "";
   const ready = overallScore >= 70;
   const mid = overallScore >= 45;
 
   const items = [
     {
-      name: "Groover",
-      desc: "Kostenpflichtige Einreichung bei Kuratoren, Playlists, Blogs und Radios – gibt garantiertes Feedback.",
+      name: t("submitGrooverName"),
       reason: ready
-        ? `Score ${overallScore}/100${genreSuffix} ist stark genug, um bezahltes Kuratoren-Feedback wirklich auszunutzen.`
-        : `Bei ${overallScore}/100 lohnt sich das bezahlte Feedback erst, nachdem die Tipps oben umgesetzt sind – sonst zahlst du für Hinweise, die du hier schon kostenlos hast.`,
+        ? t("submitGrooverReasonReady", { score: overallScore, genreSuffix })
+        : t("submitGrooverReasonNotReady", { score: overallScore }),
     },
     {
-      name: "SubmitHub",
-      desc: "Einreichung bei Blogs, Playlist-Kuratoren und Radiosendern, Bezahlung meist nur bei Feedback/Ablehnung.",
-      reason: hasGenre
-        ? `Kuratoren lassen sich dort nach Genre filtern – für ${genreLabel} findest du gezielt passende.`
-        : "Kuratoren lassen sich dort nach Genre filtern, sobald eins feststeht (oben im Formular wählbar).",
+      name: t("submitHubName"),
+      reason: hasGenre ? t("submitHubReasonGenre", { genre }) : t("submitHubReasonNoGenre"),
     },
     {
-      name: "MusoSoup",
-      desc: "Alternative zu SubmitHub, u.a. für Playlists, YouTube-Kanäle und Radio.",
-      reason: "Guter Zweitkanal parallel zu SubmitHub – andere Kuratoren-Datenbank, kostet nichts extra, sich bei beiden einzutragen.",
+      name: t("submitMusoSoupName"),
+      reason: t("submitMusoSoupReason"),
     },
     {
-      name: "Spotify for Artists – Playlist-Einreichung",
-      desc: "Kostenlose Einreichung für Spotify-eigene, redaktionelle Playlists (mind. 7 Tage vor Release).",
+      name: t("submitSpotifyName"),
       reason: ready
-        ? `Bei ${overallScore}/100 realistische Chance auf redaktionelle Playlists – kostet nichts, unbedingt mitnehmen.`
+        ? t("submitSpotifyReasonReady", { score: overallScore })
         : mid
-          ? `Bei ${overallScore}/100 ist die Chance auf redaktionelle Playlists noch begrenzt, aber die Einreichung ist kostenlos – schadet nicht, auch parallel an den Tipps oben zu arbeiten.`
-          : `Bei ${overallScore}/100 realistisch eher nicht – Einreichung ist zwar kostenlos, aber die Tipps oben zuerst umsetzen erhöht die Chancen deutlich.`,
+          ? t("submitSpotifyReasonMid", { score: overallScore })
+          : t("submitSpotifyReasonLow", { score: overallScore }),
     },
   ];
 
   let note;
   if (ready) {
-    note = `Der technische und inhaltliche Score ist solide (${overallScore}/100)${genreSuffix} – eine Einreichung ist aus heutiger Sicht realistisch.`;
+    note = t("submitNoteReady", { score: overallScore, genreSuffix });
   } else if (mid) {
-    note = `Der Track ist einreichbar (${overallScore}/100)${genreSuffix}, hat aber noch Luft nach oben – die Verbesserungsvorschläge oben zuerst umsetzen erhöht die Chancen.`;
+    note = t("submitNoteMid", { score: overallScore, genreSuffix });
   } else {
-    note = `Vor einer Einreichung (aktuell ${overallScore}/100${genreSuffix}) lohnt es sich, erst die wichtigsten Verbesserungsvorschläge oben umzusetzen.`;
+    note = t("submitNoteLow", { score: overallScore, genreSuffix });
   }
 
   return { items, note };
@@ -846,7 +1446,7 @@ function renderFreqChart(container, bandPercents, refs) {
     refZone.className = "freq-ref-zone";
     refZone.style.bottom = `${(refLo / maxVal) * 100}%`;
     refZone.style.height = `${((refHi - refLo) / maxVal) * 100}%`;
-    refZone.title = `Referenzbereich: ${refLo}–${refHi}%`;
+    refZone.title = t("freqRefZoneTitle", { lo: refLo, hi: refHi });
 
     const valueLabel = document.createElement("div");
     valueLabel.className = "freq-value";
@@ -855,11 +1455,11 @@ function renderFreqChart(container, bandPercents, refs) {
     const bar = document.createElement("div");
     bar.className = "freq-bar";
     bar.style.height = `${Math.max(2, (val / maxVal) * 100)}%`;
-    bar.title = `${band.name}: ${val.toFixed(1)}% (Referenz ${refLo}–${refHi}%)`;
+    bar.title = t("freqBarTitle", { name: bandLabel(band), val: val.toFixed(1), lo: refLo, hi: refHi });
 
     const label = document.createElement("div");
     label.className = "freq-label";
-    label.textContent = `${band.name}\n${band.range[0]}-${band.range[1]}Hz`;
+    label.textContent = `${bandLabel(band)}\n${band.range[0]}-${band.range[1]}Hz`;
 
     wrap.appendChild(refZone);
     wrap.appendChild(valueLabel);
@@ -894,7 +1494,7 @@ function renderSubmissions(listEl, hintEl, { items, note }) {
 function renderBadges(container, badgeDefs) {
   container.innerHTML = "";
   for (const { label, score, mutedNote } of badgeDefs) {
-    const tier = score === null ? { dots: "○ ○ ○", label: mutedNote || "Fehlt Info" } : badgeTier(score);
+    const tier = score === null ? { dots: "○ ○ ○", label: mutedNote || t("badgeMissingInfo") } : badgeTier(score);
     const dotColor = score === null ? "var(--text-muted)" : statusForScore(score).color;
     const el = document.createElement("div");
     el.className = "badge";
@@ -924,7 +1524,7 @@ async function requestKiEinschaetzung(title, lyrics, metrics) {
     body: JSON.stringify({ title, lyrics, metrics }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.error) throw new Error(data.error || "Unbekannter Fehler bei der KI-Anfrage.");
+  if (!res.ok || data.error) throw new Error(data.error || t("kiRequestUnknownError"));
   return data;
 }
 
@@ -953,7 +1553,7 @@ async function apiFetch(path, options = {}) {
   try {
     res = await fetch(WORKER_BASE + path, Object.assign({}, options, { headers }));
   } catch {
-    return { ok: false, status: 0, data: { error: "Server nicht erreichbar." } };
+    return { ok: false, status: 0, data: { error: t("serverUnreachable") } };
   }
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
@@ -975,16 +1575,18 @@ function renderAccountBar() {
   if (currentUser) {
     const quotaText =
       currentUser.plan === "pro" || currentUser.plan === "pro_annual"
-        ? `${currentUser.proQuota - currentUser.checksUsedPeriod}/${currentUser.proQuota} Checks diesen Monat`
-        : `${currentUser.credits} Credit${currentUser.credits === 1 ? "" : "s"}`;
-    const planLabel = { free: "Free", pro: "Pro", pro_annual: "Pro (jährlich)" }[currentUser.plan] || currentUser.plan;
+        ? t("accountChecksThisMonth", { remaining: currentUser.proQuota - currentUser.checksUsedPeriod, quota: currentUser.proQuota })
+        : t(currentUser.credits === 1 ? "accountCreditsOne" : "accountCreditsMany", { n: currentUser.credits });
+    const planLabel =
+      { free: t("accountFreePlanLabel"), pro: t("accountProLabel"), pro_annual: t("accountProAnnualLabel") }[currentUser.plan] ||
+      currentUser.plan;
     accountBar.innerHTML = `
       <span class="account-info"><strong>${currentUser.email}</strong> · ${planLabel} · ${quotaText}</span>
-      <button type="button" id="logout-btn" class="account-btn">Abmelden</button>
+      <button type="button" id="logout-btn" class="account-btn">${t("accountLogoutBtn")}</button>
     `;
     document.getElementById("logout-btn").addEventListener("click", handleLogout);
   } else {
-    accountBar.innerHTML = `<button type="button" id="account-toggle" class="account-btn">Login / Registrieren</button>`;
+    accountBar.innerHTML = `<button type="button" id="account-toggle" class="account-btn">${t("accountLoginRegisterBtn")}</button>`;
     document.getElementById("account-toggle").addEventListener("click", () => toggleAuthCard());
   }
 }
@@ -1023,7 +1625,7 @@ if (loginForm) {
     e.preventDefault();
     const email = document.getElementById("login-email").value;
     const password = document.getElementById("login-password").value;
-    authStatus.textContent = "Einloggen…";
+    authStatus.textContent = t("authLoggingIn");
     const { ok, data } = await apiFetch("auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
     if (ok) {
       setToken(data.token);
@@ -1032,7 +1634,7 @@ if (loginForm) {
       authCard.hidden = true;
       authStatus.textContent = "";
     } else {
-      authStatus.textContent = data.error || "Login fehlgeschlagen.";
+      authStatus.textContent = data.error || t("authLoginFailed");
     }
   });
 }
@@ -1042,7 +1644,7 @@ if (registerForm) {
     e.preventDefault();
     const email = document.getElementById("register-email").value;
     const password = document.getElementById("register-password").value;
-    authStatus.textContent = "Konto wird erstellt…";
+    authStatus.textContent = t("authRegistering");
     const { ok, data } = await apiFetch("auth/register", { method: "POST", body: JSON.stringify({ email, password }) });
     if (ok) {
       setToken(data.token);
@@ -1051,7 +1653,7 @@ if (registerForm) {
       authCard.hidden = true;
       authStatus.textContent = "";
     } else {
-      authStatus.textContent = data.error || "Registrierung fehlgeschlagen.";
+      authStatus.textContent = data.error || t("authRegisterFailed");
     }
   });
 }
@@ -1060,10 +1662,10 @@ document.querySelectorAll(".plan-select-btn").forEach((btn) => {
   btn.addEventListener("click", async () => {
     if (!currentUser) {
       toggleAuthCard(true);
-      pricingStatus.textContent = "Bitte zuerst einloggen oder registrieren.";
+      pricingStatus.textContent = t("authPleaseLoginFirst");
       return;
     }
-    pricingStatus.textContent = "Weiterleitung zur Zahlung…";
+    pricingStatus.textContent = t("pricingRedirecting");
     if (currentAnalysisSnapshot) sessionStorage.setItem(ANALYSIS_SNAPSHOT_KEY, JSON.stringify(currentAnalysisSnapshot));
     const { ok, data } = await apiFetch("create-checkout-session", {
       method: "POST",
@@ -1072,7 +1674,7 @@ document.querySelectorAll(".plan-select-btn").forEach((btn) => {
     if (ok && data.url) {
       window.location.href = data.url;
     } else {
-      pricingStatus.textContent = data.error || "Zahlung konnte nicht gestartet werden.";
+      pricingStatus.textContent = data.error || t("pricingFailed");
     }
   });
 });
@@ -1155,9 +1757,9 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
   }
 
   renderBadges(document.getElementById("badges"), [
-    { label: "Sound", score: soundScore },
-    { label: "Star-Potential", score: starPotentialScore },
-    { label: "Hook", score: hookScore, mutedNote: "Songtext fehlt" },
+    { label: t("badgeSound"), score: soundScore },
+    { label: t("badgeStarPotential"), score: starPotentialScore },
+    { label: t("badgeHook"), score: hookScore, mutedNote: t("meterLyricsMissing") },
   ]);
 
   const achievements = buildAchievements(audioMetrics, scores, profile.loudnessTarget);
@@ -1167,7 +1769,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
 
   const tips = buildTips(audioMetrics, lyrics, scores, profile);
   const topTip = pickTopTip(tips);
-  const teaserLabel = topTip.level === "good" ? "Stärke" : "Größtes Problem";
+  const teaserLabel = topTip.level === "good" ? t("teaserStrength") : t("teaserProblem");
   document.getElementById("teaser-tip").innerHTML = `<span class="mark">✦ ${teaserLabel}</span> ${topTip.problem}`;
 
   lastAnalysis = {
@@ -1175,7 +1777,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
     soundScore,
     starPotentialScore,
     hookScore,
-    topIssues: tips.filter((t) => t.level !== "good").map((t) => t.text),
+    topIssues: tips.filter((tip) => tip.level !== "good").map((tip) => tip.text),
   };
 
   currentAnalysisSnapshot = { title, lyricsRaw, audioMetrics, genre };
@@ -1184,26 +1786,26 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
 
   const metersEl = document.getElementById("meters");
   metersEl.innerHTML = "";
-  renderMeter(metersEl, { name: "Klangqualität / Sauberkeit", score: scores.technik });
-  renderMeter(metersEl, { name: "Lautheit / Star-Potential", score: scores.lautheit });
-  renderMeter(metersEl, { name: "Frequenzbalance", score: scores.frequenz });
+  renderMeter(metersEl, { name: t("meterTechnik"), score: scores.technik });
+  renderMeter(metersEl, { name: t("meterLautheit"), score: scores.lautheit });
+  renderMeter(metersEl, { name: t("meterFrequenz"), score: scores.frequenz });
   renderMeter(metersEl, {
-    name: "Hook",
+    name: t("meterHook"),
     score: scores.hook,
-    statusText: scores.hook === null ? "Songtext fehlt" : "",
+    statusText: scores.hook === null ? t("meterLyricsMissing") : "",
   });
   renderMeter(metersEl, {
-    name: "Songtitel erkennbar",
+    name: t("meterTitel"),
     score: scores.titel,
-    statusText: scores.titel === null ? (lyrics.hasLyrics ? "Songtitel fehlt" : "Songtext fehlt") : "",
+    statusText: scores.titel === null ? (lyrics.hasLyrics ? t("meterTitleMissing") : t("meterLyricsMissing")) : "",
   });
 
   const detectedGenreEl = document.getElementById("detected-genre");
   if (audioMetrics.estimatedGenre && !audioMetrics.estimatedGenreLowConfidence) {
     const bpmText = audioMetrics.estimatedBpm ? `, ~${Math.round(audioMetrics.estimatedBpm)} BPM` : "";
-    detectedGenreEl.textContent = `Automatisch erkannt: ${genreProfile(audioMetrics.estimatedGenre).label}${bpmText} (Schätzung anhand Tempo, Klangfarbe & Bassanteil – oben im Formular korrigierbar).`;
+    detectedGenreEl.textContent = t("detectedGenreAuto", { genre: genreLabel(audioMetrics.estimatedGenre), bpm: bpmText });
   } else if (audioMetrics.estimatedBpm) {
-    detectedGenreEl.textContent = `Tempo gemessen: ~${Math.round(audioMetrics.estimatedBpm)} BPM. Genre nicht eindeutig automatisch bestimmbar – oben im Formular manuell wählen für passendere Referenzwerte.`;
+    detectedGenreEl.textContent = t("detectedGenreBpmOnly", { bpm: Math.round(audioMetrics.estimatedBpm) });
   } else {
     detectedGenreEl.textContent = "";
   }
@@ -1226,7 +1828,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
     document.getElementById("vocals-choice").hidden = false;
   }
 
-  const submissions = buildSubmissions(overallScore, profile.label);
+  const submissions = buildSubmissions(overallScore, genre);
   renderSubmissions(document.getElementById("submit-list"), document.getElementById("submit-hint"), submissions);
 
   freeResultsEl.hidden = false;
@@ -1234,19 +1836,19 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
 
 rewriteBtn.addEventListener("click", async () => {
   if (!SONGTEXT_WORKER_URL) {
-    rewriteStatus.textContent = "Diese Funktion ist noch nicht eingerichtet (Backend fehlt noch).";
+    rewriteStatus.textContent = t("rewriteNotConfigured");
     return;
   }
   const title = document.getElementById("track-title").value;
   const lyricsRaw = document.getElementById("track-lyrics").value;
 
   rewriteBtn.disabled = true;
-  rewriteStatus.textContent = "KI erstellt Einordnung, Titel-Ideen und verfeinerten Text…";
+  rewriteStatus.textContent = t("rewriteLoading");
   rewriteResult.hidden = true;
 
   try {
     const result = await requestKiEinschaetzung(title, lyricsRaw, lastAnalysis || {});
-    rewriteClassification.textContent = result.classification || "Keine Einordnung erhalten.";
+    rewriteClassification.textContent = result.classification || t("rewriteNoClassification");
     rewriteTitleIdeas.innerHTML = "";
     for (const idea of result.titleIdeas || []) {
       const li = document.createElement("li");
@@ -1257,7 +1859,7 @@ rewriteBtn.addEventListener("click", async () => {
     rewriteResult.hidden = false;
     rewriteStatus.textContent = "";
   } catch (err) {
-    rewriteStatus.textContent = "Fehler: " + (err && err.message ? err.message : "Unbekannter Fehler.");
+    rewriteStatus.textContent = t("rewriteError", { msg: err && err.message ? err.message : t("unknownError") });
   } finally {
     rewriteBtn.disabled = false;
   }
@@ -1267,7 +1869,7 @@ unlockBtn.addEventListener("click", async () => {
   if (!currentAnalysisSnapshot) return;
   if (!currentUser) {
     toggleAuthCard(true);
-    statusLine.textContent = "Bitte zuerst einloggen oder registrieren, um die Vollanalyse freizuschalten.";
+    statusLine.textContent = t("unlockNeedLogin");
     return;
   }
   unlockBtn.disabled = true;
@@ -1280,7 +1882,7 @@ unlockBtn.addEventListener("click", async () => {
     renderStreakNote(incrementCheckCount());
     premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
   } else {
-    openPricing("Keine Credits mehr übrig – wähle ein Paket, um die Vollanalyse freizuschalten.");
+    openPricing(t("unlockNoCredits"));
   }
 });
 
@@ -1295,17 +1897,17 @@ form.addEventListener("submit", async (e) => {
   const genreSelectEl = document.getElementById("track-genre");
 
   analyzeBtn.disabled = true;
-  statusLine.textContent = "Lade Audio…";
+  statusLine.textContent = t("statusLoadingAudio");
 
   try {
     const arrayBuffer = await file.arrayBuffer();
-    statusLine.textContent = "Decodiere Audio…";
+    statusLine.textContent = t("statusDecoding");
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     const ctx = new AudioCtx();
     const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
     lastAudioBuffer = audioBuffer;
 
-    statusLine.textContent = "Analysiere Frequenzen, Lautheit & Genre…";
+    statusLine.textContent = t("statusAnalyzing");
     await new Promise((r) => setTimeout(r, 10));
     const audioMetrics = analyzeAudioBuffer(audioBuffer);
 
@@ -1318,7 +1920,7 @@ form.addEventListener("submit", async (e) => {
     ctx.close();
   } catch (err) {
     console.error(err);
-    statusLine.textContent = "Analyse fehlgeschlagen: " + (err && err.message ? err.message : "Unbekannter Fehler.");
+    statusLine.textContent = t("statusAnalyzeFailed", { msg: err && err.message ? err.message : t("unknownError") });
   } finally {
     analyzeBtn.disabled = false;
   }
@@ -1398,20 +2000,20 @@ function renderVocalsComparison(lyricsRaw, transcribedText) {
 
   let summary;
   if (intendedWords.length === 0) {
-    summary = "Kein Songtext zum Abgleich vorhanden.";
+    summary = t("vocalsNoLyricsForCompare");
   } else if (ratio >= 0.85) {
-    summary = `${Math.round(ratio * 100)}% deines Songtexts finden sich im automatischen Vocal-Transkript wieder – kein Hinweis auf grobe Aussprache-Artefakte.`;
+    summary = t("vocalsSummaryHigh", { pct: Math.round(ratio * 100) });
   } else if (ratio >= 0.6) {
-    summary = `${Math.round(ratio * 100)}% deines Songtexts finden sich im Transkript wieder. Die markierten Stellen unten kommen im Gesang anders/unklar rüber – kann an der KI-Aussprache liegen, kann aber auch ein Transkriptionsfehler sein (bei Gesang normal).`;
+    summary = t("vocalsSummaryMid", { pct: Math.round(ratio * 100) });
   } else {
-    summary = `Nur ${Math.round(ratio * 100)}% deines Songtexts finden sich im Transkript wieder. Entweder hat die Spracherkennung hier größere Probleme (Autotune, Beat, Slang), oder die Vocals weichen stark vom Text ab – lohnt sich, dir das Rohtranskript unten anzuhören/anzusehen.`;
+    summary = t("vocalsSummaryLow", { pct: Math.round(ratio * 100) });
   }
 
   const highlighted = intendedWords
     .map((w, idx) => (matched[idx] ? w : `<mark>${w}</mark>`))
     .join(" ");
 
-  return { summary, highlightedHtml: highlighted || "(kein Text)" };
+  return { summary, highlightedHtml: highlighted || t("vocalsNoText") };
 }
 
 const vocalsCheckBtn = document.getElementById("vocals-check-btn");
@@ -1423,38 +2025,38 @@ const vocalsResult = document.getElementById("vocals-result");
 if (vocalsSkipBtn) {
   vocalsSkipBtn.addEventListener("click", () => {
     vocalsChoice.hidden = true;
-    vocalsStatus.textContent = "Kein Problem – lässt sich jederzeit später (z. B. am Laptop) nachholen.";
+    vocalsStatus.textContent = t("vocalsSkipMsg");
   });
 }
 
 if (vocalsCheckBtn) {
   vocalsCheckBtn.addEventListener("click", async () => {
     if (!lastAudioBuffer) {
-      vocalsStatus.textContent = "Kein Audio verfügbar – bitte Track erneut analysieren.";
+      vocalsStatus.textContent = t("vocalsNoAudio");
       return;
     }
     const lyricsRaw = document.getElementById("track-lyrics").value;
     if (!lyricsRaw.trim()) {
-      vocalsStatus.textContent = "Kein Songtext eingegeben – nichts zum Abgleichen.";
+      vocalsStatus.textContent = t("vocalsNoLyrics");
       return;
     }
 
     vocalsChoice.hidden = true;
     vocalsCheckBtn.disabled = true;
     vocalsResult.hidden = true;
-    vocalsStatus.textContent = "Lade Transkriptions-Modell (einmalig, danach gecacht)…";
+    vocalsStatus.textContent = t("vocalsLoadingModel");
 
     try {
       const transcriber = await getTranscriber((info) => {
         if (info && info.status === "progress" && typeof info.progress === "number") {
-          vocalsStatus.textContent = `Lade Transkriptions-Modell… ${Math.round(info.progress)}%`;
+          vocalsStatus.textContent = t("vocalsLoadingModelProgress", { pct: Math.round(info.progress) });
         }
       });
 
-      vocalsStatus.textContent = "Bereite Audio auf (16kHz Mono)…";
+      vocalsStatus.textContent = t("vocalsPreparingAudio");
       const audioData = await resampleTo16kMono(lastAudioBuffer);
 
-      vocalsStatus.textContent = "Transkribiere Vocals (kann bei längeren Tracks etwas dauern)…";
+      vocalsStatus.textContent = t("vocalsTranscribing");
       const result = await transcriber(audioData, {
         language: "german",
         task: "transcribe",
@@ -1464,7 +2066,7 @@ if (vocalsCheckBtn) {
       const transcribedText = (result && result.text ? result.text : "").trim();
 
       if (!transcribedText) {
-        vocalsStatus.textContent = "Keine verwertbare Transkription erhalten (evtl. sehr leiser/instrumentaler Track).";
+        vocalsStatus.textContent = t("vocalsNoUsableTranscript");
         vocalsChoice.hidden = false;
         return;
       }
@@ -1476,7 +2078,7 @@ if (vocalsCheckBtn) {
       vocalsResult.hidden = false;
       vocalsStatus.textContent = "";
     } catch (err) {
-      vocalsStatus.textContent = "Transkription fehlgeschlagen: " + (err && err.message ? err.message : "Unbekannter Fehler.");
+      vocalsStatus.textContent = t("vocalsFailed", { msg: err && err.message ? err.message : t("unknownError") });
       vocalsChoice.hidden = false;
     } finally {
       vocalsCheckBtn.disabled = false;
@@ -1619,7 +2221,7 @@ function stopEqPreview() {
   eqGainNode = null;
   eqPlaying = false;
   const btn = document.getElementById("eq-play-btn");
-  if (btn) btn.textContent = "▶ Vorschau abspielen";
+  if (btn) btn.textContent = t("eqPlayBtn");
 }
 
 function startEqPreview() {
@@ -1660,7 +2262,7 @@ function startEqPreview() {
   eqFilters = filters;
   eqPlaying = true;
   const btn = document.getElementById("eq-play-btn");
-  if (btn) btn.textContent = "⏸ Stop";
+  if (btn) btn.textContent = t("eqPlayBtnStop");
 }
 
 function updateEqFilterGains() {
@@ -1733,7 +2335,7 @@ function renderEqSliders() {
     wrap.innerHTML = `
       <span class="eq-value" id="eq-value-${i}">${eqGains[i].toFixed(1)} dB</span>
       <input type="range" id="eq-band-${i}" min="-12" max="12" step="0.5" value="${eqGains[i]}" />
-      <label for="eq-band-${i}">${band.name}</label>
+      <label for="eq-band-${i}">${bandLabel(band)}</label>
     `;
     container.appendChild(wrap);
     const input = wrap.querySelector("input");
@@ -1787,7 +2389,7 @@ function initEqEditor(audioMetrics, profile) {
 const eqEditorUpgradeBtn = document.getElementById("eq-editor-upgrade-btn");
 if (eqEditorUpgradeBtn) {
   eqEditorUpgradeBtn.addEventListener("click", () => {
-    openPricing("Das Beheben (EQ-Editor, De-Esser) ist Teil des Pro-Plans.");
+    openPricing(t("eqEditorProOnlyMsg"));
   });
 }
 
@@ -1839,7 +2441,7 @@ if (eqGainMatchBtn) {
     if (eqGainEl) eqGainEl.value = eqGainDb;
     if (eqGainValueEl) eqGainValueEl.textContent = `${eqGainDb.toFixed(1)} dB`;
     if (eqPlaying && eqGainNode) eqGainNode.gain.value = Math.pow(10, eqGainDb / 20);
-    if (eqStatus) eqStatus.textContent = "Lautheit an Zielwert angeglichen.";
+    if (eqStatus) eqStatus.textContent = t("eqGainMatched");
   });
 }
 
@@ -1867,7 +2469,7 @@ if (eqSuggestBtn) {
     });
     renderEqSliders();
     if (eqPlaying) updateEqFilterGains();
-    if (eqStatus) eqStatus.textContent = "Vorschlag aus der Analyse übernommen.";
+    if (eqStatus) eqStatus.textContent = t("eqSuggestionApplied");
   });
 }
 
@@ -1886,14 +2488,14 @@ if (eqResetBtn) {
     if (eqTrimIntroEl) eqTrimIntroEl.checked = false;
     if (eqFadeOutEl) eqFadeOutEl.checked = false;
     if (eqPlaying) startEqPreview();
-    if (eqStatus) eqStatus.textContent = "Zurückgesetzt.";
+    if (eqStatus) eqStatus.textContent = t("eqResetDone");
   });
 }
 
 if (eqPlayBtn) {
   eqPlayBtn.addEventListener("click", () => {
     if (!lastAudioBuffer) {
-      if (eqStatus) eqStatus.textContent = "Bitte zuerst einen Track analysieren.";
+      if (eqStatus) eqStatus.textContent = t("eqNeedTrackFirst");
       return;
     }
     try {
@@ -1902,10 +2504,10 @@ if (eqPlayBtn) {
         if (eqStatus) eqStatus.textContent = "";
       } else {
         startEqPreview();
-        if (eqStatus) eqStatus.textContent = "Vorschau läuft (in Schleife) – Slider bewegen für Live-Vergleich.";
+        if (eqStatus) eqStatus.textContent = t("eqPreviewPlaying");
       }
     } catch (err) {
-      if (eqStatus) eqStatus.textContent = "Vorschau fehlgeschlagen: " + (err && err.message ? err.message : "Unbekannter Fehler.");
+      if (eqStatus) eqStatus.textContent = t("eqPreviewFailed", { msg: err && err.message ? err.message : t("unknownError") });
     }
   });
 }
@@ -1913,11 +2515,11 @@ if (eqPlayBtn) {
 if (eqDownloadBtn) {
   eqDownloadBtn.addEventListener("click", async () => {
     if (!lastAudioBuffer) {
-      if (eqStatus) eqStatus.textContent = "Bitte zuerst einen Track analysieren.";
+      if (eqStatus) eqStatus.textContent = t("eqNeedTrackFirst");
       return;
     }
     eqDownloadBtn.disabled = true;
-    if (eqStatus) eqStatus.textContent = "Bearbeitete Version wird gerendert…";
+    if (eqStatus) eqStatus.textContent = t("eqRendering");
     try {
       const helperCtx = ensureEqAudioCtx();
       const sourceBuffer = getEqSourceBuffer(helperCtx);
@@ -1946,9 +2548,9 @@ if (eqDownloadBtn) {
       const rendered = await offlineCtx.startRendering();
       const blob = audioBufferToWavBlob(rendered);
       downloadBlob(blob, "overhertz-eq-bearbeitet.wav");
-      if (eqStatus) eqStatus.textContent = "Download gestartet.";
+      if (eqStatus) eqStatus.textContent = t("eqDownloadStarted");
     } catch (err) {
-      if (eqStatus) eqStatus.textContent = "Rendern fehlgeschlagen: " + (err && err.message ? err.message : "Unbekannter Fehler.");
+      if (eqStatus) eqStatus.textContent = t("eqRenderFailed", { msg: err && err.message ? err.message : t("unknownError") });
     } finally {
       eqDownloadBtn.disabled = false;
     }
@@ -1966,16 +2568,16 @@ if (albumBtn) {
   albumBtn.addEventListener("click", async () => {
     const files = Array.from((albumFilesInput && albumFilesInput.files) || []);
     if (files.length === 0) {
-      albumStatus.textContent = "Bitte mindestens einen Track auswählen.";
+      albumStatus.textContent = t("albumNeedFile");
       return;
     }
     if (!currentUser) {
       toggleAuthCard(true);
-      albumStatus.textContent = "Bitte zuerst einloggen oder registrieren.";
+      albumStatus.textContent = t("albumNeedLogin");
       return;
     }
     if (currentUser.plan !== "pro" && currentUser.plan !== "pro_annual") {
-      openPricing("Album-Check ist Teil des Pro-Plans.");
+      openPricing(t("albumProOnly"));
       return;
     }
 
@@ -1986,11 +2588,11 @@ if (albumBtn) {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      albumStatus.textContent = `Track ${i + 1}/${files.length}: „${file.name}“ wird geprüft…`;
+      albumStatus.textContent = t("albumChecking", { i: i + 1, total: files.length, name: file.name });
 
       const { ok, data } = await tryConsumeCredit();
       if (!ok) {
-        albumStatus.textContent = `Kontingent aufgebraucht bei Track ${i + 1}/${files.length} (${data.error || "keine Checks mehr übrig"}).`;
+        albumStatus.textContent = t("albumQuotaExhausted", { i: i + 1, total: files.length, err: data.error || t("albumNoChecksLeft") });
         break;
       }
       currentUser = Object.assign({}, currentUser, { credits: data.credits, plan: data.plan });
@@ -2034,7 +2636,7 @@ if (albumBtn) {
       } catch (err) {
         card.innerHTML = `
           <div class="album-track-head"><span class="album-track-name">${file.name}</span></div>
-          <p class="album-track-tip">Fehler: ${err && err.message ? err.message : "Analyse fehlgeschlagen."}</p>
+          <p class="album-track-tip">${t("albumTrackError", { msg: err && err.message ? err.message : t("albumAnalysisFailed") })}</p>
         `;
       }
     }
@@ -2130,7 +2732,7 @@ if (albumBtn) {
     return;
   }
 
-  statusLine.textContent = "Zahlung wird verarbeitet…";
+  statusLine.textContent = t("checkoutProcessing");
   let unlocked = false;
   let lastData = null;
   for (let attempt = 0; attempt < 6 && !unlocked; attempt++) {
@@ -2153,9 +2755,8 @@ if (albumBtn) {
     statusLine.textContent = "";
     premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
   } else {
-    statusLine.textContent =
-      "Zahlung wird noch verarbeitet (" +
-      (lastData && lastData.error ? lastData.error : "bitte kurz warten") +
-      ") – gleich nochmal auf 'Vollanalyse ansehen' klicken.";
+    statusLine.textContent = t("checkoutStillProcessing", {
+      err: lastData && lastData.error ? lastData.error : t("checkoutPleaseWait"),
+    });
   }
 })();
