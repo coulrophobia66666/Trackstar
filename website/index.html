@@ -196,11 +196,21 @@
         </div>
 
         <div class="eq-editor" id="eq-editor">
-          <h3>EQ-Editor <span class="beta-badge">Beta</span></h3>
+          <h3>EQ-Editor <span class="pro-badge">Pro</span> <span class="beta-badge">Beta</span></h3>
           <p class="hint">
             Frequenzen direkt hier anpassen und live anhören – kein Mastering, nur ein schneller EQ-Pass.
             Läuft komplett in deinem Browser, deine Audiodatei verlässt dabei nie dein Gerät.
           </p>
+
+          <div class="eq-editor-locked" id="eq-editor-locked" hidden>
+            <p class="hint">
+              Das Beheben (EQ, De-Esser, Lautheit angleichen, Stille kürzen, Fade-out) ist Teil des Pro-Plans.
+              Die Vollanalyse siehst du auch mit Credits – fürs direkte Bearbeiten hier brauchst du Pro.
+            </p>
+            <button type="button" id="eq-editor-upgrade-btn" class="account-btn account-btn-primary">Auf Pro upgraden</button>
+          </div>
+
+          <div class="eq-editor-body" id="eq-editor-body">
           <div class="eq-sliders" id="eq-sliders"></div>
 
           <div class="eq-deesser">
@@ -248,6 +258,7 @@
             <button type="button" id="eq-download-btn" class="account-btn">Bearbeitete Version herunterladen</button>
           </div>
           <p class="status-line" id="eq-status" role="status" aria-live="polite"></p>
+          </div>
         </div>
 
         <div class="zone">

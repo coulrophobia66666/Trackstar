@@ -1774,6 +1774,21 @@ function initEqEditor(audioMetrics, profile) {
   if (trimCheckbox) trimCheckbox.checked = false;
   const fadeCheckbox = document.getElementById("eq-fadeout");
   if (fadeCheckbox) fadeCheckbox.checked = false;
+
+  // Beheben (EQ/De-Esser/Lautheit/Trim/Fade) ist Pro-exklusiv - die Vollanalyse selbst bleibt
+  // fuer jede freigeschaltete Analyse verfuegbar (Credits oder Pro).
+  const isPro = !!currentUser && (currentUser.plan === "pro" || currentUser.plan === "pro_annual");
+  const lockedEl = document.getElementById("eq-editor-locked");
+  const bodyEl = document.getElementById("eq-editor-body");
+  if (lockedEl) lockedEl.hidden = isPro;
+  if (bodyEl) bodyEl.hidden = !isPro;
+}
+
+const eqEditorUpgradeBtn = document.getElementById("eq-editor-upgrade-btn");
+if (eqEditorUpgradeBtn) {
+  eqEditorUpgradeBtn.addEventListener("click", () => {
+    openPricing("Das Beheben (EQ-Editor, De-Esser) ist Teil des Pro-Plans.");
+  });
 }
 
 const eqSuggestBtn = document.getElementById("eq-suggest-btn");
