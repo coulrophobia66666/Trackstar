@@ -69,6 +69,20 @@ noch nicht.
   durchklicken (Registrieren, Credits kaufen im Stripe-Testmodus, prüfen ob
   Tiefenanalyse freigeschaltet wird).
 
+## ⚠️ Vocals-Check: unbedingt live testen (Timo)
+Neues Beta-Feature (Whisper-Transkription der Vocals im Browser, Abgleich mit
+dem eingegebenen Songtext). Ich konnte den eigentlichen Transkriptions-Lauf
+**nicht** selbst im Browser testen – meine Sandbox blockiert den Zugriff auf
+das externe CDN (jsDelivr/Hugging Face), von dem das Whisper-Modell geladen
+wird. Getestet habe ich nur, dass die UI korrekt reagiert (Button erscheint
+nur bei vorhandenem Songtext, Fehler werden sauber abgefangen statt die Seite
+abstürzen zu lassen). Bitte einmal echt durchklicken: Track mit Songtext
+hochladen, Tiefenanalyse freischalten, "Vocals transkribieren & vergleichen"
+klicken, prüfen ob das Modell lädt und ein sinnvolles Transkript rauskommt
+(erster Aufruf lädt ~140MB Modell, kann etwas dauern). Funktioniert es nicht,
+liegt es vermutlich an der genauen CDN-URL/Paketversion in `app.js`
+(`getTranscriber`) – dann Bescheid geben, dann justiere ich das nach.
+
 ## Weiterhin offen
 - **Cloudflare-Projekte umbenennen/neu anlegen** für die eigentliche
   Overhertz-Domain (aktuell läuft alles noch unter den `trackstar-*`
