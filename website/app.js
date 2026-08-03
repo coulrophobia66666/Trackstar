@@ -18,15 +18,36 @@ function statusForScore(score) {
 
 function gradeForScore(score) {
   if (score >= 80) {
-    return { stars: 5, title: "Star Potential", desc: "Dein Track hat richtig Potential – so kannst du ihn einreichen.", color: "var(--status-good)" };
+    return {
+      stars: 5,
+      title: "Star Potential",
+      desc: "Richtig stark! Dein Track ist bereit für die große Bühne – so kannst du ihn einreichen.",
+      color: "var(--status-good)",
+      celebrate: true,
+    };
   }
   if (score >= 60) {
-    return { stars: 4, title: "Fast am Ziel", desc: "Guter Stand – mit ein paar Anpassungen ist noch mehr drin.", color: "var(--status-good)" };
+    return {
+      stars: 4,
+      title: "Fast am Ziel",
+      desc: "Du bist auf einem richtig guten Weg – mit ein paar Handgriffen holst du das letzte Stück raus.",
+      color: "var(--status-good)",
+    };
   }
   if (score >= 40) {
-    return { stars: 3, title: "Noch Feinschliff nötig", desc: "Die Basis stimmt, aber es gibt ein paar klare Stellschrauben.", color: "var(--status-warning)" };
+    return {
+      stars: 3,
+      title: "Noch Feinschliff nötig",
+      desc: "Die Basis stimmt schon – mit den Tipps unten machst du daraus einen echten Kracher.",
+      color: "var(--status-warning)",
+    };
   }
-  return { stars: 2, title: "Baustelle", desc: "Vor einer Einreichung lohnt sich nochmal Arbeit am Track.", color: "var(--status-critical)" };
+  return {
+    stars: 2,
+    title: "Baustelle",
+    desc: "Der Kern ist da, jetzt geht's ans Feilen – jeder Hit hat mal so angefangen.",
+    color: "var(--status-critical)",
+  };
 }
 
 function starRatingHtml(stars) {
@@ -608,7 +629,69 @@ function renderFazit(container, fazit) {
 
 /* ---------- Submission recommendations ---------- */
 
-function buildSubmissions(overallScore, targetStation) {
+/* ---------- Erfolge & Belohnung ---------- */
+
+function buildAchievements(audioMetrics, scores, hookTimingSec, loudnessTarget) {
+  const list = [];
+  if (audioMetrics.clippingRatio < 0.0005) list.push({ emoji: "🧼", label: "Kristallklar" });
+  if (Math.abs(audioMetrics.loudnessDb - loudnessTarget) <= 1) list.push({ emoji: "🎯", label: "Punktgenau" });
+  if (scores.hook === 100) list.push({ emoji: "🪝", label: "Hook sitzt" });
+  if (typeof hookTimingSec === "number" && !Number.isNaN(hookTimingSec) && hookTimingSec <= 15) {
+    list.push({ emoji: "⚡", label: "Sofort im Ohr" });
+  }
+  if (scores.frequenz >= 85) list.push({ emoji: "🌈", label: "Ausgewogen" });
+  if (scores.titel === 100) list.push({ emoji: "🏷️", label: "Wiedererkennbar" });
+  return list;
+}
+
+function renderAchievements(container, achievements) {
+  if (!container) return;
+  if (!achievements.length) {
+    container.hidden = true;
+    container.innerHTML = "";
+    return;
+  }
+  container.hidden = false;
+  container.innerHTML = achievements.map((a) => `<span class="achievement-badge">${a.emoji} ${a.label}</span>`).join("");
+}
+
+function fireConfetti(container) {
+  if (!container) return;
+  const colors = ["#cda86b", "#e8caa0", "#4cc38a", "#f3efe6"];
+  for (let i = 0; i < 26; i++) {
+    const piece = document.createElement("div");
+    piece.className = "confetti-piece";
+    piece.style.left = Math.random() * 100 + "%";
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDelay = Math.random() * 0.25 + "s";
+    piece.style.setProperty("--rot", Math.round(Math.random() * 360) + "deg");
+    container.appendChild(piece);
+    setTimeout(() => piece.remove(), 2000);
+  }
+}
+
+const CHECK_COUNT_KEY = "overhertz_checks_done";
+
+function incrementCheckCount() {
+  const n = parseInt(localStorage.getItem(CHECK_COUNT_KEY) || "0", 10) + 1;
+  localStorage.setItem(CHECK_COUNT_KEY, String(n));
+  return n;
+}
+
+function renderStreakNote(n) {
+  const el = document.getElementById("streak-note");
+  if (!el) return;
+  if (!n || n < 1) {
+    el.textContent = "";
+    return;
+  }
+  el.textContent =
+    n === 1
+      ? "✦ Dein erster Check auf Overhertz – willkommen!"
+      : `🔥 Das ist bereits dein ${n}. Check auf Overhertz!`;
+}
+
+function buildSubmissions(overallScore) {
   const items = [
     {
       name: "Groover",
@@ -637,9 +720,6 @@ function buildSubmissions(overallScore, targetStation) {
     note = "Vor einer Einreichung lohnt es sich, erst die wichtigsten Verbesserungsvorschläge oben umzusetzen.";
   }
 
-  if (targetStation && targetStation.trim()) {
-    note += ` Bezogen auf "${targetStation.trim()}": das ist eine grobe, allgemeine Einschätzung – die tatsächliche Musikauswahl/Ausrichtung des Senders kennt nur der Sender selbst.`;
-  }
 
   return { items, note };
 }
@@ -672,9 +752,11 @@ function renderMeter(container, { name, score, statusText }) {
       <span class="meter-name">${name}</span>
       <span class="meter-status" style="color:${status.color}">${iconFor(status.key)} ${status.label} · ${Math.round(score)}/100</span>
     </div>
-    <div class="meter-track"><div class="meter-fill" style="width:${score}%;background:${status.color}"></div></div>
+    <div class="meter-track"><div class="meter-fill" style="width:0%;background:${status.color}"></div></div>
   `;
   container.appendChild(el);
+  const fill = el.querySelector(".meter-fill");
+  requestAnimationFrame(() => requestAnimationFrame(() => (fill.style.width = score + "%")));
 }
 
 function renderFreqChart(container, bandPercents, refs) {
@@ -958,7 +1040,7 @@ trackGenreSelect.addEventListener("change", () => {
   }
 });
 
-function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTimingSec, genre }, { unlockedPremium }) {
+function renderAnalysis({ title, lyricsRaw, audioMetrics, hookTimingSec, genre }, { unlockedPremium }) {
   const lyrics = analyzeLyrics(lyricsRaw, title);
   const profile = genreProfile(genre);
 
@@ -992,11 +1074,18 @@ function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTim
   heroTitleEl.style.color = grade.color;
   document.getElementById("hero-desc").textContent = grade.desc;
 
+  if (grade.celebrate) {
+    fireConfetti(document.getElementById("confetti-layer"));
+  }
+
   renderBadges(document.getElementById("badges"), [
     { label: "Sound", score: soundScore },
     { label: "Star-Potential", score: starPotentialScore },
     { label: "Hook", score: hookScore, mutedNote: "Songtext fehlt" },
   ]);
+
+  const achievements = buildAchievements(audioMetrics, scores, hookTimingSec, profile.loudnessTarget);
+  renderAchievements(document.getElementById("achievements"), achievements);
 
   const tips = buildTips(audioMetrics, lyrics, scores, hookTimingSec, profile);
   const topTip = pickTopTip(tips);
@@ -1011,7 +1100,7 @@ function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTim
     topIssues: tips.filter((t) => t.level !== "good").map((t) => t.text),
   };
 
-  currentAnalysisSnapshot = { title, lyricsRaw, targetStation, audioMetrics, hookTimingSec, genre };
+  currentAnalysisSnapshot = { title, lyricsRaw, audioMetrics, hookTimingSec, genre };
 
   premiumResultsEl.hidden = !unlockedPremium;
 
@@ -1059,7 +1148,7 @@ function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTim
     document.getElementById("vocals-choice").hidden = false;
   }
 
-  const submissions = buildSubmissions(overallScore, targetStation);
+  const submissions = buildSubmissions(overallScore);
   renderSubmissions(document.getElementById("submit-list"), document.getElementById("submit-hint"), submissions);
 
   freeResultsEl.hidden = false;
@@ -1110,6 +1199,7 @@ unlockBtn.addEventListener("click", async () => {
     currentUser = Object.assign({}, currentUser, { credits: data.credits, plan: data.plan });
     renderAccountBar();
     renderAnalysis(currentAnalysisSnapshot, { unlockedPremium: true });
+    renderStreakNote(incrementCheckCount());
     premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
   } else {
     openPricing("Keine Credits mehr übrig – wähle ein Paket, um die Vollanalyse freizuschalten.");
@@ -1124,7 +1214,6 @@ form.addEventListener("submit", async (e) => {
 
   const title = document.getElementById("track-title").value;
   const lyricsRaw = document.getElementById("track-lyrics").value;
-  const targetStation = document.getElementById("target-station").value;
   const hookTimingRaw = document.getElementById("hook-timing").value;
   const hookTimingSec = hookTimingRaw !== "" ? Number(hookTimingRaw) : undefined;
   const genreSelectEl = document.getElementById("track-genre");
@@ -1147,7 +1236,7 @@ form.addEventListener("submit", async (e) => {
     const genre = genreManuallySet ? genreSelectEl.value : audioMetrics.estimatedGenre || "";
     genreSelectEl.value = genre;
 
-    renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTimingSec, genre }, { unlockedPremium: false });
+    renderAnalysis({ title, lyricsRaw, audioMetrics, hookTimingSec, genre }, { unlockedPremium: false });
     freeResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
     statusLine.textContent = "";
     ctx.close();
@@ -1408,6 +1497,82 @@ if (albumBtn) {
   });
 }
 
+/* ---------- Ambient-Atmosphäre: sanfter generativer Pad-Sound (Web Audio, kein Audio-File) ----------
+   Nur auf Klick startbar (Browser-Autoplay-Policy erzwingt das ohnehin) - bewusst opt-in statt
+   automatisch abgespielt. */
+
+let ambientCtx = null;
+let ambientNodes = null;
+let ambientPlaying = false;
+
+function startAmbient() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!ambientCtx) ambientCtx = new Ctx();
+  if (ambientCtx.state === "suspended") ambientCtx.resume();
+
+  const master = ambientCtx.createGain();
+  master.gain.value = 0;
+  master.connect(ambientCtx.destination);
+  master.gain.linearRampToValueAtTime(0.06, ambientCtx.currentTime + 2);
+
+  const filter = ambientCtx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 900;
+  filter.connect(master);
+
+  const freqs = [110, 164.81, 220, 277.18];
+  const oscs = freqs.map((f) => {
+    const osc = ambientCtx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = f;
+    const oscGain = ambientCtx.createGain();
+    oscGain.gain.value = 0.25;
+    osc.connect(oscGain);
+    oscGain.connect(filter);
+    osc.start();
+    return osc;
+  });
+
+  const lfo = ambientCtx.createOscillator();
+  lfo.frequency.value = 0.05;
+  const lfoGain = ambientCtx.createGain();
+  lfoGain.gain.value = 350;
+  lfo.connect(lfoGain);
+  lfoGain.connect(filter.frequency);
+  lfo.start();
+
+  ambientNodes = { master, oscs, lfo };
+  ambientPlaying = true;
+}
+
+function stopAmbient() {
+  if (!ambientNodes || !ambientCtx) return;
+  const { master, oscs, lfo } = ambientNodes;
+  const now = ambientCtx.currentTime;
+  master.gain.cancelScheduledValues(now);
+  master.gain.setValueAtTime(master.gain.value, now);
+  master.gain.linearRampToValueAtTime(0, now + 1);
+  setTimeout(() => {
+    oscs.forEach((o) => o.stop());
+    lfo.stop();
+  }, 1100);
+  ambientNodes = null;
+  ambientPlaying = false;
+}
+
+const ambientToggle = document.getElementById("ambient-toggle");
+if (ambientToggle) {
+  ambientToggle.addEventListener("click", () => {
+    if (ambientPlaying) {
+      stopAmbient();
+      ambientToggle.setAttribute("aria-pressed", "false");
+    } else {
+      startAmbient();
+      ambientToggle.setAttribute("aria-pressed", "true");
+    }
+  });
+}
+
 /* ---------- Nach Rückkehr von der Stripe-Zahlung: Konto aktualisieren und Analyse freischalten ---------- */
 
 (async function init() {
@@ -1446,6 +1611,7 @@ if (albumBtn) {
 
   renderAnalysis(snapshot, { unlockedPremium: unlocked });
   if (unlocked) {
+    renderStreakNote(incrementCheckCount());
     statusLine.textContent = "";
     premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
   } else {
