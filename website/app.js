@@ -111,15 +111,114 @@ const FREQ_BANDS = [
    Norm - dienen als Orientierung, nicht als harte Regel. */
 const GENRE_PROFILES = {
   "": { label: "Allgemein", loudnessTarget: -14, refs: [[2, 8], [14, 26], [10, 18], [20, 32], [10, 18], [5, 12], [4, 12]] },
-  hiphop: { label: "Hip-Hop / Rap", loudnessTarget: -9, refs: [[4, 10], [18, 30], [9, 16], [18, 28], [9, 16], [5, 11], [3, 9]] },
-  pop: { label: "Pop", loudnessTarget: -11, refs: [[2, 7], [13, 22], [10, 18], [22, 34], [11, 19], [6, 13], [5, 13]] },
-  edm: { label: "Electronic / EDM", loudnessTarget: -8, refs: [[6, 14], [20, 32], [8, 15], [16, 26], [9, 15], [4, 10], [4, 11]] },
-  rock: { label: "Rock / Metal", loudnessTarget: -9, refs: [[2, 6], [12, 20], [12, 20], [22, 32], [12, 20], [6, 13], [3, 9]] },
-  acoustic: { label: "Akustik / Singer-Songwriter", loudnessTarget: -16, refs: [[1, 5], [10, 18], [12, 20], [22, 34], [12, 20], [6, 13], [4, 11]] },
+  hiphop: {
+    label: "Hip-Hop / Rap",
+    loudnessTarget: -9,
+    refs: [[4, 10], [18, 30], [9, 16], [18, 28], [9, 16], [5, 11], [3, 9]],
+    fingerprint: { bpmRange: [70, 100], brightnessRange: [700, 1800], bassRatioRange: [20, 38], crestRange: [6, 15] },
+  },
+  pop: {
+    label: "Pop",
+    loudnessTarget: -11,
+    refs: [[2, 7], [13, 22], [10, 18], [22, 34], [11, 19], [6, 13], [5, 13]],
+    fingerprint: { bpmRange: [95, 130], brightnessRange: [1100, 2300], bassRatioRange: [14, 27], crestRange: [7, 16] },
+  },
+  edm: {
+    label: "Electronic / EDM",
+    loudnessTarget: -8,
+    refs: [[6, 14], [20, 32], [8, 15], [16, 26], [9, 15], [4, 10], [4, 11]],
+    fingerprint: { bpmRange: [118, 150], brightnessRange: [900, 2000], bassRatioRange: [24, 42], crestRange: [5, 11] },
+  },
+  rock: {
+    label: "Rock / Metal",
+    loudnessTarget: -9,
+    refs: [[2, 6], [12, 20], [12, 20], [22, 32], [12, 20], [6, 13], [3, 9]],
+    fingerprint: { bpmRange: [95, 145], brightnessRange: [1000, 2100], bassRatioRange: [13, 25], crestRange: [8, 17] },
+  },
+  acoustic: {
+    label: "Akustik / Singer-Songwriter",
+    loudnessTarget: -16,
+    refs: [[1, 5], [10, 18], [12, 20], [22, 34], [12, 20], [6, 13], [4, 11]],
+    fingerprint: { bpmRange: [55, 115], brightnessRange: [850, 1900], bassRatioRange: [9, 22], crestRange: [10, 22] },
+  },
 };
 
 function genreProfile(genreKey) {
   return GENRE_PROFILES[genreKey] || GENRE_PROFILES[""];
+}
+
+/* ---------- Automatische Genre-Schätzung (Tempo, Klangfarbe, Bassanteil, Dynamik) ----------
+   Kein trainiertes ML-Modell, sondern ein grober Signal-Fingerabdruck-Vergleich mit den
+   Genre-Referenzwerten oben. Läuft komplett lokal, ohne dass Audio das Gerät verlässt. */
+
+function estimateTempoBpm(mono, sampleRate) {
+  const windowSamples = Math.max(1, Math.round(sampleRate * 0.01)); // 10ms Fenster
+  const envLen = Math.floor(mono.length / windowSamples);
+  if (envLen < 50) return { bpm: null, confidence: 0 };
+
+  const env = new Float64Array(envLen);
+  for (let i = 0; i < envLen; i++) {
+    const start = i * windowSamples;
+    const end = Math.min(start + windowSamples, mono.length);
+    let sum = 0;
+    for (let j = start; j < end; j++) sum += Math.abs(mono[j]);
+    env[i] = sum / (end - start);
+  }
+
+  const onset = new Float64Array(envLen);
+  for (let i = 1; i < envLen; i++) onset[i] = Math.max(0, env[i] - env[i - 1]);
+
+  const envRate = 1 / 0.01;
+  const minLag = Math.max(1, Math.round((envRate * 60) / 180)); // 180 BPM
+  const maxLag = Math.round((envRate * 60) / 60); // 60 BPM
+
+  let bestLag = 0;
+  let bestScore = -Infinity;
+  let scoreSum = 0;
+  let lagCount = 0;
+  for (let lag = minLag; lag <= maxLag && lag < envLen; lag++) {
+    let score = 0;
+    for (let i = lag; i < envLen; i++) score += onset[i] * onset[i - lag];
+    scoreSum += score;
+    lagCount++;
+    if (score > bestScore) {
+      bestScore = score;
+      bestLag = lag;
+    }
+  }
+  if (bestLag === 0 || lagCount === 0) return { bpm: null, confidence: 0 };
+
+  const avgScore = scoreSum / lagCount || 1;
+  const confidence = Math.max(0, Math.min(1, (bestScore / avgScore - 1) / 3));
+  const bpm = 60 / (bestLag / envRate);
+  return { bpm, confidence };
+}
+
+function bandCenterHz(band) {
+  return Math.sqrt(band.range[0] * band.range[1]);
+}
+
+function normDist(val, [lo, hi]) {
+  const mid = (lo + hi) / 2;
+  const half = (hi - lo) / 2 || 1;
+  return Math.max(0, Math.abs(val - mid) / half - 1);
+}
+
+function estimateGenre({ bpm, brightnessHz, bassRatioPercent, crestFactorDb }) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const [key, profile] of Object.entries(GENRE_PROFILES)) {
+    if (!profile.fingerprint) continue;
+    const fp = profile.fingerprint;
+    let dist = normDist(brightnessHz, fp.brightnessRange) + normDist(bassRatioPercent, fp.bassRatioRange) + normDist(crestFactorDb, fp.crestRange);
+    dist += bpm !== null ? normDist(bpm, fp.bpmRange) : 0.5;
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = key;
+    }
+  }
+  const lowConfidence = best === null || bestDist > 3.5;
+  return { key: lowConfidence ? "" : best, bpm, lowConfidence };
 }
 
 function hann(n) {
@@ -192,6 +291,16 @@ function analyzeAudioBuffer(buffer) {
 
   const edgeSilence = analyzeEdgeSilence(mono, sampleRate);
 
+  const tempo = estimateTempoBpm(mono, sampleRate);
+  const brightnessHz = bandPercents.reduce((sum, pct, i) => sum + (pct / 100) * bandCenterHz(FREQ_BANDS[i]), 0);
+  const bassRatioPercent = bandPercents[0] + bandPercents[1];
+  const genreGuess = estimateGenre({
+    bpm: tempo.confidence > 0.15 ? tempo.bpm : null,
+    brightnessHz,
+    bassRatioPercent,
+    crestFactorDb,
+  });
+
   return {
     duration: buffer.duration,
     peak,
@@ -203,6 +312,9 @@ function analyzeAudioBuffer(buffer) {
     framesUsed,
     introSilenceMs: edgeSilence.introSilenceMs,
     outroEndsAbruptly: edgeSilence.outroEndsAbruptly,
+    estimatedBpm: tempo.bpm,
+    estimatedGenre: genreGuess.key,
+    estimatedGenreLowConfidence: genreGuess.lowConfidence,
   };
 }
 
@@ -836,6 +948,16 @@ const rewriteOutput = document.getElementById("rewrite-output");
 const rewriteClassification = document.getElementById("rewrite-classification");
 const rewriteTitleIdeas = document.getElementById("rewrite-title-ideas");
 
+let genreManuallySet = false;
+const trackGenreSelect = document.getElementById("track-genre");
+trackGenreSelect.addEventListener("change", () => {
+  genreManuallySet = true;
+  if (currentAnalysisSnapshot) {
+    const unlockedNow = !premiumResultsEl.hidden;
+    renderAnalysis(Object.assign({}, currentAnalysisSnapshot, { genre: trackGenreSelect.value }), { unlockedPremium: unlockedNow });
+  }
+});
+
 function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTimingSec, genre }, { unlockedPremium }) {
   const lyrics = analyzeLyrics(lyricsRaw, title);
   const profile = genreProfile(genre);
@@ -908,6 +1030,16 @@ function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTim
     score: scores.titel,
     statusText: scores.titel === null ? (lyrics.hasLyrics ? "Songtitel fehlt" : "Songtext fehlt") : "",
   });
+
+  const detectedGenreEl = document.getElementById("detected-genre");
+  if (audioMetrics.estimatedGenre && !audioMetrics.estimatedGenreLowConfidence) {
+    const bpmText = audioMetrics.estimatedBpm ? `, ~${Math.round(audioMetrics.estimatedBpm)} BPM` : "";
+    detectedGenreEl.textContent = `Automatisch erkannt: ${genreProfile(audioMetrics.estimatedGenre).label}${bpmText} (Schätzung anhand Tempo, Klangfarbe & Bassanteil – oben im Formular korrigierbar).`;
+  } else if (audioMetrics.estimatedBpm) {
+    detectedGenreEl.textContent = `Tempo gemessen: ~${Math.round(audioMetrics.estimatedBpm)} BPM. Genre nicht eindeutig automatisch bestimmbar – oben im Formular manuell wählen für passendere Referenzwerte.`;
+  } else {
+    detectedGenreEl.textContent = "";
+  }
 
   renderFreqChart(document.getElementById("freq-chart"), audioMetrics.bandPercents, profile.refs);
   renderTips(document.getElementById("tips-list"), tips);
@@ -987,7 +1119,7 @@ form.addEventListener("submit", async (e) => {
   const targetStation = document.getElementById("target-station").value;
   const hookTimingRaw = document.getElementById("hook-timing").value;
   const hookTimingSec = hookTimingRaw !== "" ? Number(hookTimingRaw) : undefined;
-  const genre = document.getElementById("track-genre").value;
+  const genreSelectEl = document.getElementById("track-genre");
 
   analyzeBtn.disabled = true;
   statusLine.textContent = "Lade Audio…";
@@ -999,9 +1131,12 @@ form.addEventListener("submit", async (e) => {
     const ctx = new AudioCtx();
     const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
 
-    statusLine.textContent = "Analysiere Frequenzen & Lautheit…";
+    statusLine.textContent = "Analysiere Frequenzen, Lautheit & Genre…";
     await new Promise((r) => setTimeout(r, 10));
     const audioMetrics = analyzeAudioBuffer(audioBuffer);
+
+    const genre = genreManuallySet ? genreSelectEl.value : audioMetrics.estimatedGenre || "";
+    genreSelectEl.value = genre;
 
     renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTimingSec, genre }, { unlockedPremium: false });
     freeResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });

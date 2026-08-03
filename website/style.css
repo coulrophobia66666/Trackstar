@@ -370,6 +370,17 @@ button#unlock-btn {
   color: var(--text-muted);
 }
 
+.detected-genre {
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  margin: -0.5rem 0 1.3rem;
+  font-style: italic;
+}
+
+.detected-genre:empty {
+  display: none;
+}
+
 /* Meters */
 .meters {
   display: flex;
