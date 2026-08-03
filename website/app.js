@@ -1056,6 +1056,7 @@ function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTim
     vocalsBlockEl.hidden = !lyrics.hasLyrics;
     document.getElementById("vocals-status").textContent = "";
     document.getElementById("vocals-result").hidden = true;
+    document.getElementById("vocals-choice").hidden = false;
   }
 
   const submissions = buildSubmissions(overallScore, targetStation);
@@ -1249,8 +1250,17 @@ function renderVocalsComparison(lyricsRaw, transcribedText) {
 }
 
 const vocalsCheckBtn = document.getElementById("vocals-check-btn");
+const vocalsSkipBtn = document.getElementById("vocals-skip-btn");
+const vocalsChoice = document.getElementById("vocals-choice");
 const vocalsStatus = document.getElementById("vocals-status");
 const vocalsResult = document.getElementById("vocals-result");
+
+if (vocalsSkipBtn) {
+  vocalsSkipBtn.addEventListener("click", () => {
+    vocalsChoice.hidden = true;
+    vocalsStatus.textContent = "Kein Problem – lässt sich jederzeit später (z. B. am Laptop) nachholen.";
+  });
+}
 
 if (vocalsCheckBtn) {
   vocalsCheckBtn.addEventListener("click", async () => {
@@ -1264,6 +1274,7 @@ if (vocalsCheckBtn) {
       return;
     }
 
+    vocalsChoice.hidden = true;
     vocalsCheckBtn.disabled = true;
     vocalsResult.hidden = true;
     vocalsStatus.textContent = "Lade Transkriptions-Modell (einmalig, danach gecacht)…";
@@ -1289,6 +1300,7 @@ if (vocalsCheckBtn) {
 
       if (!transcribedText) {
         vocalsStatus.textContent = "Keine verwertbare Transkription erhalten (evtl. sehr leiser/instrumentaler Track).";
+        vocalsChoice.hidden = false;
         return;
       }
 
@@ -1300,6 +1312,7 @@ if (vocalsCheckBtn) {
       vocalsStatus.textContent = "";
     } catch (err) {
       vocalsStatus.textContent = "Transkription fehlgeschlagen: " + (err && err.message ? err.message : "Unbekannter Fehler.");
+      vocalsChoice.hidden = false;
     } finally {
       vocalsCheckBtn.disabled = false;
     }
