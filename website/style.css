@@ -363,32 +363,6 @@ button#analyze-btn:disabled {
   display: none;
 }
 
-/* Ambient-Toggle */
-.ambient-toggle {
-  margin-top: 1.4rem;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 0.45rem 1rem;
-  border: 1px solid var(--gridline);
-  border-radius: 999px;
-  background: var(--surface-2);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.ambient-toggle[aria-pressed="true"] {
-  border-color: var(--gold);
-  color: var(--gold-bright);
-  background: var(--gold-wash);
-}
-
-.ambient-status {
-  font-size: 0.76rem;
-  color: var(--text-muted);
-  margin: 0.6rem 0 0;
-  min-height: 1.1em;
-}
 
 /* Teaser tip */
 .teaser-tip {

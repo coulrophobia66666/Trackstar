@@ -1791,109 +1791,9 @@ if (albumBtn) {
   });
 }
 
-/* ---------- Ambient-Atmosphäre: sanfter generativer Pad-Sound (Web Audio, kein Audio-File) ----------
-   Nur auf Klick startbar (Browser-Autoplay-Policy erzwingt das ohnehin) - bewusst opt-in statt
-   automatisch abgespielt. */
-
-let ambientCtx = null;
-let ambientNodes = null;
-let ambientPlaying = false;
-
-function startAmbient() {
-  const Ctx = window.AudioContext || window.webkitAudioContext;
-  if (!ambientCtx) ambientCtx = new Ctx();
-  if (ambientCtx.state === "suspended") ambientCtx.resume();
-
-  const master = ambientCtx.createGain();
-  master.gain.value = 0;
-  master.connect(ambientCtx.destination);
-  master.gain.linearRampToValueAtTime(0.22, ambientCtx.currentTime + 0.6);
-
-  const filter = ambientCtx.createBiquadFilter();
-  filter.type = "lowpass";
-  filter.frequency.value = 2400;
-  filter.connect(master);
-
-  // Eine Oktave hoeher als vorher: kleine Tablet-/Handy-Lautsprecher geben tiefe Baesse
-  // (110-277 Hz) oft kaum wieder, egal wie laut - in diesem Bereich (220-554 Hz) ist es
-  // auf schwachen Lautsprechern deutlich eher hoerbar.
-  const freqs = [220, 329.63, 440, 554.37];
-  const oscs = freqs.map((f) => {
-    const osc = ambientCtx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.value = f;
-    const oscGain = ambientCtx.createGain();
-    oscGain.gain.value = 0.28;
-    osc.connect(oscGain);
-    oscGain.connect(filter);
-    osc.start();
-    return osc;
-  });
-
-  const lfo = ambientCtx.createOscillator();
-  lfo.frequency.value = 0.05;
-  const lfoGain = ambientCtx.createGain();
-  lfoGain.gain.value = 500;
-  lfo.connect(lfoGain);
-  lfoGain.connect(filter.frequency);
-  lfo.start();
-
-  // Sanftes rhythmisches Pulsieren auf der Lautstaerke, statt starr-statischem Pad -
-  // passt zum "mehr Erlebnis"-Wunsch, ohne in einen vollen Beat/Drums abzudriften.
-  const pulseLfo = ambientCtx.createOscillator();
-  pulseLfo.frequency.value = 0.5;
-  const pulseDepth = ambientCtx.createGain();
-  pulseDepth.gain.value = 0.06;
-  pulseLfo.connect(pulseDepth);
-  pulseDepth.connect(master.gain);
-  pulseLfo.start();
-
-  ambientNodes = { master, oscs, lfo, pulseLfo };
-  ambientPlaying = true;
-}
-
-function stopAmbient() {
-  if (!ambientNodes || !ambientCtx) return;
-  const { master, oscs, lfo, pulseLfo } = ambientNodes;
-  const now = ambientCtx.currentTime;
-  master.gain.cancelScheduledValues(now);
-  master.gain.setValueAtTime(master.gain.value, now);
-  master.gain.linearRampToValueAtTime(0, now + 1);
-  setTimeout(() => {
-    oscs.forEach((o) => o.stop());
-    lfo.stop();
-    pulseLfo.stop();
-  }, 1100);
-  ambientNodes = null;
-  ambientPlaying = false;
-}
-
-const ambientToggle = document.getElementById("ambient-toggle");
-const ambientStatus = document.getElementById("ambient-status");
-if (ambientToggle) {
-  ambientToggle.addEventListener("click", () => {
-    try {
-      if (ambientPlaying) {
-        stopAmbient();
-        ambientToggle.setAttribute("aria-pressed", "false");
-        if (ambientStatus) ambientStatus.textContent = "";
-      } else {
-        startAmbient();
-        ambientToggle.setAttribute("aria-pressed", "true");
-        if (ambientStatus) ambientStatus.textContent = "Läuft – Gerätelautstärke prüfen, falls nichts zu hören ist.";
-      }
-    } catch (err) {
-      if (ambientStatus) {
-        ambientStatus.textContent = "Sound konnte nicht gestartet werden: " + (err && err.message ? err.message : "Unbekannter Fehler.");
-      }
-    }
-  });
-}
-
 /* ---------- Seitenweiter Frequenzlinien-Hintergrund (Canvas) ----------
    Laeuft durchgehend hinter dem gesamten Inhalt, nicht nur in einem kleinen Header-Widget -
-   das war explizites Feedback ("die ganze Seite soll in Bewegung sein"). Reagiert leicht auf
-   den Ambient-Toggle (etwas lebhafter, wenn der Sound laeuft). */
+   das war explizites Feedback ("die ganze Seite soll in Bewegung sein"). */
 
 (function initBgWaves() {
   const canvas = document.getElementById("bg-waves");
@@ -1930,13 +1830,12 @@ if (ambientToggle) {
 
   function draw() {
     ctx.clearRect(0, 0, width, height);
-    const intensity = ambientPlaying ? 1.6 : 1;
     const step = width > 900 ? 5 : 8;
     for (const w of waves) {
       ctx.beginPath();
       const y0 = height * w.yRatio;
       for (let x = 0; x <= width; x += step) {
-        const y = y0 + Math.sin(x * w.freq + t * w.speed * intensity + w.phase) * w.amp * intensity;
+        const y = y0 + Math.sin(x * w.freq + t * w.speed + w.phase) * w.amp;
         if (x === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
