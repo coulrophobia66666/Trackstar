@@ -1038,25 +1038,38 @@ button#vocals-check-btn:disabled {
   white-space: pre-wrap;
 }
 
-/* Submit recommendations (kompakt) */
+/* Submit recommendations: kompakt, aber mit track-spezifischer Begruendung statt Alibi-Chips */
 .submit-list {
   list-style: none;
   margin: 0 0 1.9rem;
   padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.55rem;
 }
 
-.submit-chip {
+.submit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.5rem;
   border: 1px solid var(--gridline);
-  border-radius: 999px;
-  padding: 0.4rem 0.85rem;
+  border-radius: 12px;
+  padding: 0.55rem 0.85rem;
   background: var(--surface-2);
+}
+
+.submit-row-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: none;
+}
+
+.submit-row-reason {
+  font-size: 0.81rem;
   color: var(--text-secondary);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: default;
+  line-height: 1.4;
 }
 
 .disclaimer {

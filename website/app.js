@@ -735,35 +735,51 @@ function renderStreakNote(n) {
       : `🔥 Das ist bereits dein ${n}. Check auf Overhertz!`;
 }
 
-function buildSubmissions(overallScore) {
+function buildSubmissions(overallScore, genreLabel) {
+  const hasGenre = genreLabel && genreLabel !== "Allgemein";
+  const genreSuffix = hasGenre ? ` (${genreLabel})` : "";
+  const ready = overallScore >= 70;
+  const mid = overallScore >= 45;
+
   const items = [
     {
       name: "Groover",
       desc: "Kostenpflichtige Einreichung bei Kuratoren, Playlists, Blogs und Radios – gibt garantiertes Feedback.",
+      reason: ready
+        ? `Score ${overallScore}/100${genreSuffix} ist stark genug, um bezahltes Kuratoren-Feedback wirklich auszunutzen.`
+        : `Bei ${overallScore}/100 lohnt sich das bezahlte Feedback erst, nachdem die Tipps oben umgesetzt sind – sonst zahlst du für Hinweise, die du hier schon kostenlos hast.`,
     },
     {
       name: "SubmitHub",
       desc: "Einreichung bei Blogs, Playlist-Kuratoren und Radiosendern, Bezahlung meist nur bei Feedback/Ablehnung.",
+      reason: hasGenre
+        ? `Kuratoren lassen sich dort nach Genre filtern – für ${genreLabel} findest du gezielt passende.`
+        : "Kuratoren lassen sich dort nach Genre filtern, sobald eins feststeht (oben im Formular wählbar).",
     },
     {
       name: "MusoSoup",
       desc: "Alternative zu SubmitHub, u.a. für Playlists, YouTube-Kanäle und Radio.",
+      reason: "Guter Zweitkanal parallel zu SubmitHub – andere Kuratoren-Datenbank, kostet nichts extra, sich bei beiden einzutragen.",
     },
     {
       name: "Spotify for Artists – Playlist-Einreichung",
       desc: "Kostenlose Einreichung für Spotify-eigene, redaktionelle Playlists (mind. 7 Tage vor Release).",
+      reason: ready
+        ? `Bei ${overallScore}/100 realistische Chance auf redaktionelle Playlists – kostet nichts, unbedingt mitnehmen.`
+        : mid
+          ? `Bei ${overallScore}/100 ist die Chance auf redaktionelle Playlists noch begrenzt, aber die Einreichung ist kostenlos – schadet nicht, auch parallel an den Tipps oben zu arbeiten.`
+          : `Bei ${overallScore}/100 realistisch eher nicht – Einreichung ist zwar kostenlos, aber die Tipps oben zuerst umsetzen erhöht die Chancen deutlich.`,
     },
   ];
 
   let note;
-  if (overallScore >= 70) {
-    note = "Der technische und inhaltliche Score ist solide – eine Einreichung ist aus heutiger Sicht realistisch.";
-  } else if (overallScore >= 45) {
-    note = "Der Track ist einreichbar, hat aber noch Luft nach oben – die Verbesserungsvorschläge oben zuerst umsetzen erhöht die Chancen.";
+  if (ready) {
+    note = `Der technische und inhaltliche Score ist solide (${overallScore}/100)${genreSuffix} – eine Einreichung ist aus heutiger Sicht realistisch.`;
+  } else if (mid) {
+    note = `Der Track ist einreichbar (${overallScore}/100)${genreSuffix}, hat aber noch Luft nach oben – die Verbesserungsvorschläge oben zuerst umsetzen erhöht die Chancen.`;
   } else {
-    note = "Vor einer Einreichung lohnt es sich, erst die wichtigsten Verbesserungsvorschläge oben umzusetzen.";
+    note = `Vor einer Einreichung (aktuell ${overallScore}/100${genreSuffix}) lohnt es sich, erst die wichtigsten Verbesserungsvorschläge oben umzusetzen.`;
   }
-
 
   return { items, note };
 }
@@ -856,9 +872,8 @@ function renderSubmissions(listEl, hintEl, { items, note }) {
   listEl.innerHTML = "";
   for (const item of items) {
     const li = document.createElement("li");
-    li.className = "submit-chip";
-    li.textContent = item.name;
-    li.title = item.desc;
+    li.className = "submit-row";
+    li.innerHTML = `<span class="submit-row-name">${item.name}</span><span class="submit-row-reason">${item.reason}</span>`;
     listEl.appendChild(li);
   }
 }
@@ -1198,7 +1213,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
     document.getElementById("vocals-choice").hidden = false;
   }
 
-  const submissions = buildSubmissions(overallScore);
+  const submissions = buildSubmissions(overallScore, profile.label);
   renderSubmissions(document.getElementById("submit-list"), document.getElementById("submit-hint"), submissions);
 
   freeResultsEl.hidden = false;
