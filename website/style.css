@@ -1,17 +1,18 @@
 :root {
   color-scheme: dark;
-  --bg-deep:        #0a0a0c;
-  --bg-plane:       #0f0e12;
-  --surface-1:      #17151a;
-  --surface-2:      #1d1a21;
-  --text-primary:   #f3efe6;
+  --bg-deep:        #060506;
+  --bg-plane:       #0a090c;
+  --surface-1:      #141017;
+  --surface-2:      #19141e;
+  --text-primary:   #f5f0e6;
   --text-secondary: #b7b2a6;
   --text-muted:     #7d7869;
-  --gridline:       #2c2830;
-  --border:         rgba(243, 239, 230, 0.09);
+  --gridline:       #2a2530;
+  --border:         rgba(243, 239, 230, 0.07);
   --gold:           #cda86b;
-  --gold-bright:    #e8caa0;
-  --gold-wash:      rgba(205, 168, 107, 0.14);
+  --gold-bright:    #f0d19c;
+  --gold-deep:      #8a6a35;
+  --gold-wash:      rgba(205, 168, 107, 0.16);
   --accent-2:       #5fb8c7;
   --accent-2-bright:#8fd6e2;
   --status-good:      #4cc38a;
@@ -27,7 +28,8 @@ body {
   margin: 0;
   font-family: var(--font-body);
   background:
-    radial-gradient(circle at 50% -10%, rgba(205, 168, 107, 0.12), transparent 55%),
+    radial-gradient(circle at 50% -8%, rgba(240, 209, 156, 0.13), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(138, 106, 53, 0.09), transparent 60%),
     var(--bg-deep);
   color: var(--text-primary);
 }
@@ -88,15 +90,15 @@ body {
 }
 
 .card {
-  background: rgba(23, 21, 26, 0.72);
+  background: rgba(20, 16, 23, 0.74);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(205, 168, 107, 0.1);
   border-radius: 26px;
   padding: 1.85rem;
   margin-bottom: 1.5rem;
   overflow-x: auto;
-  box-shadow: 0 20px 40px -25px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 24px 48px -26px rgba(0, 0, 0, 0.75);
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -381,6 +383,13 @@ button#analyze-btn:disabled {
   background: var(--gold-wash);
 }
 
+.ambient-status {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin: 0.6rem 0 0;
+  min-height: 1.1em;
+}
+
 /* Teaser tip */
 .teaser-tip {
   background: var(--gold-wash);
@@ -653,6 +662,70 @@ button#unlock-btn {
 }
 
 .tips li svg { flex: none; margin-top: 2px; }
+
+/* EQ-Editor */
+.eq-editor {
+  padding: 1.3rem 1.4rem;
+  margin-bottom: 1.9rem;
+  border-radius: 18px;
+  border: 1px solid rgba(205, 168, 107, 0.28);
+  background: var(--gold-wash);
+}
+
+.eq-editor h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--text-primary);
+}
+
+.eq-sliders {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 1.1rem;
+  margin: 1.2rem 0 1.3rem;
+}
+
+.eq-slider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.eq-slider label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.eq-slider input[type="range"] {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 6px;
+  height: 90px;
+  accent-color: var(--gold);
+}
+
+.eq-value {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  min-width: 3.5em;
+  text-align: center;
+}
+
+.eq-editor-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.eq-editor-controls .account-btn {
+  flex: 1 1 auto;
+}
 
 /* Fazit als Wegweiser */
 .fazit-wrap {
