@@ -1142,3 +1142,34 @@ button#vocals-check-btn:disabled {
   .star-rating { font-size: 1.6rem; }
   .freq-chart { gap: 5px; }
 }
+
+/* Desktop/breite Screens: mehr Platz nutzen statt Handy-Hochkant hochskaliert darzustellen */
+@media (min-width: 960px) {
+  .page {
+    max-width: 900px;
+  }
+
+  .zone:has(.freq-block) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 2rem;
+    align-items: start;
+  }
+
+  .zone:has(.freq-block) .zone-label,
+  .zone:has(.freq-block) .detected-genre {
+    grid-column: 1 / -1;
+  }
+
+  .zone:has(.freq-block) .freq-block {
+    margin-top: 0;
+  }
+
+  .auth-forms {
+    gap: 2.5rem;
+  }
+
+  .plans {
+    flex-wrap: nowrap;
+  }
+}
