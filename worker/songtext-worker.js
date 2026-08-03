@@ -1,23 +1,30 @@
-// Cloudflare Worker: nimmt Songtitel, Songtext und die technischen Kennzahlen entgegen
-// und laesst Claude daraus einen verbesserten Songtext, eine kurze Einordnung und
-// Titel-Ideen erzeugen. Haelt den Anthropic API-Key serverseitig - er darf nie im
-// Frontend-Code der statischen Website landen.
+// Cloudflare Worker fuer Overhertz: Konten/Login, Credits & Pro-Abo (D1 + Stripe),
+// sowie die KI-Einschaetzung (Anthropic). Haelt alle Secrets serverseitig - sie duerfen
+// nie im Frontend-Code der statischen Website landen.
 //
-// Deploy: ueber das an GitHub angebundene Cloudflare-Projekt - Secret ANTHROPIC_API_KEY
-// in den Worker-Settings hinterlegen. Rate-Limit-Binding (siehe wrangler.toml) wird
-// automatisch beim Deploy mit angelegt, keine manuelle Cloudflare-Einrichtung noetig.
+// Benoetigte Bindings/Variablen im Worker (Cloudflare-Dashboard -> Settings):
+//   Secrets:  ANTHROPIC_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+//   Klartext: STRIPE_PRICE_CREDITS, STRIPE_PRICE_PRO_MONTHLY, STRIPE_PRICE_PRO_ANNUAL
+//             (Stripe Price-IDs, z.B. "price_...", sind nicht geheim)
+//   D1-Binding: DB (siehe wrangler.toml + schema.sql)
+//   Rate-Limit-Binding RATE_LIMITER wird beim Deploy automatisch angelegt.
 
 const ALLOWED_ORIGINS = new Set([
   "https://trackstar-web.coulrophobia66666.workers.dev",
 ]);
+
+const PRO_MONTHLY_QUOTA = 50;
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 Tage
+
+/* ---------- Kleine Helfer ---------- */
 
 function corsHeadersFor(request) {
   const origin = request.headers.get("Origin") || "";
   const allowOrigin = ALLOWED_ORIGINS.has(origin) ? origin : [...ALLOWED_ORIGINS][0];
   return {
     "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     Vary: "Origin",
   };
 }
@@ -35,14 +42,349 @@ function stripCodeFence(text) {
   return fenceMatch ? fenceMatch[1] : trimmed;
 }
 
-async function handleVerifyPayment(request, env, cors, clientIp) {
+async function safeJson(request) {
+  try {
+    return await request.json();
+  } catch {
+    return {};
+  }
+}
+
+function normalizeEmail(raw) {
+  return typeof raw === "string" ? raw.trim().toLowerCase() : "";
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function toHex(bytes) {
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function fromHex(hex) {
+  const arr = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < arr.length; i++) arr[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return arr;
+}
+
+async function withRateLimit(env, key, cors, handler) {
   if (env.RATE_LIMITER) {
-    const { success } = await env.RATE_LIMITER.limit({ key: "pay:" + clientIp });
+    const { success } = await env.RATE_LIMITER.limit({ key });
     if (!success) {
       return jsonResponse({ error: "Zu viele Anfragen. Bitte in einer Minute nochmal versuchen." }, 429, cors);
     }
   }
+  return handler();
+}
 
+function requireDb(env, cors) {
+  if (!env.DB) {
+    return jsonResponse({ error: "Konten-System ist noch nicht eingerichtet (D1-Datenbank fehlt)." }, 501, cors);
+  }
+  return null;
+}
+
+/* ---------- Passwoerter (PBKDF2 via Web Crypto, kein externes Paket noetig) ---------- */
+
+async function hashPassword(password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" }, key, 256);
+  return toHex(salt) + ":" + toHex(new Uint8Array(bits));
+}
+
+async function verifyPassword(password, stored) {
+  const [saltHex, hashHex] = (stored || "").split(":");
+  if (!saltHex || !hashHex) return false;
+  const salt = fromHex(saltHex);
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" }, key, 256);
+  return toHex(new Uint8Array(bits)) === hashHex;
+}
+
+/* ---------- Sessions & Konten ---------- */
+
+async function createSession(env, userId) {
+  const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
+  const now = Date.now();
+  await env.DB.prepare("INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)")
+    .bind(token, userId, now, now + SESSION_TTL_MS)
+    .run();
+  return token;
+}
+
+async function getUserFromRequest(request, env) {
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (!token) return null;
+  const row = await env.DB.prepare(
+    "SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?"
+  )
+    .bind(token, Date.now())
+    .first();
+  return row || null;
+}
+
+function publicUser(u) {
+  return {
+    email: u.email,
+    plan: u.plan,
+    credits: u.credits,
+    checksUsedPeriod: u.checks_used_period,
+    planRenewsAt: u.plan_renews_at,
+    proQuota: PRO_MONTHLY_QUOTA,
+  };
+}
+
+async function handleRegister(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const body = await safeJson(request);
+  const email = normalizeEmail(body.email);
+  const password = typeof body.password === "string" ? body.password : "";
+  if (!isValidEmail(email)) return jsonResponse({ error: "Ungueltige E-Mail-Adresse." }, 400, cors);
+  if (password.length < 8) return jsonResponse({ error: "Passwort muss mindestens 8 Zeichen haben." }, 400, cors);
+
+  const existing = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first();
+  if (existing) return jsonResponse({ error: "Diese E-Mail ist bereits registriert." }, 409, cors);
+
+  const id = crypto.randomUUID();
+  const passwordHash = await hashPassword(password);
+  await env.DB.prepare(
+    "INSERT INTO users (id, email, password_hash, created_at, plan, credits, checks_used_period) VALUES (?, ?, ?, ?, 'free', 0, 0)"
+  )
+    .bind(id, email, passwordHash, Date.now())
+    .run();
+
+  const token = await createSession(env, id);
+  return jsonResponse(
+    { token, user: publicUser({ id, email, plan: "free", credits: 0, checks_used_period: 0, plan_renews_at: null }) },
+    200,
+    cors
+  );
+}
+
+async function handleLogin(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const body = await safeJson(request);
+  const email = normalizeEmail(body.email);
+  const password = typeof body.password === "string" ? body.password : "";
+
+  const user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+  if (!user || !(await verifyPassword(password, user.password_hash))) {
+    return jsonResponse({ error: "E-Mail oder Passwort falsch." }, 401, cors);
+  }
+
+  const token = await createSession(env, user.id);
+  return jsonResponse({ token, user: publicUser(user) }, 200, cors);
+}
+
+async function handleLogout(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const auth = request.headers.get("Authorization") || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (token) await env.DB.prepare("DELETE FROM sessions WHERE token = ?").bind(token).run();
+  return jsonResponse({ ok: true }, 200, cors);
+}
+
+async function handleMe(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const user = await getUserFromRequest(request, env);
+  if (!user) return jsonResponse({ error: "Nicht eingeloggt." }, 401, cors);
+  return jsonResponse({ user: publicUser(user) }, 200, cors);
+}
+
+async function handleConsumeCredit(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const user = await getUserFromRequest(request, env);
+  if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
+
+  if ((user.plan === "pro" || user.plan === "pro_annual") && user.checks_used_period < PRO_MONTHLY_QUOTA) {
+    await env.DB.prepare("UPDATE users SET checks_used_period = checks_used_period + 1 WHERE id = ?").bind(user.id).run();
+    await env.DB.prepare("INSERT INTO checks (id, user_id, created_at) VALUES (?, ?, ?)")
+      .bind(crypto.randomUUID(), user.id, Date.now())
+      .run();
+    return jsonResponse(
+      { ok: true, plan: user.plan, credits: user.credits, quotaLeft: PRO_MONTHLY_QUOTA - user.checks_used_period - 1 },
+      200,
+      cors
+    );
+  }
+
+  if (user.credits > 0) {
+    await env.DB.prepare("UPDATE users SET credits = credits - 1 WHERE id = ?").bind(user.id).run();
+    await env.DB.prepare("INSERT INTO checks (id, user_id, created_at) VALUES (?, ?, ?)")
+      .bind(crypto.randomUUID(), user.id, Date.now())
+      .run();
+    return jsonResponse({ ok: true, plan: user.plan, credits: user.credits - 1, quotaLeft: null }, 200, cors);
+  }
+
+  return jsonResponse({ ok: false, error: "Keine Credits mehr uebrig und kein aktives Pro-Abo." }, 402, cors);
+}
+
+/* ---------- Stripe: Checkout & Webhook ---------- */
+
+function flattenParams(obj, body, prefix = "") {
+  for (const [k, v] of Object.entries(obj)) {
+    const key = prefix ? `${prefix}[${k}]` : k;
+    if (v === undefined || v === null) continue;
+    if (Array.isArray(v)) {
+      v.forEach((item, i) => {
+        if (item && typeof item === "object") flattenParams(item, body, `${key}[${i}]`);
+        else body.append(`${key}[${i}]`, item);
+      });
+    } else if (typeof v === "object") {
+      flattenParams(v, body, key);
+    } else {
+      body.append(key, v);
+    }
+  }
+}
+
+async function stripeRequest(env, path, params) {
+  const body = new URLSearchParams();
+  flattenParams(params, body);
+  const res = await fetch("https://api.stripe.com/v1/" + path, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + env.STRIPE_SECRET_KEY,
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body: body.toString(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error?.message || "Stripe-Fehler");
+  return data;
+}
+
+const PLAN_PRICE_ENV = {
+  credits: "STRIPE_PRICE_CREDITS",
+  pro: "STRIPE_PRICE_PRO_MONTHLY",
+  pro_annual: "STRIPE_PRICE_PRO_ANNUAL",
+};
+
+async function handleCreateCheckoutSession(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+  if (!env.STRIPE_SECRET_KEY) return jsonResponse({ error: "Zahlung ist noch nicht eingerichtet." }, 501, cors);
+
+  const user = await getUserFromRequest(request, env);
+  if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
+
+  const body = await safeJson(request);
+  const planType = typeof body.plan === "string" ? body.plan : "";
+  const priceId = env[PLAN_PRICE_ENV[planType] || ""];
+  if (!priceId) return jsonResponse({ error: "Ungueltiger oder noch nicht eingerichteter Plan." }, 400, cors);
+
+  const origin = request.headers.get("Origin") || "";
+  const siteOrigin = ALLOWED_ORIGINS.has(origin) ? origin : [...ALLOWED_ORIGINS][0];
+
+  try {
+    let customerId = user.stripe_customer_id;
+    if (!customerId) {
+      const customer = await stripeRequest(env, "customers", { email: user.email, metadata: { user_id: user.id } });
+      customerId = customer.id;
+      await env.DB.prepare("UPDATE users SET stripe_customer_id = ? WHERE id = ?").bind(customerId, user.id).run();
+    }
+
+    const session = await stripeRequest(env, "checkout/sessions", {
+      mode: planType === "credits" ? "payment" : "subscription",
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: siteOrigin + "/?checkout=success",
+      cancel_url: siteOrigin + "/?checkout=cancel",
+      metadata: { user_id: user.id, plan: planType },
+    });
+
+    return jsonResponse({ url: session.url }, 200, cors);
+  } catch (err) {
+    return jsonResponse({ error: err.message || "Zahlung konnte nicht gestartet werden." }, 502, cors);
+  }
+}
+
+async function verifyStripeSignature(payload, sigHeader, secret) {
+  const parts = {};
+  for (const kv of sigHeader.split(",")) {
+    const [k, v] = kv.split("=");
+    if (k && v) parts[k] = v;
+  }
+  if (!parts.t || !parts.v1) return false;
+
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
+    "sign",
+  ]);
+  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${parts.t}.${payload}`));
+  const expected = toHex(new Uint8Array(mac));
+
+  if (expected.length !== parts.v1.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ parts.v1.charCodeAt(i);
+  return diff === 0;
+}
+
+async function handleStripeWebhook(request, env) {
+  if (!env.DB) return new Response("Konten-System ist noch nicht eingerichtet.", { status: 501 });
+  if (!env.STRIPE_WEBHOOK_SECRET) return new Response("Webhook ist noch nicht eingerichtet.", { status: 501 });
+
+  const sig = request.headers.get("Stripe-Signature") || "";
+  const payload = await request.text();
+  const valid = await verifyStripeSignature(payload, sig, env.STRIPE_WEBHOOK_SECRET);
+  if (!valid) return new Response("Invalid signature", { status: 400 });
+
+  let event;
+  try {
+    event = JSON.parse(payload);
+  } catch {
+    return new Response("Invalid payload", { status: 400 });
+  }
+  const obj = event.data && event.data.object;
+
+  if (event.type === "checkout.session.completed" && obj) {
+    const userId = obj.metadata && obj.metadata.user_id;
+    const plan = obj.metadata && obj.metadata.plan;
+    if (userId && plan === "credits") {
+      await env.DB.prepare("UPDATE users SET credits = credits + 5, stripe_customer_id = COALESCE(stripe_customer_id, ?) WHERE id = ?")
+        .bind(obj.customer || null, userId)
+        .run();
+    } else if (userId && (plan === "pro" || plan === "pro_annual")) {
+      const days = plan === "pro_annual" ? 365 : 30;
+      const renewsAt = Date.now() + days * 24 * 60 * 60 * 1000;
+      await env.DB.prepare(
+        "UPDATE users SET plan = ?, checks_used_period = 0, plan_renews_at = ?, stripe_customer_id = ?, stripe_subscription_id = ? WHERE id = ?"
+      )
+        .bind(plan, renewsAt, obj.customer || null, obj.subscription || null, userId)
+        .run();
+    }
+  } else if (event.type === "invoice.paid" && obj && obj.billing_reason === "subscription_cycle" && obj.subscription) {
+    const user = await env.DB.prepare("SELECT id, plan FROM users WHERE stripe_subscription_id = ?").bind(obj.subscription).first();
+    if (user) {
+      const days = user.plan === "pro_annual" ? 365 : 30;
+      await env.DB.prepare("UPDATE users SET checks_used_period = 0, plan_renews_at = ? WHERE id = ?")
+        .bind(Date.now() + days * 24 * 60 * 60 * 1000, user.id)
+        .run();
+    }
+  } else if (event.type === "customer.subscription.deleted" && obj) {
+    await env.DB.prepare("UPDATE users SET plan = 'free', plan_renews_at = NULL, stripe_subscription_id = NULL WHERE stripe_subscription_id = ?")
+      .bind(obj.id)
+      .run();
+  }
+
+  return new Response("ok", { status: 200 });
+}
+
+/* ---------- KI-Einschaetzung (Anthropic) ---------- */
+
+async function handleKiEinschaetzung(request, env, cors) {
   let body;
   try {
     body = await request.json();
@@ -50,145 +392,141 @@ async function handleVerifyPayment(request, env, cors, clientIp) {
     return jsonResponse({ error: "Ungueltiger Request-Body." }, 400, cors);
   }
 
-  const sessionId = typeof body.sessionId === "string" ? body.sessionId.trim() : "";
-  if (!sessionId || !sessionId.startsWith("cs_")) {
-    return jsonResponse({ error: "Ungueltige Session-ID." }, 400, cors);
+  const title = typeof body.title === "string" ? body.title.slice(0, 200) : "";
+  const lyrics = typeof body.lyrics === "string" ? body.lyrics : "";
+  const metrics = body.metrics && typeof body.metrics === "object" ? body.metrics : {};
+
+  if (lyrics.trim().length < 10) {
+    return jsonResponse({ error: "Songtext fehlt oder ist zu kurz." }, 400, cors);
   }
-  if (!env.STRIPE_SECRET_KEY) {
-    return jsonResponse({ error: "Zahlungspruefung ist noch nicht eingerichtet." }, 501, cors);
+  if (lyrics.length > 6000) {
+    return jsonResponse({ error: "Songtext ist zu lang (max. 6000 Zeichen)." }, 400, cors);
   }
 
-  let stripeRes;
+  const metricLines = [];
+  if (typeof metrics.overallScore === "number") metricLines.push("Gesamtscore: " + metrics.overallScore + "/100");
+  if (typeof metrics.soundScore === "number") metricLines.push("Sound-Sauberkeit: " + Math.round(metrics.soundScore) + "/100");
+  if (typeof metrics.starPotentialScore === "number") metricLines.push("Lautheit/Star-Potential: " + Math.round(metrics.starPotentialScore) + "/100");
+  if (typeof metrics.hookScore === "number") metricLines.push("Hook-Staerke: " + Math.round(metrics.hookScore) + "/100");
+  if (Array.isArray(metrics.topIssues) && metrics.topIssues.length > 0) {
+    metricLines.push("Groesste technische Baustellen: " + metrics.topIssues.slice(0, 3).join(" | "));
+  }
+
+  const promptLines = [
+    "Du bist ein erfahrener deutscher Songtexter, Ghostwriter und A&R-Berater fuer Deutschrap/Strassenmusik.",
+    "Du bekommst einen Songtext sowie automatisch gemessene technische Kennzahlen zum Track.",
+    "Antworte AUSSCHLIESSLICH mit einem gueltigen JSON-Objekt (keine Markdown-Codebloecke, kein Fliesstext davor oder danach) mit genau diesen drei Feldern:",
+    '"einordnung": 2-4 Saetze, die den Track fuer den Kuenstler einordnen (Genre/Vibe/Zielgruppe) und dabei die technischen Kennzahlen sinnvoll einbeziehen (z.B. ob er radio-/playlisttauglich klingt).',
+    '"titelvorschlaege": ein Array mit genau 3 alternativen Songtitel-Ideen, die zum Text und zur Hook passen, kurz und einpraegsam.',
+    '"verbesserterText": der ueberarbeitete Songtext - Reime runder, Zeilen praegnanter, Hook einpraegsamer, ohne Sprache, Stil, Silbenzahl pro Zeile oder Grundaussage grundlegend zu veraendern, keine generischen Floskeln oder Fuellzeilen.',
+    "",
+  ];
+  if (title) promptLines.push('Aktueller Songtitel: "' + title + '"');
+  if (metricLines.length > 0) {
+    promptLines.push("Technische Kennzahlen:");
+    promptLines.push(...metricLines.map((l) => "- " + l));
+  }
+  promptLines.push("");
+  promptLines.push("Songtext:");
+  promptLines.push(lyrics);
+  const prompt = promptLines.join("\n");
+
+  let apiRes;
   try {
-    stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions/" + encodeURIComponent(sessionId), {
-      headers: { Authorization: "Bearer " + env.STRIPE_SECRET_KEY },
+    apiRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-5",
+        max_tokens: 1500,
+        messages: [{ role: "user", content: prompt }],
+      }),
     });
   } catch {
-    return jsonResponse({ error: "Zahlungsdienst nicht erreichbar." }, 502, cors);
+    return jsonResponse({ error: "KI-Dienst nicht erreichbar." }, 502, cors);
   }
 
-  if (!stripeRes.ok) {
-    return jsonResponse({ paid: false }, 200, cors);
+  if (!apiRes.ok) {
+    return jsonResponse({ error: "KI-Anfrage fehlgeschlagen." }, 502, cors);
   }
 
-  const session = await stripeRes.json();
-  return jsonResponse({ paid: session.payment_status === "paid" }, 200, cors);
+  const data = await apiRes.json();
+  const rawText = data?.content?.[0]?.text?.trim() || "";
+  if (!rawText) {
+    return jsonResponse({ error: "Keine Antwort von der KI erhalten." }, 502, cors);
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(stripCodeFence(rawText));
+  } catch {
+    return jsonResponse({ error: "KI-Antwort konnte nicht gelesen werden." }, 502, cors);
+  }
+
+  const improved = typeof parsed.verbesserterText === "string" ? parsed.verbesserterText.trim() : "";
+  const classification = typeof parsed.einordnung === "string" ? parsed.einordnung.trim() : "";
+  const titleIdeas = Array.isArray(parsed.titelvorschlaege) ? parsed.titelvorschlaege.filter((t) => typeof t === "string").slice(0, 3) : [];
+
+  if (!improved) {
+    return jsonResponse({ error: "Keine verwertbare Antwort von der KI erhalten." }, 502, cors);
+  }
+
+  return jsonResponse({ improved, classification, titleIdeas }, 200, cors);
 }
+
+/* ---------- Routing ---------- */
 
 export default {
   async fetch(request, env) {
+    const url = new URL(request.url);
+
+    // Stripe ruft den Webhook server-seitig auf - kein CORS/Origin-Check, kein Rate-Limit per Client-IP.
+    if (url.pathname === "/stripe-webhook") {
+      if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
+      return handleStripeWebhook(request, env);
+    }
+
     const cors = corsHeadersFor(request);
     const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
 
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: cors });
     }
+
+    if (url.pathname === "/auth/register" && request.method === "POST") {
+      return withRateLimit(env, "auth:" + clientIp, cors, () => handleRegister(request, env, cors));
+    }
+    if (url.pathname === "/auth/login" && request.method === "POST") {
+      return withRateLimit(env, "auth:" + clientIp, cors, () => handleLogin(request, env, cors));
+    }
+    if (url.pathname === "/auth/logout" && request.method === "POST") {
+      return handleLogout(request, env, cors);
+    }
+    if (url.pathname === "/auth/me" && request.method === "GET") {
+      return handleMe(request, env, cors);
+    }
+    if (url.pathname === "/consume-credit" && request.method === "POST") {
+      return withRateLimit(env, "credit:" + clientIp, cors, () => handleConsumeCredit(request, env, cors));
+    }
+    if (url.pathname === "/create-checkout-session" && request.method === "POST") {
+      return handleCreateCheckoutSession(request, env, cors);
+    }
+
     if (request.method !== "POST") {
       return jsonResponse({ error: "Method not allowed" }, 405, cors);
     }
 
-    const url = new URL(request.url);
-    if (url.pathname === "/verify-payment") {
-      return handleVerifyPayment(request, env, cors, clientIp);
-    }
-
+    // Default-Route (Wurzelpfad): bestehende KI-Einschaetzung, weiterhin per IP rate-limitiert.
     if (env.RATE_LIMITER) {
       const { success } = await env.RATE_LIMITER.limit({ key: clientIp });
       if (!success) {
         return jsonResponse({ error: "Zu viele Anfragen. Bitte in einer Minute nochmal versuchen." }, 429, cors);
       }
     }
-
-    let body;
-    try {
-      body = await request.json();
-    } catch {
-      return jsonResponse({ error: "Ungueltiger Request-Body." }, 400, cors);
-    }
-
-    const title = typeof body.title === "string" ? body.title.slice(0, 200) : "";
-    const lyrics = typeof body.lyrics === "string" ? body.lyrics : "";
-    const metrics = body.metrics && typeof body.metrics === "object" ? body.metrics : {};
-
-    if (lyrics.trim().length < 10) {
-      return jsonResponse({ error: "Songtext fehlt oder ist zu kurz." }, 400, cors);
-    }
-    if (lyrics.length > 6000) {
-      return jsonResponse({ error: "Songtext ist zu lang (max. 6000 Zeichen)." }, 400, cors);
-    }
-
-    const metricLines = [];
-    if (typeof metrics.overallScore === "number") metricLines.push("Gesamtscore: " + metrics.overallScore + "/100");
-    if (typeof metrics.soundScore === "number") metricLines.push("Sound-Sauberkeit: " + Math.round(metrics.soundScore) + "/100");
-    if (typeof metrics.starPotentialScore === "number") metricLines.push("Lautheit/Star-Potential: " + Math.round(metrics.starPotentialScore) + "/100");
-    if (typeof metrics.hookScore === "number") metricLines.push("Hook-Staerke: " + Math.round(metrics.hookScore) + "/100");
-    if (Array.isArray(metrics.topIssues) && metrics.topIssues.length > 0) {
-      metricLines.push("Groesste technische Baustellen: " + metrics.topIssues.slice(0, 3).join(" | "));
-    }
-
-    const promptLines = [
-      "Du bist ein erfahrener deutscher Songtexter, Ghostwriter und A&R-Berater fuer Deutschrap/Strassenmusik.",
-      "Du bekommst einen Songtext sowie automatisch gemessene technische Kennzahlen zum Track.",
-      "Antworte AUSSCHLIESSLICH mit einem gueltigen JSON-Objekt (keine Markdown-Codebloecke, kein Fliesstext davor oder danach) mit genau diesen drei Feldern:",
-      '"einordnung": 2-4 Saetze, die den Track fuer den Kuenstler einordnen (Genre/Vibe/Zielgruppe) und dabei die technischen Kennzahlen sinnvoll einbeziehen (z.B. ob er radio-/playlisttauglich klingt).',
-      '"titelvorschlaege": ein Array mit genau 3 alternativen Songtitel-Ideen, die zum Text und zur Hook passen, kurz und einpraegsam.',
-      '"verbesserterText": der ueberarbeitete Songtext - Reime runder, Zeilen praegnanter, Hook einpraegsamer, ohne Sprache, Stil, Silbenzahl pro Zeile oder Grundaussage grundlegend zu veraendern, keine generischen Floskeln oder Fuellzeilen.',
-      "",
-    ];
-    if (title) promptLines.push('Aktueller Songtitel: "' + title + '"');
-    if (metricLines.length > 0) {
-      promptLines.push("Technische Kennzahlen:");
-      promptLines.push(...metricLines.map((l) => "- " + l));
-    }
-    promptLines.push("");
-    promptLines.push("Songtext:");
-    promptLines.push(lyrics);
-    const prompt = promptLines.join("\n");
-
-    let apiRes;
-    try {
-      apiRes = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": env.ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-5",
-          max_tokens: 1500,
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
-    } catch (err) {
-      return jsonResponse({ error: "KI-Dienst nicht erreichbar." }, 502, cors);
-    }
-
-    if (!apiRes.ok) {
-      return jsonResponse({ error: "KI-Anfrage fehlgeschlagen." }, 502, cors);
-    }
-
-    const data = await apiRes.json();
-    const rawText = data?.content?.[0]?.text?.trim() || "";
-    if (!rawText) {
-      return jsonResponse({ error: "Keine Antwort von der KI erhalten." }, 502, cors);
-    }
-
-    let parsed;
-    try {
-      parsed = JSON.parse(stripCodeFence(rawText));
-    } catch {
-      return jsonResponse({ error: "KI-Antwort konnte nicht gelesen werden." }, 502, cors);
-    }
-
-    const improved = typeof parsed.verbesserterText === "string" ? parsed.verbesserterText.trim() : "";
-    const classification = typeof parsed.einordnung === "string" ? parsed.einordnung.trim() : "";
-    const titleIdeas = Array.isArray(parsed.titelvorschlaege) ? parsed.titelvorschlaege.filter((t) => typeof t === "string").slice(0, 3) : [];
-
-    if (!improved) {
-      return jsonResponse({ error: "Keine verwertbare Antwort von der KI erhalten." }, 502, cors);
-    }
-
-    return jsonResponse({ improved, classification, titleIdeas }, 200, cors);
+    return handleKiEinschaetzung(request, env, cors);
   },
 };

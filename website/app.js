@@ -97,14 +97,30 @@ const FFT_SIZE = 4096;
 const MAX_FRAMES = 200;
 
 const FREQ_BANDS = [
-  { name: "Sub-Bass", range: [20, 60], ref: [2, 8] },
-  { name: "Bass", range: [60, 250], ref: [14, 26] },
-  { name: "Low-Mid", range: [250, 500], ref: [10, 18] },
-  { name: "Mid", range: [500, 2000], ref: [20, 32] },
-  { name: "High-Mid", range: [2000, 4000], ref: [10, 18] },
-  { name: "Presence", range: [4000, 6000], ref: [5, 12] },
-  { name: "Brillanz", range: [6000, 16000], ref: [4, 12] },
+  { name: "Sub-Bass", range: [20, 60] },
+  { name: "Bass", range: [60, 250] },
+  { name: "Low-Mid", range: [250, 500] },
+  { name: "Mid", range: [500, 2000] },
+  { name: "High-Mid", range: [2000, 4000] },
+  { name: "Presence", range: [4000, 6000] },
+  { name: "Brillanz", range: [6000, 16000] },
 ];
+
+/* Referenzbereiche (% Energieanteil je Band) und Lautheits-Ziel je Genre. "" = allgemeiner
+   Referenzbereich, wenn kein Genre gewählt wurde. Grobe, praxisnahe Richtwerte, keine exakte
+   Norm - dienen als Orientierung, nicht als harte Regel. */
+const GENRE_PROFILES = {
+  "": { label: "Allgemein", loudnessTarget: -14, refs: [[2, 8], [14, 26], [10, 18], [20, 32], [10, 18], [5, 12], [4, 12]] },
+  hiphop: { label: "Hip-Hop / Rap", loudnessTarget: -9, refs: [[4, 10], [18, 30], [9, 16], [18, 28], [9, 16], [5, 11], [3, 9]] },
+  pop: { label: "Pop", loudnessTarget: -11, refs: [[2, 7], [13, 22], [10, 18], [22, 34], [11, 19], [6, 13], [5, 13]] },
+  edm: { label: "Electronic / EDM", loudnessTarget: -8, refs: [[6, 14], [20, 32], [8, 15], [16, 26], [9, 15], [4, 10], [4, 11]] },
+  rock: { label: "Rock / Metal", loudnessTarget: -9, refs: [[2, 6], [12, 20], [12, 20], [22, 32], [12, 20], [6, 13], [3, 9]] },
+  acoustic: { label: "Akustik / Singer-Songwriter", loudnessTarget: -16, refs: [[1, 5], [10, 18], [12, 20], [22, 34], [12, 20], [6, 13], [4, 11]] },
+};
+
+function genreProfile(genreKey) {
+  return GENRE_PROFILES[genreKey] || GENRE_PROFILES[""];
+}
 
 function hann(n) {
   const w = new Float64Array(n);
@@ -282,17 +298,15 @@ function scoreTechnik(a) {
   return Math.max(0, Math.min(100, score));
 }
 
-function scoreLautheit(a) {
-  const target = -14;
-  const diff = Math.abs(a.loudnessDb - target);
+function scoreLautheit(a, loudnessTarget) {
+  const diff = Math.abs(a.loudnessDb - loudnessTarget);
   let score = 100 - diff * 6;
   return Math.max(0, Math.min(100, score));
 }
 
-function scoreFrequenz(a) {
+function scoreFrequenz(a, refs) {
   let penalty = 0;
-  FREQ_BANDS.forEach((band, i) => {
-    const [lo, hi] = band.ref;
+  refs.forEach(([lo, hi], i) => {
     const val = a.bandPercents[i];
     if (val < lo) penalty += (lo - val) * 1.8;
     else if (val > hi) penalty += (val - hi) * 1.8;
@@ -316,17 +330,20 @@ function scoreTitel(lyrics) {
 
 /* ---------- Tips ---------- */
 
-function buildTips(a, lyrics, scores, hookTimingSec) {
+function buildTips(a, lyrics, scores, hookTimingSec, profile) {
   const tips = [];
+  const loudnessTarget = profile.loudnessTarget;
 
   if (a.clippingRatio > 0.005) {
     tips.push({
       level: "critical",
+      problem: `Der Track clippt hörbar (${(a.clippingRatio * 100).toFixed(2)}% der Samples am Limit).`,
       text: `Der Track clippt hörbar (${(a.clippingRatio * 100).toFixed(2)}% der Samples am Limit). Reduziere den Gain vor dem Limiter oder senke das Limiter-Ceiling auf ca. -1 dBTP.`,
     });
   } else if (a.clippingRatio > 0.0005) {
     tips.push({
       level: "warning",
+      problem: "Vereinzelte Samples liegen am Limit.",
       text: "Vereinzelte Samples liegen am Limit. Für Streaming-Plattformen etwas mehr Headroom lassen (True-Peak-Limiter, Ceiling ca. -1 dBTP).",
     });
   }
@@ -334,24 +351,27 @@ function buildTips(a, lyrics, scores, hookTimingSec) {
   if (a.crestFactorDb < 6) {
     tips.push({
       level: "critical",
+      problem: `Der Track ist stark überkomprimiert (Crest Factor ${a.crestFactorDb.toFixed(1)} dB).`,
       text: `Der Track ist stark überkomprimiert (Crest Factor ${a.crestFactorDb.toFixed(1)} dB). Das killt Dynamik und wirkt beim Mastering oft müde – etwas lockerer limitieren.`,
     });
   } else if (a.crestFactorDb > 22) {
     tips.push({
       level: "warning",
+      problem: `Der Track ist sehr dynamisch (Crest Factor ${a.crestFactorDb.toFixed(1)} dB).`,
       text: `Der Track ist sehr dynamisch (Crest Factor ${a.crestFactorDb.toFixed(1)} dB). Auf kleinen Boxen könnten leise Parts untergehen – ggf. etwas mehr komprimieren.`,
     });
   }
 
-  const loudnessTarget = -14;
   if (a.loudnessDb < loudnessTarget - 4) {
     tips.push({
       level: "warning",
+      problem: `Der Track ist recht leise (~${a.loudnessDb.toFixed(1)} dB RMS).`,
       text: `Der Track ist recht leise (~${a.loudnessDb.toFixed(1)} dB RMS). Spotify, Apple Music & Co. normalisieren zwar automatisch auf ein Zielniveau, aber wenn dein Master schon sehr leise angeliefert wird, verlierst du dabei Punch im Vergleich zu lauter gemasterten Tracks in derselben Playlist. Auf ca. ${loudnessTarget} dB (LUFS-ähnlich) zumastern.`,
     });
   } else if (a.loudnessDb > loudnessTarget + 4) {
     tips.push({
       level: "warning",
+      problem: `Der Track ist sehr laut ausgesteuert (~${a.loudnessDb.toFixed(1)} dB RMS).`,
       text: `Der Track ist sehr laut ausgesteuert (~${a.loudnessDb.toFixed(1)} dB RMS). Streaming-Plattformen wie Spotify (Ziel ca. -14 LUFS) und YouTube normalisieren automatisch nach unten – die Extra-Lautheit bringt dann nichts mehr, kostet aber Dynamik.`,
     });
   }
@@ -359,12 +379,14 @@ function buildTips(a, lyrics, scores, hookTimingSec) {
   if (a.introSilenceMs > 1500) {
     tips.push({
       level: "warning",
+      problem: `Der Track startet mit ca. ${(a.introSilenceMs / 1000).toFixed(1)} Sekunden Stille.`,
       text: `Der Track startet mit ca. ${(a.introSilenceMs / 1000).toFixed(1)} Sekunden Stille. Auf Playlists/Radio, wo Tracks oft direkt ineinander übergehen, kann das wie ein Fehler wirken oder Hörer verlieren, bevor überhaupt was passiert.`,
     });
   }
   if (a.outroEndsAbruptly) {
     tips.push({
       level: "warning",
+      problem: "Der Track endet abrupt/hart, ohne Fade-out oder klaren Schluss.",
       text: "Der Track endet abrupt/hart, ohne Fade-out oder klaren Schluss. Für saubere Übergänge (Playlists, DJ-Sets, Radio) wirkt ein bewusstes Ende oder ein kurzes Fade-out professioneller.",
     });
   }
@@ -373,11 +395,13 @@ function buildTips(a, lyrics, scores, hookTimingSec) {
     if (hookTimingSec > 30) {
       tips.push({
         level: "critical",
+        problem: `Deine Hook setzt erst bei Sekunde ${Math.round(hookTimingSec)} ein.`,
         text: `Deine Hook setzt erst bei Sekunde ${Math.round(hookTimingSec)} ein. Auf Spotify steigen viele Hörer schon nach ca. 30 Sekunden aus, wenn der Track sie bis dahin nicht gepackt hat – überleg, ob du früher einen Haken reinbringst (z. B. einen Ausschnitt der Hook direkt am Anfang).`,
       });
     } else {
       tips.push({
         level: "good",
+        problem: `Deine Hook setzt bei Sekunde ${Math.round(hookTimingSec)} ein – das liegt innerhalb der kritischen ersten 30 Sekunden auf Spotify, guter Wert.`,
         text: `Deine Hook setzt bei Sekunde ${Math.round(hookTimingSec)} ein – das liegt innerhalb der kritischen ersten 30 Sekunden auf Spotify, guter Wert.`,
       });
     }
@@ -385,15 +409,17 @@ function buildTips(a, lyrics, scores, hookTimingSec) {
 
   FREQ_BANDS.forEach((band, i) => {
     const val = a.bandPercents[i];
-    const [lo, hi] = band.ref;
+    const [lo, hi] = profile.refs[i];
     if (val < lo - 3) {
       tips.push({
         level: "warning",
+        problem: `Wenig Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz).`,
         text: `Wenig Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz). Der Track könnte in diesem Bereich dünn/schwach klingen.`,
       });
     } else if (val > hi + 3) {
       tips.push({
         level: "warning",
+        problem: `Viel Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz).`,
         text: `Viel Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz). Kann matschig oder harsch wirken – im Mix gezielt absenken (EQ).`,
       });
     }
@@ -402,12 +428,14 @@ function buildTips(a, lyrics, scores, hookTimingSec) {
   if (!lyrics.hasLyrics) {
     tips.push({
       level: "warning",
+      problem: "Kein Songtext eingegeben – Hook- und Songtitel-Erkennbarkeit konnten nicht geprüft werden.",
       text: "Kein Songtext eingegeben – Hook- und Songtitel-Erkennbarkeit konnten nicht geprüft werden. Für eine vollständige Analyse den Text ergänzen.",
     });
   } else {
     if (scores.hook !== null && scores.hook < 70) {
       tips.push({
         level: "warning",
+        problem: "Im Text ist keine klar wiederholte Hookline erkennbar.",
         text: "Im Text ist keine klar wiederholte Hookline erkennbar. Eine Zeile (idealerweise mit dem Songtitel) 2–3x zu wiederholen erhöht den Wiedererkennungswert.",
       });
     }
@@ -415,11 +443,13 @@ function buildTips(a, lyrics, scores, hookTimingSec) {
       if (!lyrics.titleInLyrics) {
         tips.push({
           level: "critical",
+          problem: "Der Songtitel taucht im Text gar nicht auf.",
           text: "Der Songtitel taucht im Text gar nicht auf. Hörer erinnern sich deutlich leichter, wenn der Titel tatsächlich gesungen wird.",
         });
       } else {
         tips.push({
           level: "warning",
+          problem: "Der Songtitel kommt zwar im Text vor, aber nicht in der Hook.",
           text: "Der Songtitel kommt zwar im Text vor, aber nicht in der am häufigsten wiederholten Zeile (Hook). Titel in die Hook zu holen stärkt den Wiedererkennungswert.",
         });
       }
@@ -427,10 +457,41 @@ function buildTips(a, lyrics, scores, hookTimingSec) {
   }
 
   if (tips.length === 0) {
-    tips.push({ level: "good", text: "Keine größeren technischen oder inhaltlichen Auffälligkeiten gefunden – solide Basis." });
+    tips.push({
+      level: "good",
+      problem: "Keine größeren technischen oder inhaltlichen Auffälligkeiten gefunden – solide Basis.",
+      text: "Keine größeren technischen oder inhaltlichen Auffälligkeiten gefunden – solide Basis.",
+    });
   }
 
   return tips;
+}
+
+/* ---------- Fazit als Wegweiser ---------- */
+
+function buildFazit(overallScore, tips) {
+  const actionable = tips
+    .filter((t) => t.level !== "good")
+    .sort((a, b) => TIP_LEVEL_RANK[a.level] - TIP_LEVEL_RANK[b.level])
+    .slice(0, 3);
+
+  let intro;
+  if (overallScore >= 70) intro = `Dein Track steht technisch und inhaltlich solide da (Score ${overallScore}/100).`;
+  else if (overallScore >= 45) intro = `Dein Track hat eine gute Basis, aber noch Luft nach oben (Score ${overallScore}/100).`;
+  else intro = `Dein Track braucht vor einer Einreichung noch Arbeit (Score ${overallScore}/100).`;
+
+  const closing =
+    actionable.length > 0
+      ? "Das sind deine konkreten nächsten Schritte, um näher an ein einreichfertiges Ergebnis zu kommen – kein Grund zur Sorge, sondern dein Fahrplan."
+      : "Keine größeren offenen Punkte – dein Track ist bereit für die Einreichung.";
+
+  return { intro, steps: actionable.map((t) => t.text), closing };
+}
+
+function renderFazit(container, fazit) {
+  const stepsHtml =
+    fazit.steps.length > 0 ? `<ol class="fazit-steps">${fazit.steps.map((s) => `<li>${s}</li>`).join("")}</ol>` : "";
+  container.innerHTML = `<p>${fazit.intro}</p>${stepsHtml}<p class="fazit-closing">${fazit.closing}</p>`;
 }
 
 /* ---------- Submission recommendations ---------- */
@@ -504,13 +565,13 @@ function renderMeter(container, { name, score, statusText }) {
   container.appendChild(el);
 }
 
-function renderFreqChart(container, bandPercents) {
+function renderFreqChart(container, bandPercents, refs) {
   container.innerHTML = "";
-  const maxVal = Math.max(...bandPercents, ...FREQ_BANDS.map((b) => b.ref[1])) * 1.15;
+  const maxVal = Math.max(...bandPercents, ...refs.map((r) => r[1])) * 1.15;
 
   FREQ_BANDS.forEach((band, i) => {
     const val = bandPercents[i];
-    const [refLo, refHi] = band.ref;
+    const [refLo, refHi] = refs[i];
     const wrap = document.createElement("div");
     wrap.className = "freq-bar-wrap";
 
@@ -599,25 +660,165 @@ async function requestKiEinschaetzung(title, lyrics, metrics) {
   return data;
 }
 
-/* ---------- Stripe-Zahlung (echte serverseitige Prüfung über den Worker) ---------- */
+/* ---------- Konten, Credits & Pro-Abo (D1 + Stripe über den Worker) ---------- */
 
-// Nach Einrichtung des Stripe Payment Links hier eintragen, z. B. "https://buy.stripe.com/xxxxxxxx".
-// Der Payment Link muss so konfiguriert sein, dass er nach Zahlung auf diese Seite mit
-// ?session_id={CHECKOUT_SESSION_ID} zurückleitet. Leer = Freischaltung bleibt kostenlose Demo.
-const STRIPE_PAYMENT_LINK_URL = "";
+const WORKER_BASE = SONGTEXT_WORKER_URL.replace(/\/?$/, "/");
+const TOKEN_KEY = "overhertz_token";
+const ANALYSIS_SNAPSHOT_KEY = "overhertz_analysis_snapshot";
 
-const ANALYSIS_SNAPSHOT_KEY = "trackstar_analysis_snapshot";
 let currentAnalysisSnapshot = null;
+let currentUser = null; // { email, plan, credits, checksUsedPeriod, planRenewsAt, proQuota } oder null
 
-async function verifyPayment(sessionId) {
-  const verifyUrl = SONGTEXT_WORKER_URL.replace(/\/?$/, "/") + "verify-payment";
-  const res = await fetch(verifyUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ sessionId }),
-  });
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY) || "";
+}
+function setToken(token) {
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
+}
+
+async function apiFetch(path, options = {}) {
+  const headers = Object.assign({ "content-type": "application/json" }, options.headers || {});
+  const token = getToken();
+  if (token) headers["Authorization"] = "Bearer " + token;
+  let res;
+  try {
+    res = await fetch(WORKER_BASE + path, Object.assign({}, options, { headers }));
+  } catch {
+    return { ok: false, status: 0, data: { error: "Server nicht erreichbar." } };
+  }
   const data = await res.json().catch(() => ({}));
-  return !!data.paid;
+  return { ok: res.ok, status: res.status, data };
+}
+
+const accountBar = document.getElementById("account-bar");
+const authCard = document.getElementById("auth-card");
+const authStatus = document.getElementById("auth-status");
+const loginForm = document.getElementById("login-form");
+const registerForm = document.getElementById("register-form");
+const authToggleBtn = document.getElementById("account-toggle");
+const logoutBtn = document.getElementById("logout-btn");
+const pricingCard = document.getElementById("pricing-card");
+const pricingStatus = document.getElementById("pricing-status");
+
+function renderAccountBar() {
+  if (!accountBar) return;
+  accountBar.innerHTML = "";
+  if (currentUser) {
+    const quotaText =
+      currentUser.plan === "pro" || currentUser.plan === "pro_annual"
+        ? `${currentUser.proQuota - currentUser.checksUsedPeriod}/${currentUser.proQuota} Checks diesen Monat`
+        : `${currentUser.credits} Credit${currentUser.credits === 1 ? "" : "s"}`;
+    const planLabel = { free: "Free", pro: "Pro", pro_annual: "Pro (jährlich)" }[currentUser.plan] || currentUser.plan;
+    accountBar.innerHTML = `
+      <span class="account-info"><strong>${currentUser.email}</strong> · ${planLabel} · ${quotaText}</span>
+      <button type="button" id="logout-btn" class="account-btn">Abmelden</button>
+    `;
+    document.getElementById("logout-btn").addEventListener("click", handleLogout);
+  } else {
+    accountBar.innerHTML = `<button type="button" id="account-toggle" class="account-btn">Login / Registrieren</button>`;
+    document.getElementById("account-toggle").addEventListener("click", () => toggleAuthCard());
+  }
+}
+
+function toggleAuthCard(forceOpen) {
+  if (!authCard) return;
+  authCard.hidden = forceOpen === true ? false : !authCard.hidden;
+  if (!authCard.hidden) authCard.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function refreshAccount() {
+  if (!getToken()) {
+    currentUser = null;
+    renderAccountBar();
+    return;
+  }
+  const { ok, data } = await apiFetch("auth/me", { method: "GET" });
+  if (ok) {
+    currentUser = data.user;
+  } else {
+    currentUser = null;
+    setToken("");
+  }
+  renderAccountBar();
+}
+
+async function handleLogout() {
+  await apiFetch("auth/logout", { method: "POST" });
+  setToken("");
+  currentUser = null;
+  renderAccountBar();
+}
+
+if (loginForm) {
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("login-email").value;
+    const password = document.getElementById("login-password").value;
+    authStatus.textContent = "Einloggen…";
+    const { ok, data } = await apiFetch("auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+    if (ok) {
+      setToken(data.token);
+      currentUser = data.user;
+      renderAccountBar();
+      authCard.hidden = true;
+      authStatus.textContent = "";
+    } else {
+      authStatus.textContent = data.error || "Login fehlgeschlagen.";
+    }
+  });
+}
+
+if (registerForm) {
+  registerForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("register-email").value;
+    const password = document.getElementById("register-password").value;
+    authStatus.textContent = "Konto wird erstellt…";
+    const { ok, data } = await apiFetch("auth/register", { method: "POST", body: JSON.stringify({ email, password }) });
+    if (ok) {
+      setToken(data.token);
+      currentUser = data.user;
+      renderAccountBar();
+      authCard.hidden = true;
+      authStatus.textContent = "";
+    } else {
+      authStatus.textContent = data.error || "Registrierung fehlgeschlagen.";
+    }
+  });
+}
+
+document.querySelectorAll(".plan-select-btn").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    if (!currentUser) {
+      toggleAuthCard(true);
+      pricingStatus.textContent = "Bitte zuerst einloggen oder registrieren.";
+      return;
+    }
+    pricingStatus.textContent = "Weiterleitung zur Zahlung…";
+    if (currentAnalysisSnapshot) sessionStorage.setItem(ANALYSIS_SNAPSHOT_KEY, JSON.stringify(currentAnalysisSnapshot));
+    const { ok, data } = await apiFetch("create-checkout-session", {
+      method: "POST",
+      body: JSON.stringify({ plan: btn.dataset.plan }),
+    });
+    if (ok && data.url) {
+      window.location.href = data.url;
+    } else {
+      pricingStatus.textContent = data.error || "Zahlung konnte nicht gestartet werden.";
+    }
+  });
+});
+
+function openPricing(message) {
+  if (pricingCard) {
+    pricingCard.hidden = false;
+    pricingStatus.textContent = message || "";
+    pricingCard.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+async function tryConsumeCredit() {
+  return apiFetch("consume-credit", { method: "POST" });
 }
 
 /* ---------- Main flow ---------- */
@@ -635,13 +836,14 @@ const rewriteOutput = document.getElementById("rewrite-output");
 const rewriteClassification = document.getElementById("rewrite-classification");
 const rewriteTitleIdeas = document.getElementById("rewrite-title-ideas");
 
-function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTimingSec }, { unlockedPremium }) {
+function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTimingSec, genre }, { unlockedPremium }) {
   const lyrics = analyzeLyrics(lyricsRaw, title);
+  const profile = genreProfile(genre);
 
   const scores = {
     technik: scoreTechnik(audioMetrics),
-    lautheit: scoreLautheit(audioMetrics),
-    frequenz: scoreFrequenz(audioMetrics),
+    lautheit: scoreLautheit(audioMetrics, profile.loudnessTarget),
+    frequenz: scoreFrequenz(audioMetrics, profile.refs),
     hook: scoreHook(lyrics),
     titel: scoreTitel(lyrics),
   };
@@ -674,10 +876,10 @@ function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTim
     { label: "Hook", score: hookScore, mutedNote: "Songtext fehlt" },
   ]);
 
-  const tips = buildTips(audioMetrics, lyrics, scores, hookTimingSec);
+  const tips = buildTips(audioMetrics, lyrics, scores, hookTimingSec, profile);
   const topTip = pickTopTip(tips);
-  const teaserLabel = topTip.level === "good" ? "Stärke" : "Größter Hebel";
-  document.getElementById("teaser-tip").innerHTML = `<span class="mark">✦ ${teaserLabel}</span> ${topTip.text}`;
+  const teaserLabel = topTip.level === "good" ? "Stärke" : "Größtes Problem";
+  document.getElementById("teaser-tip").innerHTML = `<span class="mark">✦ ${teaserLabel}</span> ${topTip.problem}`;
 
   lastAnalysis = {
     overallScore,
@@ -687,7 +889,7 @@ function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTim
     topIssues: tips.filter((t) => t.level !== "good").map((t) => t.text),
   };
 
-  currentAnalysisSnapshot = { title, lyricsRaw, targetStation, audioMetrics, hookTimingSec };
+  currentAnalysisSnapshot = { title, lyricsRaw, targetStation, audioMetrics, hookTimingSec, genre };
 
   premiumResultsEl.hidden = !unlockedPremium;
 
@@ -707,8 +909,10 @@ function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTim
     statusText: scores.titel === null ? (lyrics.hasLyrics ? "Songtitel fehlt" : "Songtext fehlt") : "",
   });
 
-  renderFreqChart(document.getElementById("freq-chart"), audioMetrics.bandPercents);
+  renderFreqChart(document.getElementById("freq-chart"), audioMetrics.bandPercents, profile.refs);
   renderTips(document.getElementById("tips-list"), tips);
+
+  renderFazit(document.getElementById("fazit-block"), buildFazit(overallScore, tips));
 
   const rewriteBlock = document.getElementById("rewrite-block");
   rewriteBlock.hidden = !lyrics.hasLyrics;
@@ -752,15 +956,24 @@ rewriteBtn.addEventListener("click", async () => {
   }
 });
 
-unlockBtn.addEventListener("click", () => {
-  if (!STRIPE_PAYMENT_LINK_URL) {
-    premiumResultsEl.hidden = false;
-    premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+unlockBtn.addEventListener("click", async () => {
+  if (!currentAnalysisSnapshot) return;
+  if (!currentUser) {
+    toggleAuthCard(true);
+    statusLine.textContent = "Bitte zuerst einloggen oder registrieren, um die Vollanalyse freizuschalten.";
     return;
   }
-  if (!currentAnalysisSnapshot) return;
-  sessionStorage.setItem(ANALYSIS_SNAPSHOT_KEY, JSON.stringify(currentAnalysisSnapshot));
-  window.location.href = STRIPE_PAYMENT_LINK_URL;
+  unlockBtn.disabled = true;
+  const { ok, data } = await tryConsumeCredit();
+  unlockBtn.disabled = false;
+  if (ok) {
+    currentUser = Object.assign({}, currentUser, { credits: data.credits, plan: data.plan });
+    renderAccountBar();
+    renderAnalysis(currentAnalysisSnapshot, { unlockedPremium: true });
+    premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else {
+    openPricing("Keine Credits mehr übrig – wähle ein Paket, um die Vollanalyse freizuschalten.");
+  }
 });
 
 form.addEventListener("submit", async (e) => {
@@ -774,6 +987,7 @@ form.addEventListener("submit", async (e) => {
   const targetStation = document.getElementById("target-station").value;
   const hookTimingRaw = document.getElementById("hook-timing").value;
   const hookTimingSec = hookTimingRaw !== "" ? Number(hookTimingRaw) : undefined;
+  const genre = document.getElementById("track-genre").value;
 
   analyzeBtn.disabled = true;
   statusLine.textContent = "Lade Audio…";
@@ -789,7 +1003,7 @@ form.addEventListener("submit", async (e) => {
     await new Promise((r) => setTimeout(r, 10));
     const audioMetrics = analyzeAudioBuffer(audioBuffer);
 
-    renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTimingSec }, { unlockedPremium: false });
+    renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTimingSec, genre }, { unlockedPremium: false });
     freeResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
     statusLine.textContent = "";
     ctx.close();
@@ -801,30 +1015,139 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-/* ---------- Nach Rückkehr von der Stripe-Zahlung: Session prüfen und Analyse wiederherstellen ---------- */
+/* ---------- Album-Check (Pro-Feature: mehrere Tracks am Stück pruefen) ---------- */
 
-(async function restoreAfterPayment() {
+const albumBtn = document.getElementById("album-analyze-btn");
+const albumFilesInput = document.getElementById("album-files");
+const albumStatus = document.getElementById("album-status");
+const albumResults = document.getElementById("album-results");
+
+if (albumBtn) {
+  albumBtn.addEventListener("click", async () => {
+    const files = Array.from((albumFilesInput && albumFilesInput.files) || []);
+    if (files.length === 0) {
+      albumStatus.textContent = "Bitte mindestens einen Track auswählen.";
+      return;
+    }
+    if (!currentUser) {
+      toggleAuthCard(true);
+      albumStatus.textContent = "Bitte zuerst einloggen oder registrieren.";
+      return;
+    }
+    if (currentUser.plan !== "pro" && currentUser.plan !== "pro_annual") {
+      openPricing("Album-Check ist Teil des Pro-Plans.");
+      return;
+    }
+
+    albumBtn.disabled = true;
+    albumResults.innerHTML = "";
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const profile = genreProfile("");
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      albumStatus.textContent = `Track ${i + 1}/${files.length}: „${file.name}“ wird geprüft…`;
+
+      const { ok, data } = await tryConsumeCredit();
+      if (!ok) {
+        albumStatus.textContent = `Kontingent aufgebraucht bei Track ${i + 1}/${files.length} (${data.error || "keine Checks mehr übrig"}).`;
+        break;
+      }
+      currentUser = Object.assign({}, currentUser, { credits: data.credits, plan: data.plan });
+      renderAccountBar();
+
+      const card = document.createElement("div");
+      card.className = "album-track";
+      albumResults.appendChild(card);
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const ctx = new AudioCtx();
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+        const audioMetrics = analyzeAudioBuffer(audioBuffer);
+        ctx.close();
+
+        const scores = {
+          technik: scoreTechnik(audioMetrics),
+          lautheit: scoreLautheit(audioMetrics, profile.loudnessTarget),
+          frequenz: scoreFrequenz(audioMetrics, profile.refs),
+          hook: null,
+          titel: null,
+        };
+        const weighted = [
+          { score: scores.technik, weight: 40 },
+          { score: scores.lautheit, weight: 30 },
+          { score: scores.frequenz, weight: 30 },
+        ];
+        const overallScore = Math.round(weighted.reduce((a, x) => a + x.score * x.weight, 0) / 100);
+        const grade = gradeForScore(overallScore);
+        const tips = buildTips(audioMetrics, { hasLyrics: false, hasTitle: false }, scores, undefined, profile);
+        const topTip = pickTopTip(tips);
+
+        card.innerHTML = `
+          <div class="album-track-head">
+            <span class="album-track-name">${file.name}</span>
+            <span class="album-track-score" style="color:${grade.color}">${overallScore}/100 · ${grade.title}</span>
+          </div>
+          <p class="album-track-tip">${topTip.text}</p>
+        `;
+      } catch (err) {
+        card.innerHTML = `
+          <div class="album-track-head"><span class="album-track-name">${file.name}</span></div>
+          <p class="album-track-tip">Fehler: ${err && err.message ? err.message : "Analyse fehlgeschlagen."}</p>
+        `;
+      }
+    }
+
+    albumStatus.textContent = "";
+    albumBtn.disabled = false;
+  });
+}
+
+/* ---------- Nach Rückkehr von der Stripe-Zahlung: Konto aktualisieren und Analyse freischalten ---------- */
+
+(async function init() {
+  await refreshAccount();
+
   const params = new URLSearchParams(window.location.search);
-  const sessionId = params.get("session_id");
-  if (!sessionId) return;
-
+  const checkout = params.get("checkout");
+  if (!checkout) return;
   history.replaceState({}, "", window.location.pathname);
 
   const snapshotRaw = sessionStorage.getItem(ANALYSIS_SNAPSHOT_KEY);
   if (!snapshotRaw) return;
+  const snapshot = JSON.parse(snapshotRaw);
 
-  statusLine.textContent = "Zahlung wird geprüft…";
-  try {
-    const paid = await verifyPayment(sessionId);
-    if (!paid) {
-      statusLine.textContent = "Zahlung konnte nicht bestätigt werden. Falls du bezahlt hast, melde dich bei uns.";
-      return;
+  if (checkout !== "success") {
+    renderAnalysis(snapshot, { unlockedPremium: false });
+    return;
+  }
+
+  statusLine.textContent = "Zahlung wird verarbeitet…";
+  let unlocked = false;
+  let lastData = null;
+  for (let attempt = 0; attempt < 6 && !unlocked; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, 1500));
+      await refreshAccount();
     }
-    const snapshot = JSON.parse(snapshotRaw);
-    renderAnalysis(snapshot, { unlockedPremium: true });
+    const result = await tryConsumeCredit();
+    lastData = result.data;
+    if (result.ok) {
+      currentUser = Object.assign({}, currentUser, { credits: result.data.credits, plan: result.data.plan });
+      renderAccountBar();
+      unlocked = true;
+    }
+  }
+
+  renderAnalysis(snapshot, { unlockedPremium: unlocked });
+  if (unlocked) {
     statusLine.textContent = "";
     premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
-  } catch (err) {
-    statusLine.textContent = "Zahlung konnte nicht geprüft werden: " + (err && err.message ? err.message : "Unbekannter Fehler.");
+  } else {
+    statusLine.textContent =
+      "Zahlung wird noch verarbeitet (" +
+      (lastData && lastData.error ? lastData.error : "bitte kurz warten") +
+      ") – gleich nochmal auf 'Vollanalyse ansehen' klicken.";
   }
 })();

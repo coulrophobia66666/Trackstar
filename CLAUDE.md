@@ -1,9 +1,12 @@
-# Trackstar – Hausregeln
+# Overhertz – Hausregeln
 
 ## Über das Projekt
-KI-Songcheck-Tool: Nutzer laden einen Track hoch, bekommen einen kostenlosen
-Kurzcheck (Sound, Star-Potential, Hook) und eine kostenpflichtige Tiefenanalyse
-(Frequenzen, Tipps, KI-Einordnung, Titel-Ideen, Songtext-Verbesserung).
+KI-Songcheck-Tool (Markenname **Overhertz**, Repo/Ordnername noch "Trackstar" –
+Umbenennung folgt): Nutzer laden einen Track hoch, bekommen einen kostenlosen
+Kurzcheck (Ampel-Urteil, größtes Problem – ohne Lösung) und schalten mit
+Credits (5 Checks/7€) oder Pro-Abo (9,50€/Monat bzw. 79€/Jahr) die
+Tiefenanalyse frei (Frequenzen, Tipps, KI-Einordnung, Titel-Ideen,
+Songtext-Verbesserung, Album-Upload).
 Bewusst **eigenständig** von Nachtfahrt Records/EZY, bis explizit anders
 entschieden – kein Cross-Branding, keine gemeinsamen Inhalte.
 
@@ -25,7 +28,10 @@ durchzuziehen.
   ein an dieses Repo angebundenes Cloudflare-Projekt (nicht GitHub Pages –
   das hat sich bei privaten Repos als Sackgasse erwiesen)
 - `worker/` – Cloudflare Worker (`songtext-worker.js`), hält Anthropic- und
-  Stripe-Secrets serverseitig, macht KI-Einschätzung + Zahlungsprüfung
+  Stripe-Secrets serverseitig, macht KI-Einschätzung, Konten/Login, Credits/
+  Abo-Logik und Stripe-Checkout/Webhook. Braucht eine D1-Datenbank (Binding
+  `DB`, Schema in `worker/schema.sql`) – siehe OFFENE-PUNKTE.md für die
+  einmaligen manuellen Einrichtungsschritte.
 - Beide Cloudflare-Projekte ziehen sich den Code automatisch bei jedem Push
   auf `main` – nach jedem Feature-Branch-Commit auch nach `main` mergen und
   pushen, sonst passiert auf Cloudflare nichts

@@ -9,3 +9,11 @@ namespace_id = "1001"
 [ratelimits.simple]
 limit = 5
 period = 60
+
+# D1-Datenbank fuer Konten/Credits/Abo. Einmalig manuell anlegen:
+# Cloudflare-Dashboard -> Workers & Pages -> D1 -> "Create database" (Name z.B. "overhertz-db"),
+# dann die database_id unten eintragen und im D1-Console-Tab schema.sql ausfuehren.
+[[d1_databases]]
+binding = "DB"
+database_name = "overhertz-db"
+database_id = "REPLACE_WITH_REAL_D1_DATABASE_ID"

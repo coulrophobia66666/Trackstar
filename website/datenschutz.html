@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Datenschutzerklärung – Trackstar</title>
+  <title>Datenschutzerklärung – Overhertz</title>
   <meta name="robots" content="noindex" />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
@@ -22,7 +22,7 @@
 </head>
 <body>
   <div class="legal">
-    <a class="back" href="index.html">← Zurück zu Trackstar</a>
+    <a class="back" href="index.html">← Zurück zu Overhertz</a>
     <h1>Datenschutzerklärung</h1>
 
     <div class="note">
@@ -61,6 +61,15 @@
       Eine optionale Texteingabe, die ausschließlich lokal zur Anzeige der Ergebnisse verwendet wird.
     </p>
 
+    <h3>Konto (E-Mail, Passwort, Credits/Abo-Stand)</h3>
+    <p>
+      Wenn du dich registrierst, speichern wir deine E-Mail-Adresse und dein Passwort in gehashter Form
+      (PBKDF2, das Passwort selbst wird nicht gespeichert) in einer Datenbank bei Cloudflare (D1), zusammen
+      mit deinem Credits- bzw. Abo-Stand. Nach dem Login wird ein Login-Token in deinem Browser
+      (Local Storage) abgelegt, damit du eingeloggt bleibst – dieses Token identifiziert nur deine Session,
+      keine weiteren Daten.
+    </p>
+
     <h2>3. Hosting und Server-Logs</h2>
     <p>
       Diese Seite wird über Cloudflare gehostet. Wie bei jedem Website-Aufruf üblich, verarbeitet
@@ -78,25 +87,31 @@
       verarbeitet.
     </p>
 
-    <h2>5. Cookies</h2>
+    <h2>5. Zahlungsabwicklung (Stripe)</h2>
     <p>
-      Diese Website setzt keine eigenen Cookies und speichert keine Daten dauerhaft im Browser
-      (kein Local Storage, keine Tracking-Cookies).
+      Für den Kauf von Credits oder ein Pro-Abo wirst du zu einer von Stripe gehosteten Bezahlseite
+      (Stripe Checkout) weitergeleitet. Deine Zahlungsdaten (Kartendaten o. ä.) gibst du dort direkt bei
+      Stripe ein und laufen nicht über unsere Server. Wir erhalten von Stripe nur den Bezahlstatus sowie
+      eine Kunden-/Abo-Referenznummer, um deinen Credits- bzw. Abo-Stand in unserer Datenbank zu
+      aktualisieren. Näheres:
+      <a href="https://stripe.com/de/privacy" target="_blank" rel="noopener">Stripe Datenschutzerklärung</a>.
     </p>
 
-    <h2>6. Deine Rechte</h2>
+    <h2>6. Cookies und lokaler Speicher</h2>
+    <p>
+      Diese Website setzt keine Tracking- oder Werbe-Cookies. Nach einem Login/einer Registrierung wird
+      ein Login-Token in deinem Browser (Local Storage) gespeichert, damit du eingeloggt bleibst – das ist
+      technisch notwendig und dient keiner Analyse oder Werbung. Du kannst es jederzeit über „Abmelden“
+      entfernen.
+    </p>
+
+    <h2>7. Deine Rechte</h2>
     <p>
       Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung,
       Datenübertragbarkeit sowie Widerspruch gegen die Verarbeitung deiner personenbezogenen Daten.
       Wende dich dazu an: <a href="mailto:Ezy.Officially@gmail.com">Ezy.Officially@gmail.com</a>. Du hast außerdem
-      das Recht, dich bei einer Datenschutz-Aufsichtsbehörde zu beschweren.
-    </p>
-
-    <h2>7. Geplant, aktuell nicht aktiv</h2>
-    <p>
-      Eine spätere kostenpflichtige Freischaltung der Tiefenanalyse würde die Verarbeitung von
-      Zahlungsdaten über einen externen Zahlungsanbieter erfordern – diese Erklärung wird aktualisiert,
-      sobald das umgesetzt ist.
+      das Recht, dich bei einer Datenschutz-Aufsichtsbehörde zu beschweren. Auf Anfrage löschen wir auch
+      dein Konto inklusive gespeicherter E-Mail-Adresse und Abo-Stand.
     </p>
   </div>
 </body>
