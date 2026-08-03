@@ -56,6 +56,14 @@
             <input type="text" id="target-station" placeholder="z. B. Oberberg Radio" />
           </div>
 
+          <div class="field">
+            <label for="hook-timing">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 4.5V8l2.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+              Hook setzt ein bei Sekunde… <span class="optional">(optional)</span>
+            </label>
+            <input type="number" id="hook-timing" min="0" step="1" placeholder="z. B. 22" />
+          </div>
+
           <button type="submit" id="analyze-btn">Analyse starten</button>
           <p class="status-line" id="status-line" role="status" aria-live="polite"></p>
         </form>
