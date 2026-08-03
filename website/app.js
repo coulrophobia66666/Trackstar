@@ -174,6 +174,8 @@ function analyzeAudioBuffer(buffer) {
   const totalEnergy = bandEnergy.reduce((a, b) => a + b, 0) || 1;
   const bandPercents = bandEnergy.map((e) => (e / totalEnergy) * 100);
 
+  const edgeSilence = analyzeEdgeSilence(mono, sampleRate);
+
   return {
     duration: buffer.duration,
     peak,
@@ -183,7 +185,33 @@ function analyzeAudioBuffer(buffer) {
     crestFactorDb,
     bandPercents,
     framesUsed,
+    introSilenceMs: edgeSilence.introSilenceMs,
+    outroEndsAbruptly: edgeSilence.outroEndsAbruptly,
   };
+}
+
+function analyzeEdgeSilence(mono, sampleRate) {
+  const silenceThreshold = 0.02;
+  const windowSamples = Math.max(1, Math.round(sampleRate * 0.05));
+
+  let leadingSilentWindows = 0;
+  for (let i = 0; i < mono.length; i += windowSamples) {
+    const end = Math.min(i + windowSamples, mono.length);
+    let sum = 0;
+    for (let j = i; j < end; j++) sum += Math.abs(mono[j]);
+    const avg = sum / (end - i);
+    if (avg > silenceThreshold) break;
+    leadingSilentWindows++;
+  }
+  const introSilenceMs = (leadingSilentWindows * windowSamples * 1000) / sampleRate;
+
+  const tailSamples = Math.min(mono.length, Math.round(sampleRate * 0.3));
+  let tailSum = 0;
+  for (let j = mono.length - tailSamples; j < mono.length; j++) tailSum += Math.abs(mono[j]);
+  const tailAvg = tailSamples > 0 ? tailSum / tailSamples : 0;
+  const outroEndsAbruptly = tailAvg > silenceThreshold * 1.5;
+
+  return { introSilenceMs, outroEndsAbruptly };
 }
 
 /* ---------- Lyrics / hook analysis ---------- */
@@ -288,7 +316,7 @@ function scoreTitel(lyrics) {
 
 /* ---------- Tips ---------- */
 
-function buildTips(a, lyrics, scores) {
+function buildTips(a, lyrics, scores, hookTimingSec) {
   const tips = [];
 
   if (a.clippingRatio > 0.005) {
@@ -319,13 +347,40 @@ function buildTips(a, lyrics, scores) {
   if (a.loudnessDb < loudnessTarget - 4) {
     tips.push({
       level: "warning",
-      text: `Der Track ist recht leise (~${a.loudnessDb.toFixed(1)} dB RMS). Für Streaming wird meist um ${loudnessTarget} dB (LUFS-ähnlich) angepeilt – lauter mastern.`,
+      text: `Der Track ist recht leise (~${a.loudnessDb.toFixed(1)} dB RMS). Spotify, Apple Music & Co. normalisieren zwar automatisch auf ein Zielniveau, aber wenn dein Master schon sehr leise angeliefert wird, verlierst du dabei Punch im Vergleich zu lauter gemasterten Tracks in derselben Playlist. Auf ca. ${loudnessTarget} dB (LUFS-ähnlich) zumastern.`,
     });
   } else if (a.loudnessDb > loudnessTarget + 4) {
     tips.push({
       level: "warning",
-      text: `Der Track ist sehr laut ausgesteuert (~${a.loudnessDb.toFixed(1)} dB RMS). Viele Plattformen normalisieren ohnehin auf Zielwerte – zu viel Loudness kostet oft nur Dynamik.`,
+      text: `Der Track ist sehr laut ausgesteuert (~${a.loudnessDb.toFixed(1)} dB RMS). Streaming-Plattformen wie Spotify (Ziel ca. -14 LUFS) und YouTube normalisieren automatisch nach unten – die Extra-Lautheit bringt dann nichts mehr, kostet aber Dynamik.`,
     });
+  }
+
+  if (a.introSilenceMs > 1500) {
+    tips.push({
+      level: "warning",
+      text: `Der Track startet mit ca. ${(a.introSilenceMs / 1000).toFixed(1)} Sekunden Stille. Auf Playlists/Radio, wo Tracks oft direkt ineinander übergehen, kann das wie ein Fehler wirken oder Hörer verlieren, bevor überhaupt was passiert.`,
+    });
+  }
+  if (a.outroEndsAbruptly) {
+    tips.push({
+      level: "warning",
+      text: "Der Track endet abrupt/hart, ohne Fade-out oder klaren Schluss. Für saubere Übergänge (Playlists, DJ-Sets, Radio) wirkt ein bewusstes Ende oder ein kurzes Fade-out professioneller.",
+    });
+  }
+
+  if (typeof hookTimingSec === "number" && !Number.isNaN(hookTimingSec)) {
+    if (hookTimingSec > 30) {
+      tips.push({
+        level: "critical",
+        text: `Deine Hook setzt erst bei Sekunde ${Math.round(hookTimingSec)} ein. Auf Spotify steigen viele Hörer schon nach ca. 30 Sekunden aus, wenn der Track sie bis dahin nicht gepackt hat – überleg, ob du früher einen Haken reinbringst (z. B. einen Ausschnitt der Hook direkt am Anfang).`,
+      });
+    } else {
+      tips.push({
+        level: "good",
+        text: `Deine Hook setzt bei Sekunde ${Math.round(hookTimingSec)} ein – das liegt innerhalb der kritischen ersten 30 Sekunden auf Spotify, guter Wert.`,
+      });
+    }
   }
 
   FREQ_BANDS.forEach((band, i) => {
@@ -580,7 +635,7 @@ const rewriteOutput = document.getElementById("rewrite-output");
 const rewriteClassification = document.getElementById("rewrite-classification");
 const rewriteTitleIdeas = document.getElementById("rewrite-title-ideas");
 
-function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics }, { unlockedPremium }) {
+function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTimingSec }, { unlockedPremium }) {
   const lyrics = analyzeLyrics(lyricsRaw, title);
 
   const scores = {
@@ -619,7 +674,7 @@ function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics }, { unl
     { label: "Hook", score: hookScore, mutedNote: "Songtext fehlt" },
   ]);
 
-  const tips = buildTips(audioMetrics, lyrics, scores);
+  const tips = buildTips(audioMetrics, lyrics, scores, hookTimingSec);
   const topTip = pickTopTip(tips);
   const teaserLabel = topTip.level === "good" ? "Stärke" : "Größter Hebel";
   document.getElementById("teaser-tip").innerHTML = `<span class="mark">✦ ${teaserLabel}</span> ${topTip.text}`;
@@ -632,7 +687,7 @@ function renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics }, { unl
     topIssues: tips.filter((t) => t.level !== "good").map((t) => t.text),
   };
 
-  currentAnalysisSnapshot = { title, lyricsRaw, targetStation, audioMetrics };
+  currentAnalysisSnapshot = { title, lyricsRaw, targetStation, audioMetrics, hookTimingSec };
 
   premiumResultsEl.hidden = !unlockedPremium;
 
@@ -717,6 +772,8 @@ form.addEventListener("submit", async (e) => {
   const title = document.getElementById("track-title").value;
   const lyricsRaw = document.getElementById("track-lyrics").value;
   const targetStation = document.getElementById("target-station").value;
+  const hookTimingRaw = document.getElementById("hook-timing").value;
+  const hookTimingSec = hookTimingRaw !== "" ? Number(hookTimingRaw) : undefined;
 
   analyzeBtn.disabled = true;
   statusLine.textContent = "Lade Audio…";
@@ -732,7 +789,7 @@ form.addEventListener("submit", async (e) => {
     await new Promise((r) => setTimeout(r, 10));
     const audioMetrics = analyzeAudioBuffer(audioBuffer);
 
-    renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics }, { unlockedPremium: false });
+    renderAnalysis({ title, lyricsRaw, targetStation, audioMetrics, hookTimingSec }, { unlockedPremium: false });
     freeResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
     statusLine.textContent = "";
     ctx.close();
