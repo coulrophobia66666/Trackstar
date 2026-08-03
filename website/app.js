@@ -449,13 +449,17 @@ function analyzeLyrics(lyricsRaw, titleRaw) {
 
 /* ---------- Scoring ---------- */
 
-function scoreTechnik(a) {
+function scoreTechnik(a, profile) {
   // Bewertung um einen Idealpunkt statt einem "Idealfenster" - ein flacher Bereich, in dem
   // jeder Wert 100% gibt, wirkt schnell unglaubwuerdig grob (fast jeder saubere Track landet
   // sonst exakt bei 100%). So gibt's fast nie eine glatte Bestnote, sondern einen nuancierten Wert.
   const clipPenalty = Math.min(60, a.clippingRatio * 2800);
 
-  const idealCrest = 12.5;
+  // Genre-abhaengiger Idealwert statt einem starren 12.5 dB fuer alle: Hip-Hop/EDM-Masters
+  // liegen genretypisch im niedrigeren Crest-Factor-Bereich, ohne dass das technisch schlechter
+  // waere - ein fixer Wert wuerde das systematisch abstrafen.
+  const fp = profile && profile.fingerprint;
+  const idealCrest = fp ? (fp.crestRange[0] + fp.crestRange[1]) / 2 : 12.5;
   const crestDeviation = Math.abs(a.crestFactorDb - idealCrest);
   const crestPenalty = crestDeviation * crestDeviation * 0.22;
 
@@ -469,11 +473,20 @@ function scoreLautheit(a, loudnessTarget) {
 }
 
 function scoreFrequenz(a, refs) {
+  // Derselbe Fehler wie vorher bei scoreTechnik: eine Nullstrafe ueberall im Referenzbereich
+  // fuehrt dazu, dass viele Tracks eine glatte 100 bekommen. Jetzt kontinuierlich um die Mitte
+  // jedes Bandes bewertet, mit sanfter Abstufung innerhalb des Referenzbereichs statt Nullzone.
   let penalty = 0;
   refs.forEach(([lo, hi], i) => {
     const val = a.bandPercents[i];
-    if (val < lo) penalty += (lo - val) * 1.8;
-    else if (val > hi) penalty += (val - hi) * 1.8;
+    const mid = (lo + hi) / 2;
+    const halfWidth = (hi - lo) / 2 || 1;
+    const dist = Math.abs(val - mid);
+    if (dist <= halfWidth) {
+      penalty += (dist / halfWidth) * 3;
+    } else {
+      penalty += 3 + (dist - halfWidth) * 1.8;
+    }
   });
   return Math.max(0, Math.min(100, 100 - penalty));
 }
@@ -1106,7 +1119,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
   const profile = genreProfile(genre);
 
   const scores = {
-    technik: scoreTechnik(audioMetrics),
+    technik: scoreTechnik(audioMetrics, profile),
     lautheit: scoreLautheit(audioMetrics, profile.loudnessTarget),
     frequenz: scoreFrequenz(audioMetrics, profile.refs),
     hook: scoreHook(lyrics),
@@ -1980,7 +1993,7 @@ if (albumBtn) {
         ctx.close();
 
         const scores = {
-          technik: scoreTechnik(audioMetrics),
+          technik: scoreTechnik(audioMetrics, profile),
           lautheit: scoreLautheit(audioMetrics, profile.loudnessTarget),
           frequenz: scoreFrequenz(audioMetrics, profile.refs),
           hook: null,
