@@ -340,6 +340,41 @@ button#analyze-btn:disabled {
   display: none;
 }
 
+/* EQ-Visualizer (durchgehende, dezente Bewegung fuer mehr "Erlebnis") */
+.eq-visualizer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  height: 26px;
+  margin: 1rem auto 0;
+}
+
+.eq-bar {
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border-radius: 2px;
+  transform-origin: bottom;
+  opacity: 0.75;
+  animation: eqPulse var(--duration, 0.9s) ease-in-out var(--delay, 0s) infinite alternate;
+}
+
+.eq-visualizer.active .eq-bar {
+  opacity: 1;
+  animation-duration: calc(var(--duration, 0.9s) * 0.55);
+  filter: brightness(1.25);
+}
+
+@keyframes eqPulse {
+  from {
+    transform: scaleY(0.12);
+  }
+  to {
+    transform: scaleY(var(--peak, 0.8));
+  }
+}
+
 /* Ambient-Toggle */
 .ambient-toggle {
   margin-top: 1.4rem;
@@ -657,6 +692,12 @@ button#unlock-btn {
   line-height: 1.55;
 }
 
+.fazit-steps-intro {
+  font-weight: 700 !important;
+  color: var(--gold-bright) !important;
+  margin: 0 0 0.6rem !important;
+}
+
 .fazit-steps {
   margin: 0 0 0.8rem;
   padding-left: 1.3rem;
@@ -853,33 +894,25 @@ button#vocals-check-btn:disabled {
   white-space: pre-wrap;
 }
 
-/* Submit recommendations */
+/* Submit recommendations (kompakt) */
 .submit-list {
   list-style: none;
   margin: 0 0 1.9rem;
   padding: 0;
   display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.submit-list li {
+.submit-chip {
   border: 1px solid var(--gridline);
-  border-radius: 16px;
-  padding: 0.85rem 1.1rem;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
   background: var(--surface-2);
-}
-
-.submit-list .submit-name {
-  font-weight: 700;
-  margin-bottom: 0.2rem;
-  color: var(--text-primary);
-}
-
-.submit-list .submit-desc {
   color: var(--text-secondary);
-  font-size: 0.85rem;
-  line-height: 1.5;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: default;
 }
 
 .disclaimer {
@@ -1109,7 +1142,8 @@ button#vocals-check-btn:disabled {
 @media (prefers-reduced-motion: reduce) {
   .star-rating,
   .achievement-badge,
-  .confetti-piece {
+  .confetti-piece,
+  .eq-bar {
     animation: none !important;
   }
   .meter-fill {

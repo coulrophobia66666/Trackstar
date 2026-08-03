@@ -418,17 +418,17 @@ function analyzeLyrics(lyricsRaw, titleRaw) {
 /* ---------- Scoring ---------- */
 
 function scoreTechnik(a) {
-  let score = 100;
-  if (a.clippingRatio > 0.02) score -= 45;
-  else if (a.clippingRatio > 0.005) score -= 25;
-  else if (a.clippingRatio > 0.0005) score -= 10;
+  // Kontinuierliche statt stufenweise Bewertung - auch technisch saubere Tracks bekommen
+  // so einen nuancierten Wert statt pauschal 100%, das wirkt sonst unglaubwürdig grob.
+  const clipPenalty = Math.min(60, a.clippingRatio * 2800);
 
-  if (a.crestFactorDb < 6) score -= 30;
-  else if (a.crestFactorDb < 8) score -= 12;
-  else if (a.crestFactorDb > 22) score -= 15;
-  else if (a.crestFactorDb > 18) score -= 6;
+  const idealCrestLo = 9;
+  const idealCrestHi = 16;
+  let crestPenalty = 0;
+  if (a.crestFactorDb < idealCrestLo) crestPenalty = (idealCrestLo - a.crestFactorDb) * 3.2;
+  else if (a.crestFactorDb > idealCrestHi) crestPenalty = (a.crestFactorDb - idealCrestHi) * 1.4;
 
-  return Math.max(0, Math.min(100, score));
+  return Math.max(0, Math.min(100, 100 - clipPenalty - crestPenalty));
 }
 
 function scoreLautheit(a, loudnessTarget) {
@@ -544,16 +544,18 @@ function buildTips(a, lyrics, scores, hookTimingSec, profile) {
     const val = a.bandPercents[i];
     const [lo, hi] = profile.refs[i];
     if (val < lo - 3) {
+      const dbHint = (10 * Math.log10(Math.max(lo, 0.5) / Math.max(val, 0.1))).toFixed(1);
       tips.push({
         level: "warning",
         problem: `Wenig Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz).`,
-        text: `Wenig Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz). Der Track könnte in diesem Bereich dünn/schwach klingen.`,
+        text: `Wenig Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz). Der Track könnte in diesem Bereich dünn/schwach klingen – probier ca. +${dbHint} dB mit einem breiten EQ-Boost um ${Math.round(Math.sqrt(band.range[0] * band.range[1]))} Hz.`,
       });
     } else if (val > hi + 3) {
+      const dbHint = (10 * Math.log10(Math.max(val, 0.1) / Math.max(hi, 0.5))).toFixed(1);
       tips.push({
         level: "warning",
         problem: `Viel Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz).`,
-        text: `Viel Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz). Kann matschig oder harsch wirken – im Mix gezielt absenken (EQ).`,
+        text: `Viel Energie im Bereich "${band.name}" (${band.range[0]}–${band.range[1]} Hz). Kann matschig oder harsch wirken – probier ca. -${dbHint} dB mit einem EQ-Cut um ${Math.round(Math.sqrt(band.range[0] * band.range[1]))} Hz.`,
       });
     }
   });
@@ -606,25 +608,28 @@ function buildFazit(overallScore, tips) {
   const actionable = tips
     .filter((t) => t.level !== "good")
     .sort((a, b) => TIP_LEVEL_RANK[a.level] - TIP_LEVEL_RANK[b.level])
-    .slice(0, 3);
+    .slice(0, 5);
 
   let intro;
   if (overallScore >= 70) intro = `Dein Track steht technisch und inhaltlich solide da (Score ${overallScore}/100).`;
   else if (overallScore >= 45) intro = `Dein Track hat eine gute Basis, aber noch Luft nach oben (Score ${overallScore}/100).`;
   else intro = `Dein Track braucht vor einer Einreichung noch Arbeit (Score ${overallScore}/100).`;
 
+  const stepsIntro = actionable.length > 0 ? "So gehst du vor, der Reihe nach:" : "";
+
   const closing =
     actionable.length > 0
-      ? "Das sind deine konkreten nächsten Schritte, um näher an ein einreichfertiges Ergebnis zu kommen – kein Grund zur Sorge, sondern dein Fahrplan."
+      ? "Arbeite die Punkte einfach von oben nach unten ab, dann bist du dem einreichfertigen Ergebnis jedes Mal ein Stück näher – dein Fahrplan, kein Grund zur Sorge."
       : "Keine größeren offenen Punkte – dein Track ist bereit für die Einreichung.";
 
-  return { intro, steps: actionable.map((t) => t.text), closing };
+  return { intro, stepsIntro, steps: actionable.map((t) => t.text), closing };
 }
 
 function renderFazit(container, fazit) {
+  const stepsIntroHtml = fazit.stepsIntro ? `<p class="fazit-steps-intro">${fazit.stepsIntro}</p>` : "";
   const stepsHtml =
     fazit.steps.length > 0 ? `<ol class="fazit-steps">${fazit.steps.map((s) => `<li>${s}</li>`).join("")}</ol>` : "";
-  container.innerHTML = `<p>${fazit.intro}</p>${stepsHtml}<p class="fazit-closing">${fazit.closing}</p>`;
+  container.innerHTML = `<p>${fazit.intro}</p>${stepsIntroHtml}${stepsHtml}<p class="fazit-closing">${fazit.closing}</p>`;
 }
 
 /* ---------- Submission recommendations ---------- */
@@ -812,7 +817,9 @@ function renderSubmissions(listEl, hintEl, { items, note }) {
   listEl.innerHTML = "";
   for (const item of items) {
     const li = document.createElement("li");
-    li.innerHTML = `<div class="submit-name">${item.name}</div><div class="submit-desc">${item.desc}</div>`;
+    li.className = "submit-chip";
+    li.textContent = item.name;
+    li.title = item.desc;
     listEl.appendChild(li);
   }
 }
@@ -1497,6 +1504,22 @@ if (albumBtn) {
   });
 }
 
+/* ---------- EQ-Visualizer: durchgehend pulsierende Balken im Header (rein dekorativ) ---------- */
+
+(function initEqVisualizer() {
+  const el = document.getElementById("eq-visualizer");
+  if (!el) return;
+  const barCount = 16;
+  for (let i = 0; i < barCount; i++) {
+    const bar = document.createElement("div");
+    bar.className = "eq-bar";
+    bar.style.setProperty("--duration", (0.6 + Math.random() * 0.9).toFixed(2) + "s");
+    bar.style.setProperty("--delay", (Math.random() * 0.8).toFixed(2) + "s");
+    bar.style.setProperty("--peak", (0.35 + Math.random() * 0.65).toFixed(2));
+    el.appendChild(bar);
+  }
+})();
+
 /* ---------- Ambient-Atmosphäre: sanfter generativer Pad-Sound (Web Audio, kein Audio-File) ----------
    Nur auf Klick startbar (Browser-Autoplay-Policy erzwingt das ohnehin) - bewusst opt-in statt
    automatisch abgespielt. */
@@ -1513,11 +1536,11 @@ function startAmbient() {
   const master = ambientCtx.createGain();
   master.gain.value = 0;
   master.connect(ambientCtx.destination);
-  master.gain.linearRampToValueAtTime(0.06, ambientCtx.currentTime + 2);
+  master.gain.linearRampToValueAtTime(0.2, ambientCtx.currentTime + 0.8);
 
   const filter = ambientCtx.createBiquadFilter();
   filter.type = "lowpass";
-  filter.frequency.value = 900;
+  filter.frequency.value = 1100;
   filter.connect(master);
 
   const freqs = [110, 164.81, 220, 277.18];
@@ -1526,7 +1549,7 @@ function startAmbient() {
     osc.type = "sine";
     osc.frequency.value = f;
     const oscGain = ambientCtx.createGain();
-    oscGain.gain.value = 0.25;
+    oscGain.gain.value = 0.28;
     osc.connect(oscGain);
     oscGain.connect(filter);
     osc.start();
@@ -1541,13 +1564,23 @@ function startAmbient() {
   lfoGain.connect(filter.frequency);
   lfo.start();
 
-  ambientNodes = { master, oscs, lfo };
+  // Sanftes rhythmisches Pulsieren auf der Lautstaerke, statt starr-statischem Pad -
+  // passt zum "mehr Erlebnis"-Wunsch, ohne in einen vollen Beat/Drums abzudriften.
+  const pulseLfo = ambientCtx.createOscillator();
+  pulseLfo.frequency.value = 0.5;
+  const pulseDepth = ambientCtx.createGain();
+  pulseDepth.gain.value = 0.055;
+  pulseLfo.connect(pulseDepth);
+  pulseDepth.connect(master.gain);
+  pulseLfo.start();
+
+  ambientNodes = { master, oscs, lfo, pulseLfo };
   ambientPlaying = true;
 }
 
 function stopAmbient() {
   if (!ambientNodes || !ambientCtx) return;
-  const { master, oscs, lfo } = ambientNodes;
+  const { master, oscs, lfo, pulseLfo } = ambientNodes;
   const now = ambientCtx.currentTime;
   master.gain.cancelScheduledValues(now);
   master.gain.setValueAtTime(master.gain.value, now);
@@ -1555,6 +1588,7 @@ function stopAmbient() {
   setTimeout(() => {
     oscs.forEach((o) => o.stop());
     lfo.stop();
+    pulseLfo.stop();
   }, 1100);
   ambientNodes = null;
   ambientPlaying = false;
@@ -1563,12 +1597,15 @@ function stopAmbient() {
 const ambientToggle = document.getElementById("ambient-toggle");
 if (ambientToggle) {
   ambientToggle.addEventListener("click", () => {
+    const eqEl = document.getElementById("eq-visualizer");
     if (ambientPlaying) {
       stopAmbient();
       ambientToggle.setAttribute("aria-pressed", "false");
+      if (eqEl) eqEl.classList.remove("active");
     } else {
       startAmbient();
       ambientToggle.setAttribute("aria-pressed", "true");
+      if (eqEl) eqEl.classList.add("active");
     }
   });
 }
