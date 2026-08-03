@@ -83,6 +83,26 @@ klicken, prüfen ob das Modell lädt und ein sinnvolles Transkript rauskommt
 liegt es vermutlich an der genauen CDN-URL/Paketversion in `app.js`
 (`getTranscriber`) – dann Bescheid geben, dann justiere ich das nach.
 
+## Englische Version (i18n) – neu in diesem Durchgang
+Ganze Seite jetzt zweisprachig (DE/EN): Umschalter oben rechts, Sprache wird
+gemerkt (localStorage) und lässt sich per Link direkt setzen
+(`index.html?lang=en` bzw. `?lang=de`) – so kann man beide Sprachversionen
+unter eigener URL verlinken/veröffentlichen, ohne zwei HTML-Dateien parallel
+pflegen zu müssen. Übersetzt: komplette statische UI (Labels, Buttons,
+Hinweise) **und** alle dynamisch erzeugten Analyse-Texte (Tipps, Fazit,
+Status-Meldungen, Achievements, Einreich-Empfehlungen, Fehlermeldungen).
+Getestet per Playwright: Umschalten live und nach Reload, Analyse-Durchlauf
+komplett auf Englisch, Pricing-Karte, EQ-Editor-Labels.
+
+**Bewusst NICHT übersetzt: Impressum und Datenschutzerklärung.** Beide
+bleiben nur Deutsch – eine automatische/eigene Übersetzung von Rechtstexten
+ist ein Haftungsrisiko (Impressumspflicht, DSGVO-Formulierungen), das sollte
+wenn dann von einem Anwalt geprüft übersetzt werden, nicht einfach mitgebaut
+werden. Steht auch schon so auf der Seite (kleiner Hinweis im Footer, nur im
+EN-Modus sichtbar). Bitte auf dem Schirm behalten (Carla), falls eine
+englischsprachige Rechtstext-Version für den internationalen Auftritt
+irgendwann gebraucht wird.
+
 ## Weiterhin offen
 - **Cloudflare-Projekte umbenennen/neu anlegen** für die eigentliche
   Overhertz-Domain (aktuell läuft alles noch unter den `trackstar-*`

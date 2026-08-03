@@ -1188,6 +1188,39 @@ button#vocals-check-btn:disabled {
   margin: 0 0.5rem;
 }
 
+.footer-legal-note {
+  display: block;
+  margin: 0.4rem 0 0;
+  font-size: 0.74rem;
+  opacity: 0.75;
+}
+
+.lang-switch {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  padding-top: 1rem;
+}
+
+.lang-btn {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--gridline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.lang-btn[aria-pressed="true"] {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+  background: var(--gold-wash);
+}
+
 /* Album-Check */
 .pro-badge {
   display: inline-block;
