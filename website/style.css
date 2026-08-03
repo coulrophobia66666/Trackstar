@@ -113,6 +113,7 @@ body {
 
 .field input[type="text"],
 .field input[type="file"],
+.field select,
 .field textarea {
   font: inherit;
   padding: 0.75rem 0.9rem;
@@ -136,6 +137,7 @@ body {
 }
 
 .field input:focus,
+.field select:focus,
 .field textarea:focus {
   outline: 1.5px solid var(--gold);
   outline-offset: 1px;
@@ -513,6 +515,47 @@ button#unlock-btn {
 
 .tips li svg { flex: none; margin-top: 2px; }
 
+/* Fazit als Wegweiser */
+.fazit-wrap {
+  margin-bottom: 1.9rem;
+  padding: 1.3rem 1.4rem;
+  border-radius: 18px;
+  border: 1px solid rgba(205, 168, 107, 0.28);
+  background: var(--gold-wash);
+}
+
+.fazit-wrap h3 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0 0 0.7rem;
+  color: var(--text-primary);
+}
+
+.fazit-wrap p {
+  margin: 0 0 0.8rem;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.fazit-steps {
+  margin: 0 0 0.8rem;
+  padding-left: 1.3rem;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fazit-closing {
+  font-style: italic;
+  color: var(--text-muted) !important;
+  margin: 0 !important;
+}
+
 /* Rewrite block */
 .rewrite-block {
   margin-bottom: 1.9rem;
@@ -655,6 +698,201 @@ button#rewrite-btn:disabled {
 
 .site-footer span {
   margin: 0 0.5rem;
+}
+
+/* Album-Check */
+.pro-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #241d10;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  vertical-align: middle;
+  margin-left: 0.3rem;
+}
+
+.album-card button#album-analyze-btn {
+  width: 100%;
+  margin-top: 0.3rem;
+}
+
+.album-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 1.2rem;
+}
+
+.album-track {
+  border: 1px solid var(--gridline);
+  border-radius: 16px;
+  padding: 0.9rem 1.1rem;
+  background: var(--surface-2);
+}
+
+.album-track-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+
+.album-track-name {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.album-track-score {
+  font-weight: 700;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.album-track-tip {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+/* Account-Bar, Login/Registrierung, Pricing */
+.account-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.account-info strong {
+  color: var(--text-primary);
+}
+
+.account-btn {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  padding: 0.5rem 1.05rem;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gold-bright);
+  cursor: pointer;
+}
+
+.account-btn-primary {
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  color: #241d10;
+}
+
+.auth-card h2, .pricing-card h2 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0 0 0.3rem;
+}
+
+.auth-forms {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-top: 1.2rem;
+}
+
+.auth-form {
+  flex: 1 1 220px;
+  min-width: 220px;
+}
+
+.auth-form h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.8rem;
+  color: var(--gold-bright);
+}
+
+.auth-form .field label {
+  font-size: 0.8rem;
+}
+
+.auth-form input {
+  width: 100%;
+  font: inherit;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--gridline);
+  background: var(--bg-plane);
+  color: var(--text-primary);
+}
+
+.auth-form button {
+  width: 100%;
+  margin-top: 0.4rem;
+}
+
+.plans {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 1.4rem 0 0.6rem;
+}
+
+.plan {
+  flex: 1 1 180px;
+  min-width: 180px;
+  border: 1px solid var(--gridline);
+  border-radius: 18px;
+  padding: 1.2rem 1.1rem;
+  background: var(--surface-2);
+  text-align: center;
+}
+
+.plan-highlight {
+  border-color: var(--gold);
+  background: var(--gold-wash);
+}
+
+.plan h3 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+.plan-price {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  margin: 0 0 0.5rem;
+}
+
+.plan-price span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.plan-desc {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 0 0 1rem;
+  min-height: 3.2em;
+}
+
+.plan .account-btn {
+  width: 100%;
 }
 
 @media (max-width: 480px) {

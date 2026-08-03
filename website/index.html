@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Trackstar Songcheck – Hat dein Track Star Potential?</title>
+  <title>Overhertz – Hat dein Track Star Potential?</title>
   <meta name="description" content="Lad deinen Track hoch und finde heraus, ob er Star Potential hat – Kurzcheck gratis, Tiefenanalyse optional." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,12 +12,74 @@
 </head>
 <body>
   <div class="page">
+    <div class="account-bar" id="account-bar"></div>
+
+    <section class="card auth-card" id="auth-card" hidden>
+      <div class="auth-tabs">
+        <h2>Konto</h2>
+        <p class="hint">Login oder neues Konto anlegen, um Credits/Pro-Abo zu nutzen.</p>
+      </div>
+      <div class="auth-forms">
+        <form id="login-form" class="auth-form">
+          <h3>Login</h3>
+          <div class="field">
+            <label for="login-email">E-Mail</label>
+            <input type="email" id="login-email" required />
+          </div>
+          <div class="field">
+            <label for="login-password">Passwort</label>
+            <input type="password" id="login-password" required minlength="8" />
+          </div>
+          <button type="submit" class="account-btn account-btn-primary">Einloggen</button>
+        </form>
+        <form id="register-form" class="auth-form">
+          <h3>Registrieren</h3>
+          <div class="field">
+            <label for="register-email">E-Mail</label>
+            <input type="email" id="register-email" required />
+          </div>
+          <div class="field">
+            <label for="register-password">Passwort <span class="optional">(mind. 8 Zeichen)</span></label>
+            <input type="password" id="register-password" required minlength="8" />
+          </div>
+          <button type="submit" class="account-btn account-btn-primary">Konto erstellen</button>
+        </form>
+      </div>
+      <p class="status-line" id="auth-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="card pricing-card" id="pricing-card" hidden>
+      <h2>Preise</h2>
+      <p class="hint">Der Kurzcheck (Ampel-Urteil + größtes Problem) ist immer kostenlos. Für die Tiefenanalyse:</p>
+      <div class="plans">
+        <div class="plan">
+          <h3>Credits</h3>
+          <p class="plan-price">7&nbsp;€ <span>einmalig</span></p>
+          <p class="plan-desc">5 Tiefenanalysen, kein Abo</p>
+          <button type="button" class="plan-select-btn account-btn" data-plan="credits">Auswählen</button>
+        </div>
+        <div class="plan plan-highlight">
+          <h3>Pro</h3>
+          <p class="plan-price">9,50&nbsp;€ <span>/ Monat</span></p>
+          <p class="plan-desc">50 Checks/Monat, voller Report, Hook/Titel/Lyrics/Platzierungstipps, Album-Upload</p>
+          <button type="button" class="plan-select-btn account-btn account-btn-primary" data-plan="pro">Auswählen</button>
+        </div>
+        <div class="plan">
+          <h3>Pro jährlich</h3>
+          <p class="plan-price">79&nbsp;€ <span>/ Jahr</span></p>
+          <p class="plan-desc">Wie Pro, mit Rabatt im Jahresabo</p>
+          <button type="button" class="plan-select-btn account-btn" data-plan="pro_annual">Auswählen</button>
+        </div>
+      </div>
+      <p class="status-line" id="pricing-status" role="status" aria-live="polite"></p>
+    </section>
+
     <header class="header">
       <svg class="header-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 2.5l2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 16.6l-5.6 3 1.4-6.3-4.8-4.3 6.4-.6L12 2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" fill="rgba(205,168,107,0.15)"/>
       </svg>
       <p class="eyebrow">KI Songcheck</p>
-      <h1>Trackstar</h1>
+      <h1>Overhertz</h1>
       <p class="subtitle">Lad deinen Track hoch und finde heraus, ob er Star Potential hat. Der Kurzcheck ist kostenlos.</p>
     </header>
 
@@ -49,6 +111,21 @@
           </div>
 
           <div class="field">
+            <label for="track-genre">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 12.5V4l7-1.5v8" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="4" cy="12.5" r="1.7" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="10.5" r="1.7" stroke="currentColor" stroke-width="1.3"/></svg>
+              Genre <span class="optional">(optional – passt Referenzwerte an)</span>
+            </label>
+            <select id="track-genre">
+              <option value="">Allgemein / kein Genre</option>
+              <option value="hiphop">Hip-Hop / Rap</option>
+              <option value="pop">Pop</option>
+              <option value="edm">Electronic / EDM</option>
+              <option value="rock">Rock / Metal</option>
+              <option value="acoustic">Akustik / Singer-Songwriter</option>
+            </select>
+          </div>
+
+          <div class="field">
             <label for="target-station">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/></svg>
               Ziel-Sender / Ziel-Playlist <span class="optional">(optional)</span>
@@ -69,6 +146,21 @@
         </form>
       </section>
 
+      <section class="card album-card" id="album-card">
+        <h2 class="premium-heading">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="2.5" width="9" height="9" rx="1.2" stroke="currentColor" stroke-width="1.2"/><rect x="5" y="5.5" width="9" height="9" rx="1.2" stroke="currentColor" stroke-width="1.2" fill="var(--bg-plane)"/></svg>
+          Album-Check <span class="pro-badge">Pro</span>
+        </h2>
+        <p class="hint">Mehrere Tracks auf einmal prüfen (Kurz-Check: Klangqualität, Lautheit, Frequenzbalance). Teil des Pro-Plans – jeder Track zählt als ein Check von deinem Monats-Kontingent.</p>
+        <div class="field">
+          <label for="album-files">Tracks auswählen</label>
+          <input type="file" id="album-files" accept="audio/*" multiple />
+        </div>
+        <button type="button" id="album-analyze-btn" class="account-btn account-btn-primary">Album analysieren</button>
+        <p class="status-line" id="album-status" role="status" aria-live="polite"></p>
+        <div class="album-results" id="album-results"></div>
+      </section>
+
       <section class="card free-card" id="free-results" hidden>
         <div class="hero-tile">
           <p class="hero-eyebrow">Dein Ergebnis</p>
@@ -83,12 +175,12 @@
 
         <div class="unlock-card">
           <svg class="unlock-mark" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3.5" y="7.5" width="9" height="6" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5" stroke="currentColor" stroke-width="1.3"/></svg>
-          <div class="unlock-title">Willst du wissen, woran's genau liegt?</div>
+          <div class="unlock-title">Willst du wissen, woran's genau liegt – und wie du's behebst?</div>
           <p class="unlock-desc">
             Frequenzkurve im Detail, alle Verbesserungstipps und wohin du den Track am besten einreichst.
           </p>
           <button type="button" id="unlock-btn">Vollanalyse ansehen</button>
-          <p class="unlock-note">Später 2,99 € pro Track – aktuell noch kostenlos, solange wir testen</p>
+          <p class="unlock-note">5 Credits für 7&nbsp;€ oder Pro-Abo ab 9,50&nbsp;€/Monat</p>
         </div>
       </section>
 
@@ -117,6 +209,11 @@
             <h3>Verbesserungsvorschläge</h3>
             <ul class="tips" id="tips-list"></ul>
           </div>
+        </div>
+
+        <div class="fazit-wrap">
+          <h3>Fazit — dein Wegweiser</h3>
+          <div id="fazit-block"></div>
         </div>
 
         <div class="rewrite-block" id="rewrite-block" hidden>
