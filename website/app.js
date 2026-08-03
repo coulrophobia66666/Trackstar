@@ -1473,6 +1473,9 @@ let eqSourceNode = null;
 let eqFilters = [];
 let eqPlaying = false;
 let eqGains = FREQ_BANDS.map(() => 0);
+let eqDeEsserEnabled = false;
+let eqDeEsserAmount = 0.5;
+let eqDeEsserNodes = null;
 let eqLastMetrics = null;
 let eqLastProfile = null;
 
@@ -1483,7 +1486,9 @@ function ensureEqAudioCtx() {
   return eqAudioCtx;
 }
 
-function buildEqFilterChain(ctx, destination, gains) {
+// Gibt die Filterkette zurueck, OHNE sie ans Ziel anzuschliessen - der Aufrufer haengt je
+// nach De-Esser-Status entweder direkt destination oder den De-Esser-Signalpfad dahinter.
+function buildEqFilterChain(ctx, gains) {
   const filters = FREQ_BANDS.map((band, i) => {
     const f = ctx.createBiquadFilter();
     f.type = "peaking";
@@ -1493,8 +1498,56 @@ function buildEqFilterChain(ctx, destination, gains) {
     return f;
   });
   for (let i = 0; i < filters.length - 1; i++) filters[i].connect(filters[i + 1]);
-  filters[filters.length - 1].connect(destination);
   return filters;
+}
+
+// Echter De-Esser statt statischem EQ-Cut: eine feste Grund-Absenkung im Zischlaut-Bereich
+// (Notch) wird durch einen dynamisch komprimierten Anteil desselben Bereichs wieder aufgefuellt.
+// Bei ruhigen Passagen gleicht sich das etwa aus, bei einer lauten Zischlaut-Spitze komprimiert
+// der Compressor den zurueckgemischten Anteil staerker weg - Nettoeffekt: Reduktion genau dann,
+// wenn's tatsaechlich zischt, nicht pauschal wie ein normaler EQ-Cut.
+function attachDeEsser(ctx, inputNode, destination, amount) {
+  const notch = ctx.createBiquadFilter();
+  notch.type = "peaking";
+  notch.frequency.value = 6500;
+  notch.Q.value = 1.1;
+  notch.gain.value = -12 * amount;
+
+  const bandpass = ctx.createBiquadFilter();
+  bandpass.type = "bandpass";
+  bandpass.frequency.value = 6500;
+  bandpass.Q.value = 1.1;
+
+  const compressor = ctx.createDynamicsCompressor();
+  compressor.threshold.value = -32;
+  compressor.knee.value = 6;
+  compressor.ratio.value = 10;
+  compressor.attack.value = 0.003;
+  compressor.release.value = 0.12;
+
+  const sidechainGain = ctx.createGain();
+  sidechainGain.gain.value = amount;
+
+  const sumGain = ctx.createGain();
+  sumGain.gain.value = 1;
+
+  inputNode.connect(notch);
+  notch.connect(sumGain);
+
+  inputNode.connect(bandpass);
+  bandpass.connect(compressor);
+  compressor.connect(sidechainGain);
+  sidechainGain.connect(sumGain);
+
+  sumGain.connect(destination);
+
+  return { notch, sidechainGain };
+}
+
+function updateDeEsserAmount(nodes, amount) {
+  if (!nodes) return;
+  nodes.notch.gain.value = -12 * amount;
+  nodes.sidechainGain.gain.value = amount;
 }
 
 function stopEqPreview() {
@@ -1508,6 +1561,7 @@ function stopEqPreview() {
     eqSourceNode = null;
   }
   eqFilters = [];
+  eqDeEsserNodes = null;
   eqPlaying = false;
   const btn = document.getElementById("eq-play-btn");
   if (btn) btn.textContent = "▶ Vorschau abspielen";
@@ -1520,8 +1574,15 @@ function startEqPreview() {
   const source = ctx.createBufferSource();
   source.buffer = lastAudioBuffer;
   source.loop = true;
-  const filters = buildEqFilterChain(ctx, ctx.destination, eqGains);
+  const filters = buildEqFilterChain(ctx, eqGains);
   source.connect(filters[0]);
+  const chainOutput = filters[filters.length - 1];
+  if (eqDeEsserEnabled) {
+    eqDeEsserNodes = attachDeEsser(ctx, chainOutput, ctx.destination, eqDeEsserAmount);
+  } else {
+    chainOutput.connect(ctx.destination);
+    eqDeEsserNodes = null;
+  }
   source.start();
   eqSourceNode = source;
   eqFilters = filters;
@@ -1616,10 +1677,20 @@ function initEqEditor(audioMetrics, profile) {
   eqLastMetrics = audioMetrics;
   eqLastProfile = profile;
   eqGains = FREQ_BANDS.map(() => 0);
+  eqDeEsserEnabled = false;
+  eqDeEsserAmount = 0.5;
   stopEqPreview();
   renderEqSliders();
   const status = document.getElementById("eq-status");
   if (status) status.textContent = "";
+  const deEsserCheckbox = document.getElementById("eq-deesser-enabled");
+  if (deEsserCheckbox) deEsserCheckbox.checked = false;
+  const strengthWrap = document.getElementById("eq-deesser-strength-wrap");
+  if (strengthWrap) strengthWrap.hidden = true;
+  const strengthSlider = document.getElementById("eq-deesser-strength");
+  if (strengthSlider) strengthSlider.value = 50;
+  const strengthValue = document.getElementById("eq-deesser-strength-value");
+  if (strengthValue) strengthValue.textContent = "50%";
 }
 
 const eqSuggestBtn = document.getElementById("eq-suggest-btn");
@@ -1627,6 +1698,26 @@ const eqResetBtn = document.getElementById("eq-reset-btn");
 const eqPlayBtn = document.getElementById("eq-play-btn");
 const eqDownloadBtn = document.getElementById("eq-download-btn");
 const eqStatus = document.getElementById("eq-status");
+const eqDeEsserEnabledEl = document.getElementById("eq-deesser-enabled");
+const eqDeEsserStrengthWrap = document.getElementById("eq-deesser-strength-wrap");
+const eqDeEsserStrengthEl = document.getElementById("eq-deesser-strength");
+const eqDeEsserStrengthValueEl = document.getElementById("eq-deesser-strength-value");
+
+if (eqDeEsserEnabledEl) {
+  eqDeEsserEnabledEl.addEventListener("change", () => {
+    eqDeEsserEnabled = eqDeEsserEnabledEl.checked;
+    if (eqDeEsserStrengthWrap) eqDeEsserStrengthWrap.hidden = !eqDeEsserEnabled;
+    if (eqPlaying) startEqPreview(); // Graph neu aufbauen, damit De-Esser sauber rein/raus geschaltet wird
+  });
+}
+
+if (eqDeEsserStrengthEl) {
+  eqDeEsserStrengthEl.addEventListener("input", () => {
+    eqDeEsserAmount = Number(eqDeEsserStrengthEl.value) / 100;
+    if (eqDeEsserStrengthValueEl) eqDeEsserStrengthValueEl.textContent = `${eqDeEsserStrengthEl.value}%`;
+    if (eqPlaying && eqDeEsserNodes) updateDeEsserAmount(eqDeEsserNodes, eqDeEsserAmount);
+  });
+}
 
 if (eqSuggestBtn) {
   eqSuggestBtn.addEventListener("click", () => {
@@ -1687,8 +1778,14 @@ if (eqDownloadBtn) {
       );
       const source = offlineCtx.createBufferSource();
       source.buffer = lastAudioBuffer;
-      const filters = buildEqFilterChain(offlineCtx, offlineCtx.destination, eqGains);
+      const filters = buildEqFilterChain(offlineCtx, eqGains);
       source.connect(filters[0]);
+      const chainOutput = filters[filters.length - 1];
+      if (eqDeEsserEnabled) {
+        attachDeEsser(offlineCtx, chainOutput, offlineCtx.destination, eqDeEsserAmount);
+      } else {
+        chainOutput.connect(offlineCtx.destination);
+      }
       source.start();
       const rendered = await offlineCtx.startRendering();
       const blob = audioBufferToWavBlob(rendered);

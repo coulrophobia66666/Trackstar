@@ -202,6 +202,23 @@
             Läuft komplett in deinem Browser, deine Audiodatei verlässt dabei nie dein Gerät.
           </p>
           <div class="eq-sliders" id="eq-sliders"></div>
+
+          <div class="eq-deesser">
+            <label class="eq-deesser-toggle">
+              <input type="checkbox" id="eq-deesser-enabled" />
+              Zischlaute reduzieren (De-Esser)
+            </label>
+            <div class="eq-deesser-strength" id="eq-deesser-strength-wrap" hidden>
+              <label for="eq-deesser-strength">Stärke</label>
+              <input type="range" id="eq-deesser-strength" min="0" max="100" step="5" value="50" />
+              <span id="eq-deesser-strength-value">50%</span>
+            </div>
+            <p class="hint eq-deesser-hint">
+              Reduziert scharfe Zischlaute (typ. 5–8 kHz) nur dann, wenn sie tatsächlich spitzen – im Gegensatz zu
+              den Reglern oben, die pauschal einen Bereich absenken.
+            </p>
+          </div>
+
           <div class="eq-editor-controls">
             <button type="button" id="eq-suggest-btn" class="account-btn">Vorschlag übernehmen</button>
             <button type="button" id="eq-reset-btn" class="account-btn">Zurücksetzen</button>
