@@ -219,6 +219,28 @@
             </p>
           </div>
 
+          <div class="eq-extra">
+            <div class="eq-gain-row">
+              <label for="eq-gain">Lautheit anpassen</label>
+              <input type="range" id="eq-gain" min="-12" max="12" step="0.5" value="0" />
+              <span id="eq-gain-value">0.0 dB</span>
+            </div>
+            <button type="button" id="eq-gain-match-btn" class="account-btn">Auf Zielwert angleichen</button>
+
+            <label class="eq-checkbox-row">
+              <input type="checkbox" id="eq-trim-intro" />
+              Stille am Anfang entfernen
+            </label>
+            <label class="eq-checkbox-row">
+              <input type="checkbox" id="eq-fadeout" />
+              Fade-out am Ende hinzufügen <span class="optional">(Vorschau spielt dann einmalig statt in Schleife)</span>
+            </label>
+            <p class="hint eq-limits-hint">
+              Clipping und Überkomprimierung lassen sich nachträglich nicht reparieren – das steckt schon fest im
+              Signal. Dafür müsste der Track aus dem unkomprimierten Original neu gemastert werden.
+            </p>
+          </div>
+
           <div class="eq-editor-controls">
             <button type="button" id="eq-suggest-btn" class="account-btn">Vorschlag übernehmen</button>
             <button type="button" id="eq-reset-btn" class="account-btn">Zurücksetzen</button>

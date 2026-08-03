@@ -743,6 +743,65 @@ button#unlock-btn {
   margin: 0.7rem 0 0 !important;
 }
 
+.eq-extra {
+  border-top: 1px solid rgba(205, 168, 107, 0.25);
+  padding-top: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.eq-gain-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.7rem;
+}
+
+.eq-gain-row label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: none;
+}
+
+.eq-gain-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--gold);
+}
+
+.eq-gain-row span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  min-width: 3.6em;
+  text-align: right;
+}
+
+#eq-gain-match-btn {
+  margin-bottom: 0.9rem;
+}
+
+.eq-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  margin-bottom: 0.6rem;
+}
+
+.eq-checkbox-row input[type="checkbox"] {
+  accent-color: var(--gold);
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.eq-limits-hint {
+  margin: 0.6rem 0 0 !important;
+}
+
 .eq-editor-controls {
   display: flex;
   flex-wrap: wrap;

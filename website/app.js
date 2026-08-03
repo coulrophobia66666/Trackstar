@@ -1476,6 +1476,10 @@ let eqGains = FREQ_BANDS.map(() => 0);
 let eqDeEsserEnabled = false;
 let eqDeEsserAmount = 0.5;
 let eqDeEsserNodes = null;
+let eqGainDb = 0;
+let eqGainNode = null;
+let eqTrimIntroEnabled = false;
+let eqFadeOutEnabled = false;
 let eqLastMetrics = null;
 let eqLastProfile = null;
 
@@ -1506,7 +1510,9 @@ function buildEqFilterChain(ctx, gains) {
 // Bei ruhigen Passagen gleicht sich das etwa aus, bei einer lauten Zischlaut-Spitze komprimiert
 // der Compressor den zurueckgemischten Anteil staerker weg - Nettoeffekt: Reduktion genau dann,
 // wenn's tatsaechlich zischt, nicht pauschal wie ein normaler EQ-Cut.
-function attachDeEsser(ctx, inputNode, destination, amount) {
+// Verbindet NICHT selbst ans Ziel - gibt stattdessen den Ausgabeknoten zurueck, damit der
+// Aufrufer die Kette flexibel weiterfuehren kann (z.B. noch eine Gain-Stufe danach).
+function attachDeEsser(ctx, inputNode, amount) {
   const notch = ctx.createBiquadFilter();
   notch.type = "peaking";
   notch.frequency.value = 6500;
@@ -1539,9 +1545,29 @@ function attachDeEsser(ctx, inputNode, destination, amount) {
   compressor.connect(sidechainGain);
   sidechainGain.connect(sumGain);
 
-  sumGain.connect(destination);
+  return { output: sumGain, notch, sidechainGain };
+}
 
-  return { notch, sidechainGain };
+// Erstellt bei Bedarf eine gekuerzte Kopie des Buffers (Intro-Stille entfernt). Braucht einen
+// AudioContext/OfflineAudioContext zum Anlegen des neuen Buffers.
+function getEqSourceBuffer(ctx) {
+  if (!eqTrimIntroEnabled || !eqLastMetrics || !eqLastMetrics.introSilenceMs || eqLastMetrics.introSilenceMs < 50) {
+    return lastAudioBuffer;
+  }
+  const sampleRate = lastAudioBuffer.sampleRate;
+  const trimSamples = Math.min(lastAudioBuffer.length - 1, Math.round((eqLastMetrics.introSilenceMs / 1000) * sampleRate));
+  const newLength = lastAudioBuffer.length - trimSamples;
+  const trimmed = ctx.createBuffer(lastAudioBuffer.numberOfChannels, newLength, sampleRate);
+  for (let ch = 0; ch < lastAudioBuffer.numberOfChannels; ch++) {
+    trimmed.getChannelData(ch).set(lastAudioBuffer.getChannelData(ch).subarray(trimSamples));
+  }
+  return trimmed;
+}
+
+function scheduleFadeOut(gainNode, startTime, duration, fadeSeconds) {
+  const fadeStart = startTime + Math.max(0, duration - fadeSeconds);
+  gainNode.gain.setValueAtTime(gainNode.gain.value, fadeStart);
+  gainNode.gain.linearRampToValueAtTime(0.0001, fadeStart + fadeSeconds);
 }
 
 function updateDeEsserAmount(nodes, amount) {
@@ -1562,6 +1588,7 @@ function stopEqPreview() {
   }
   eqFilters = [];
   eqDeEsserNodes = null;
+  eqGainNode = null;
   eqPlaying = false;
   const btn = document.getElementById("eq-play-btn");
   if (btn) btn.textContent = "▶ Vorschau abspielen";
@@ -1571,18 +1598,35 @@ function startEqPreview() {
   if (!lastAudioBuffer) return;
   stopEqPreview();
   const ctx = ensureEqAudioCtx();
+  const sourceBuffer = getEqSourceBuffer(ctx);
   const source = ctx.createBufferSource();
-  source.buffer = lastAudioBuffer;
-  source.loop = true;
+  source.buffer = sourceBuffer;
+  // Mit Fade-out ergibt eine Endlos-Schleife keinen Sinn (man wuerde den harten Sprung nach
+  // dem Fade hoeren) - dann einmalig abspielen statt loopen.
+  source.loop = !eqFadeOutEnabled;
+
   const filters = buildEqFilterChain(ctx, eqGains);
   source.connect(filters[0]);
-  const chainOutput = filters[filters.length - 1];
+  let chainOutput = filters[filters.length - 1];
+
   if (eqDeEsserEnabled) {
-    eqDeEsserNodes = attachDeEsser(ctx, chainOutput, ctx.destination, eqDeEsserAmount);
+    const de = attachDeEsser(ctx, chainOutput, eqDeEsserAmount);
+    eqDeEsserNodes = de;
+    chainOutput = de.output;
   } else {
-    chainOutput.connect(ctx.destination);
     eqDeEsserNodes = null;
   }
+
+  const gainNode = ctx.createGain();
+  gainNode.gain.value = Math.pow(10, eqGainDb / 20);
+  chainOutput.connect(gainNode);
+  gainNode.connect(ctx.destination);
+  eqGainNode = gainNode;
+
+  if (eqFadeOutEnabled) {
+    scheduleFadeOut(gainNode, ctx.currentTime, sourceBuffer.duration, Math.min(2.5, sourceBuffer.duration / 3));
+  }
+
   source.start();
   eqSourceNode = source;
   eqFilters = filters;
@@ -1679,6 +1723,9 @@ function initEqEditor(audioMetrics, profile) {
   eqGains = FREQ_BANDS.map(() => 0);
   eqDeEsserEnabled = false;
   eqDeEsserAmount = 0.5;
+  eqGainDb = 0;
+  eqTrimIntroEnabled = false;
+  eqFadeOutEnabled = false;
   stopEqPreview();
   renderEqSliders();
   const status = document.getElementById("eq-status");
@@ -1691,6 +1738,14 @@ function initEqEditor(audioMetrics, profile) {
   if (strengthSlider) strengthSlider.value = 50;
   const strengthValue = document.getElementById("eq-deesser-strength-value");
   if (strengthValue) strengthValue.textContent = "50%";
+  const gainSlider = document.getElementById("eq-gain");
+  if (gainSlider) gainSlider.value = 0;
+  const gainValue = document.getElementById("eq-gain-value");
+  if (gainValue) gainValue.textContent = "0.0 dB";
+  const trimCheckbox = document.getElementById("eq-trim-intro");
+  if (trimCheckbox) trimCheckbox.checked = false;
+  const fadeCheckbox = document.getElementById("eq-fadeout");
+  if (fadeCheckbox) fadeCheckbox.checked = false;
 }
 
 const eqSuggestBtn = document.getElementById("eq-suggest-btn");
@@ -1719,6 +1774,46 @@ if (eqDeEsserStrengthEl) {
   });
 }
 
+const eqGainEl = document.getElementById("eq-gain");
+const eqGainValueEl = document.getElementById("eq-gain-value");
+const eqGainMatchBtn = document.getElementById("eq-gain-match-btn");
+const eqTrimIntroEl = document.getElementById("eq-trim-intro");
+const eqFadeOutEl = document.getElementById("eq-fadeout");
+
+if (eqGainEl) {
+  eqGainEl.addEventListener("input", () => {
+    eqGainDb = Number(eqGainEl.value);
+    if (eqGainValueEl) eqGainValueEl.textContent = `${eqGainDb.toFixed(1)} dB`;
+    if (eqPlaying && eqGainNode) eqGainNode.gain.value = Math.pow(10, eqGainDb / 20);
+  });
+}
+
+if (eqGainMatchBtn) {
+  eqGainMatchBtn.addEventListener("click", () => {
+    if (!eqLastMetrics || !eqLastProfile) return;
+    const suggested = Math.max(-12, Math.min(12, eqLastProfile.loudnessTarget - eqLastMetrics.loudnessDb));
+    eqGainDb = Math.round(suggested * 2) / 2;
+    if (eqGainEl) eqGainEl.value = eqGainDb;
+    if (eqGainValueEl) eqGainValueEl.textContent = `${eqGainDb.toFixed(1)} dB`;
+    if (eqPlaying && eqGainNode) eqGainNode.gain.value = Math.pow(10, eqGainDb / 20);
+    if (eqStatus) eqStatus.textContent = "Lautheit an Zielwert angeglichen.";
+  });
+}
+
+if (eqTrimIntroEl) {
+  eqTrimIntroEl.addEventListener("change", () => {
+    eqTrimIntroEnabled = eqTrimIntroEl.checked;
+    if (eqPlaying) startEqPreview();
+  });
+}
+
+if (eqFadeOutEl) {
+  eqFadeOutEl.addEventListener("change", () => {
+    eqFadeOutEnabled = eqFadeOutEl.checked;
+    if (eqPlaying) startEqPreview();
+  });
+}
+
 if (eqSuggestBtn) {
   eqSuggestBtn.addEventListener("click", () => {
     if (!eqLastMetrics || !eqLastProfile) return;
@@ -1736,8 +1831,18 @@ if (eqSuggestBtn) {
 if (eqResetBtn) {
   eqResetBtn.addEventListener("click", () => {
     eqGains = FREQ_BANDS.map(() => 0);
+    eqGainDb = 0;
+    eqDeEsserEnabled = false;
+    eqTrimIntroEnabled = false;
+    eqFadeOutEnabled = false;
     renderEqSliders();
-    if (eqPlaying) updateEqFilterGains();
+    if (eqGainEl) eqGainEl.value = 0;
+    if (eqGainValueEl) eqGainValueEl.textContent = "0.0 dB";
+    if (eqDeEsserEnabledEl) eqDeEsserEnabledEl.checked = false;
+    if (eqDeEsserStrengthWrap) eqDeEsserStrengthWrap.hidden = true;
+    if (eqTrimIntroEl) eqTrimIntroEl.checked = false;
+    if (eqFadeOutEl) eqFadeOutEl.checked = false;
+    if (eqPlaying) startEqPreview();
     if (eqStatus) eqStatus.textContent = "Zurückgesetzt.";
   });
 }
@@ -1771,20 +1876,28 @@ if (eqDownloadBtn) {
     eqDownloadBtn.disabled = true;
     if (eqStatus) eqStatus.textContent = "Bearbeitete Version wird gerendert…";
     try {
+      const helperCtx = ensureEqAudioCtx();
+      const sourceBuffer = getEqSourceBuffer(helperCtx);
       const offlineCtx = new OfflineAudioContext(
-        lastAudioBuffer.numberOfChannels,
-        lastAudioBuffer.length,
-        lastAudioBuffer.sampleRate
+        sourceBuffer.numberOfChannels,
+        sourceBuffer.length,
+        sourceBuffer.sampleRate
       );
       const source = offlineCtx.createBufferSource();
-      source.buffer = lastAudioBuffer;
+      source.buffer = sourceBuffer;
       const filters = buildEqFilterChain(offlineCtx, eqGains);
       source.connect(filters[0]);
-      const chainOutput = filters[filters.length - 1];
+      let chainOutput = filters[filters.length - 1];
       if (eqDeEsserEnabled) {
-        attachDeEsser(offlineCtx, chainOutput, offlineCtx.destination, eqDeEsserAmount);
-      } else {
-        chainOutput.connect(offlineCtx.destination);
+        const de = attachDeEsser(offlineCtx, chainOutput, eqDeEsserAmount);
+        chainOutput = de.output;
+      }
+      const gainNode = offlineCtx.createGain();
+      gainNode.gain.value = Math.pow(10, eqGainDb / 20);
+      chainOutput.connect(gainNode);
+      gainNode.connect(offlineCtx.destination);
+      if (eqFadeOutEnabled) {
+        scheduleFadeOut(gainNode, 0, sourceBuffer.duration, Math.min(2.5, sourceBuffer.duration / 3));
       }
       source.start();
       const rendered = await offlineCtx.startRendering();
