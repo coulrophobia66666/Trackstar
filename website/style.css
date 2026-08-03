@@ -691,6 +691,58 @@ button#unlock-btn {
   text-align: center;
 }
 
+.eq-deesser {
+  border-top: 1px solid rgba(205, 168, 107, 0.25);
+  padding-top: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.eq-deesser-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.eq-deesser-toggle input[type="checkbox"] {
+  accent-color: var(--gold);
+  width: 16px;
+  height: 16px;
+}
+
+.eq-deesser-strength {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0.8rem 0 0;
+}
+
+.eq-deesser-strength label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.eq-deesser-strength input[type="range"] {
+  flex: 1;
+  accent-color: var(--gold);
+}
+
+.eq-deesser-strength span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  min-width: 2.8em;
+  text-align: right;
+}
+
+.eq-deesser-hint {
+  margin: 0.7rem 0 0 !important;
+}
+
 .eq-editor-controls {
   display: flex;
   flex-wrap: wrap;
