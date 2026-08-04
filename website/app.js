@@ -77,6 +77,11 @@ const I18N = {
     eqFadeout: "Fade-out am Ende hinzufügen",
     eqFadeoutHint: "(Vorschau spielt dann einmalig statt in Schleife)",
     eqLimitsHint: "Clipping und Überkomprimierung lassen sich nachträglich nicht reparieren – das steckt schon fest im Signal. Dafür müsste der Track aus dem unkomprimierten Original neu gemastert werden.",
+    eqMetaHint: "Titel/Künstler werden in den Dateinamen und als Tags in die heruntergeladene Datei geschrieben – nützlich, wenn die Metadaten deiner Originaldatei nicht stimmen.",
+    eqMetaTitleLabel: "Titel für den Download",
+    eqMetaArtistLabel: "Künstler",
+    eqMetaArtistHint: "(optional)",
+    eqMetaArtistPlaceholder: "Dein Künstlername",
     eqSuggestBtn: "Vorschlag übernehmen",
     eqResetBtn: "Zurücksetzen",
     eqPlayBtn: "▶ Vorschau abspielen",
@@ -362,6 +367,11 @@ const I18N = {
     eqFadeout: "Add fade-out at the end",
     eqFadeoutHint: "(preview then plays once instead of looping)",
     eqLimitsHint: "Clipping and over-compression can't be fixed after the fact – they're already baked into the signal. That would require remastering from the uncompressed original.",
+    eqMetaHint: "Title/artist get written into the file name and as tags in the downloaded file – useful when your original file's metadata is wrong.",
+    eqMetaTitleLabel: "Title for the download",
+    eqMetaArtistLabel: "Artist",
+    eqMetaArtistHint: "(optional)",
+    eqMetaArtistPlaceholder: "Your artist name",
     eqSuggestBtn: "Apply suggestion",
     eqResetBtn: "Reset",
     eqPlayBtn: "▶ Play preview",
@@ -1057,6 +1067,11 @@ function normalizeText(s) {
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9äöüß\s]/gi, "")
+    // "&" wird beim Saeubern oben schon entfernt - "und"/"and" als eigene Woerter aber nicht.
+    // Titel wie "Asozial & Echt" vs. eingetippt "Asozial und Echt" wuerden sonst nicht als
+    // Treffer erkannt, obwohl inhaltlich dasselbe gemeint ist - beide Schreibweisen auf dieselbe
+    // Form bringen, damit der Songtitel-im-Text-Abgleich das nicht als Nicht-Treffer wertet.
+    .replace(/\b(und|and)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -2271,14 +2286,57 @@ function updateEqFilterGains() {
   });
 }
 
-function audioBufferToWavBlob(buffer) {
+// WAV hat kein ID3, aber einen offiziellen LIST/INFO-Chunk fuer Metadaten (Titel/Kuenstler),
+// den gaengige Player und DAWs auslesen - so kommt eine korrekt beschriftete Datei raus, auch
+// wenn die Original-Metadaten des hochgeladenen Tracks nicht stimmten.
+function buildWavListInfoChunk(tags) {
+  const entries = [];
+  if (tags && tags.title) entries.push(["INAM", tags.title]);
+  if (tags && tags.artist) entries.push(["IART", tags.artist]);
+  if (entries.length === 0) return new Uint8Array(0);
+
+  const encoder = new TextEncoder();
+  const subchunks = entries.map(([id, text]) => {
+    const bytes = encoder.encode(text);
+    const declaredSize = bytes.length + 1; // + Null-Terminator
+    const paddedLength = declaredSize % 2 === 0 ? declaredSize : declaredSize + 1;
+    const data = new Uint8Array(paddedLength);
+    data.set(bytes, 0);
+    return { id, data, declaredSize };
+  });
+
+  const infoBodySize = 4 + subchunks.reduce((sum, s) => sum + 8 + s.data.length, 0); // "INFO" + je Subchunk
+  const total = 8 + infoBodySize; // "LIST" + Groessenfeld + infoBodySize
+  const buf = new Uint8Array(total);
+  const view = new DataView(buf.buffer);
+  let offset = 0;
+  function writeStr(str) {
+    for (let i = 0; i < str.length; i++) buf[offset + i] = str.charCodeAt(i);
+    offset += str.length;
+  }
+  writeStr("LIST");
+  view.setUint32(offset, infoBodySize, true);
+  offset += 4;
+  writeStr("INFO");
+  for (const s of subchunks) {
+    writeStr(s.id);
+    view.setUint32(offset, s.declaredSize, true);
+    offset += 4;
+    buf.set(s.data, offset);
+    offset += s.data.length;
+  }
+  return buf;
+}
+
+function audioBufferToWavBlob(buffer, tags) {
   const numChannels = buffer.numberOfChannels;
   const sampleRate = buffer.sampleRate;
   const numFrames = buffer.length;
   const bytesPerSample = 2;
   const blockAlign = numChannels * bytesPerSample;
   const dataSize = numFrames * blockAlign;
-  const arr = new ArrayBuffer(44 + dataSize);
+  const listChunk = buildWavListInfoChunk(tags);
+  const arr = new ArrayBuffer(44 + dataSize + listChunk.length);
   const view = new DataView(arr);
 
   function writeString(offset, str) {
@@ -2286,7 +2344,7 @@ function audioBufferToWavBlob(buffer) {
   }
 
   writeString(0, "RIFF");
-  view.setUint32(4, 36 + dataSize, true);
+  view.setUint32(4, 36 + dataSize + listChunk.length, true);
   writeString(8, "WAVE");
   writeString(12, "fmt ");
   view.setUint32(16, 16, true);
@@ -2311,7 +2369,18 @@ function audioBufferToWavBlob(buffer) {
       offset += 2;
     }
   }
+  if (listChunk.length > 0) {
+    new Uint8Array(arr, 44 + dataSize, listChunk.length).set(listChunk);
+  }
   return new Blob([arr], { type: "audio/wav" });
+}
+
+function sanitizeFilename(str) {
+  return str
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, "")
+    .replace(/\s+/g, "-")
+    .slice(0, 80);
 }
 
 function downloadBlob(blob, filename) {
@@ -2376,6 +2445,10 @@ function initEqEditor(audioMetrics, profile) {
   if (trimCheckbox) trimCheckbox.checked = false;
   const fadeCheckbox = document.getElementById("eq-fadeout");
   if (fadeCheckbox) fadeCheckbox.checked = false;
+  const metaTitleEl = document.getElementById("eq-meta-title");
+  if (metaTitleEl) metaTitleEl.value = document.getElementById("track-title").value || "";
+  const metaArtistEl = document.getElementById("eq-meta-artist");
+  if (metaArtistEl) metaArtistEl.value = "";
 
   // Beheben (EQ/De-Esser/Lautheit/Trim/Fade) ist Pro-exklusiv - die Vollanalyse selbst bleibt
   // fuer jede freigeschaltete Analyse verfuegbar (Credits oder Pro).
@@ -2546,8 +2619,13 @@ if (eqDownloadBtn) {
       }
       source.start();
       const rendered = await offlineCtx.startRendering();
-      const blob = audioBufferToWavBlob(rendered);
-      downloadBlob(blob, "overhertz-eq-bearbeitet.wav");
+      const metaTitleEl = document.getElementById("eq-meta-title");
+      const metaArtistEl = document.getElementById("eq-meta-artist");
+      const tagTitle = metaTitleEl ? metaTitleEl.value.trim() : "";
+      const tagArtist = metaArtistEl ? metaArtistEl.value.trim() : "";
+      const blob = audioBufferToWavBlob(rendered, { title: tagTitle, artist: tagArtist });
+      const baseName = sanitizeFilename(tagTitle) || "overhertz-eq-bearbeitet";
+      downloadBlob(blob, `${baseName}.wav`);
       if (eqStatus) eqStatus.textContent = t("eqDownloadStarted");
     } catch (err) {
       if (eqStatus) eqStatus.textContent = t("eqRenderFailed", { msg: err && err.message ? err.message : t("unknownError") });
