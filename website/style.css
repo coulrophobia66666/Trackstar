@@ -889,6 +889,28 @@ button#unlock-btn {
   margin: 0.6rem 0 0 !important;
 }
 
+.eq-meta {
+  border-top: 1px solid rgba(205, 168, 107, 0.25);
+  padding-top: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.eq-meta-hint {
+  margin: 0 0 0.8rem !important;
+}
+
+.eq-meta-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem;
+}
+
+@media (max-width: 620px) {
+  .eq-meta-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .eq-editor-controls {
   display: flex;
   flex-wrap: wrap;
