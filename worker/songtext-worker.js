@@ -442,7 +442,7 @@ async function handleKiEinschaetzung(request, env, cors) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-5",
-        max_tokens: 1500,
+        max_tokens: 4000,
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -451,12 +451,18 @@ async function handleKiEinschaetzung(request, env, cors) {
   }
 
   if (!apiRes.ok) {
+    const errBody = await apiRes.text().catch(() => "");
+    console.error("KI-Einschaetzung: Anthropic-Fehler", apiRes.status, errBody.slice(0, 500));
     return jsonResponse({ error: "KI-Anfrage fehlgeschlagen." }, 502, cors);
   }
 
   const data = await apiRes.json();
-  const rawText = data?.content?.[0]?.text?.trim() || "";
+  // Erstes Content-Block mit Text suchen statt blind content[0] zu nehmen - bei manchen Modellen
+  // kann vor dem Text-Block noch ein anderer Blocktyp (z.B. thinking) stehen.
+  const textBlock = Array.isArray(data?.content) ? data.content.find((b) => b && b.type === "text") : null;
+  const rawText = (textBlock?.text || "").trim();
   if (!rawText) {
+    console.error("KI-Einschaetzung: leere Antwort von Anthropic", JSON.stringify(data).slice(0, 500));
     return jsonResponse({ error: "Keine Antwort von der KI erhalten." }, 502, cors);
   }
 
