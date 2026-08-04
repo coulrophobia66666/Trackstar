@@ -56,6 +56,9 @@ const I18N = {
     albumFilesLabel: "Tracks auswählen",
     albumAnalyzeBtn: "Album analysieren",
     heroEyebrow: "Dein Ergebnis",
+    shareBtn: "Ergebnis teilen",
+    shareText: "Mein Track hat auf Overhertz {stars}/5 Sterne erreicht – „{title}“ ({score}/100). Check deinen Track auch kostenlos:",
+    shareCopied: "Link kopiert!",
     unlockTitle: "Willst du wissen, woran's genau liegt – und wie du's behebst?",
     unlockDesc: "Frequenzkurve im Detail, alle Verbesserungstipps und wohin du den Track am besten einreichst.",
     unlockBtn: "Vollanalyse ansehen",
@@ -65,7 +68,7 @@ const I18N = {
     freqBlockHeading: "Frequenzbalance",
     freqBlockHint: "Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).",
     eqHeading: "EQ-Editor",
-    eqIntro: "Frequenzen direkt hier anpassen und live anhören – kein Mastering, nur ein schneller EQ-Pass. Läuft komplett in deinem Browser, deine Audiodatei verlässt dabei nie dein Gerät.",
+    eqIntro: "Passe die Frequenzen deines Tracks direkt hier an und hör dir das Ergebnis sofort an. Läuft komplett in deinem Browser, deine Audiodatei verlässt dabei nie dein Gerät.",
     eqLockedHint: "Das Beheben (EQ, De-Esser, Lautheit angleichen, Stille kürzen, Fade-out) ist Teil des Pro-Plans. Die Vollanalyse siehst du auch mit Credits – fürs direkte Bearbeiten hier brauchst du Pro.",
     eqUpgradeBtn: "Auf Pro upgraden",
     eqDeesserToggle: "Zischlaute reduzieren (De-Esser)",
@@ -346,6 +349,9 @@ const I18N = {
     albumFilesLabel: "Select tracks",
     albumAnalyzeBtn: "Analyze album",
     heroEyebrow: "Your result",
+    shareBtn: "Share result",
+    shareText: "My track scored {stars}/5 stars on Overhertz – “{title}” ({score}/100). Check your track for free too:",
+    shareCopied: "Link copied!",
     unlockTitle: "Want to know exactly what's wrong – and how to fix it?",
     unlockDesc: "Detailed frequency curve, all improvement tips, and where best to submit your track.",
     unlockBtn: "View full analysis",
@@ -355,7 +361,7 @@ const I18N = {
     freqBlockHeading: "Frequency balance",
     freqBlockHint: "Share of energy per frequency band, compared with a balanced reference range (grey zone).",
     eqHeading: "EQ editor",
-    eqIntro: "Adjust frequencies right here and listen live – not mastering, just a quick EQ pass. Runs entirely in your browser, your audio file never leaves your device.",
+    eqIntro: "Adjust your track's frequencies right here and hear the result instantly. Runs entirely in your browser, your audio file never leaves your device.",
     eqLockedHint: "Fixing things (EQ, de-esser, loudness matching, trimming silence, fade-out) is part of the Pro plan. You can see the full analysis with Credits too – editing directly here needs Pro.",
     eqUpgradeBtn: "Upgrade to Pro",
     eqDeesserToggle: "Reduce sibilance (de-esser)",
@@ -1531,6 +1537,32 @@ function renderBadges(container, badgeDefs) {
 const SONGTEXT_WORKER_URL = "https://trackstar.coulrophobia66666.workers.dev/";
 
 let lastAnalysis = null;
+let lastShareInfo = null;
+
+const shareResultBtn = document.getElementById("share-result-btn");
+if (shareResultBtn) {
+  shareResultBtn.addEventListener("click", async () => {
+    if (!lastShareInfo) return;
+    const shareText = t("shareText", { stars: lastShareInfo.stars, title: lastShareInfo.title, score: lastShareInfo.score });
+    const shareUrl = window.location.origin + window.location.pathname;
+    const labelSpan = shareResultBtn.querySelector("span");
+    const originalLabel = labelSpan ? labelSpan.textContent : "";
+    try {
+      if (navigator.share) {
+        await navigator.share({ text: shareText, url: shareUrl });
+        return;
+      }
+      await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+      if (labelSpan) {
+        labelSpan.textContent = t("shareCopied");
+        setTimeout(() => (labelSpan.textContent = originalLabel), 2200);
+      }
+    } catch {
+      // Abbruch durch Nutzer (z.B. Share-Dialog geschlossen) oder Clipboard nicht verfuegbar -
+      // kein Fehler-Status noetig, das ist kein kritischer Vorgang.
+    }
+  });
+}
 
 async function requestKiEinschaetzung(title, lyrics, metrics) {
   const res = await fetch(SONGTEXT_WORKER_URL, {
@@ -1766,6 +1798,9 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
   heroTitleEl.textContent = grade.title;
   heroTitleEl.style.color = grade.color;
   document.getElementById("hero-desc").textContent = grade.desc;
+  lastShareInfo = { stars: grade.stars, title: grade.title, score: overallScore };
+  const shareBtnEl = document.getElementById("share-result-btn");
+  if (shareBtnEl) shareBtnEl.hidden = false;
 
   if (grade.celebrate) {
     fireConfetti(document.getElementById("confetti-layer"));
