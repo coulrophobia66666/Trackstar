@@ -2048,18 +2048,46 @@ form.addEventListener("submit", async (e) => {
    dargestellt. */
 
 let lastAudioBuffer = null;
-let transcriberPromise = null;
+let vocalsWorker = null;
 
-async function getTranscriber(onProgress) {
-  if (!transcriberPromise) {
-    transcriberPromise = (async () => {
-      const { pipeline } = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm");
-      return pipeline("automatic-speech-recognition", "Xenova/whisper-base", {
-        progress_callback: onProgress,
-      });
-    })();
+function getVocalsWorker() {
+  if (!vocalsWorker) {
+    vocalsWorker = new Worker("vocals-worker.js", { type: "module" });
   }
-  return transcriberPromise;
+  return vocalsWorker;
+}
+
+// Transkribiert in einem eigenen Thread (vocals-worker.js) statt im UI-Thread - das Laden und
+// Ausfuehren des Whisper-Modells wuerde sonst die ganze Seite blockieren/haengen lassen, bis es
+// fertig ist (spuerbar vor allem auf dem Handy).
+function transcribeInWorker(audioData, language, onProgress, onTranscribing) {
+  return new Promise((resolve, reject) => {
+    const worker = getVocalsWorker();
+    const handleMessage = (event) => {
+      const msg = event.data || {};
+      if (msg.type === "progress") {
+        onProgress(msg.progress);
+      } else if (msg.type === "transcribing") {
+        if (onTranscribing) onTranscribing();
+      } else if (msg.type === "result") {
+        worker.removeEventListener("message", handleMessage);
+        worker.removeEventListener("error", handleError);
+        resolve(msg.text);
+      } else if (msg.type === "error") {
+        worker.removeEventListener("message", handleMessage);
+        worker.removeEventListener("error", handleError);
+        reject(new Error(msg.message));
+      }
+    };
+    const handleError = (err) => {
+      worker.removeEventListener("message", handleMessage);
+      worker.removeEventListener("error", handleError);
+      reject(new Error(err && err.message ? err.message : "Worker-Fehler"));
+    };
+    worker.addEventListener("message", handleMessage);
+    worker.addEventListener("error", handleError);
+    worker.postMessage({ audioData, language }, [audioData.buffer]);
+  });
 }
 
 async function resampleTo16kMono(audioBuffer) {
@@ -2160,23 +2188,20 @@ if (vocalsCheckBtn) {
     vocalsStatus.textContent = t("vocalsLoadingModel");
 
     try {
-      const transcriber = await getTranscriber((info) => {
-        if (info && info.status === "progress" && typeof info.progress === "number") {
-          vocalsStatus.textContent = t("vocalsLoadingModelProgress", { pct: Math.round(info.progress) });
-        }
-      });
-
       vocalsStatus.textContent = t("vocalsPreparingAudio");
       const audioData = await resampleTo16kMono(lastAudioBuffer);
 
-      vocalsStatus.textContent = t("vocalsTranscribing");
-      const result = await transcriber(audioData, {
-        language: "german",
-        task: "transcribe",
-        chunk_length_s: 30,
-        stride_length_s: 5,
-      });
-      const transcribedText = (result && result.text ? result.text : "").trim();
+      const transcribedRaw = await transcribeInWorker(
+        audioData,
+        "german",
+        (progress) => {
+          vocalsStatus.textContent = t("vocalsLoadingModelProgress", { pct: Math.round(progress) });
+        },
+        () => {
+          vocalsStatus.textContent = t("vocalsTranscribing");
+        }
+      );
+      const transcribedText = (transcribedRaw || "").trim();
 
       if (!transcribedText) {
         vocalsStatus.textContent = t("vocalsNoUsableTranscript");
