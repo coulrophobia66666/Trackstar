@@ -11,6 +11,8 @@
 
 const ALLOWED_ORIGINS = new Set([
   "https://trackstar-web.coulrophobia66666.workers.dev",
+  "https://overhertz.app",
+  "https://www.overhertz.app",
 ]);
 
 const PRO_MONTHLY_QUOTA = 50;
