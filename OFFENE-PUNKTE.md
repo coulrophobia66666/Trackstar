@@ -1,10 +1,29 @@
 # Offene Punkte
 
-Stand: 2026-08-03 (nach dem großen Konten/Credits/Abo-Umbau). Code für alle
-Features unten ist geschrieben, committed und im Browser client-seitig
-getestet (Playwright, siehe Testprotokoll unten). Was noch fehlt, ist reine
-Cloudflare/Stripe-Dashboard-Konfiguration – kann ich nicht von hier aus
-machen, da ich keinen Zugriff auf eure Dashboards habe.
+Stand: 2026-08-04. Code für alle Features unten ist geschrieben, committed
+und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
+unten).
+
+## ✅ Zahlungssystem ist live (Stand 04.08., Testmodus)
+D1, Stripe Checkout (Credits/Pro/Pro jährlich) und der Webhook sind
+eingerichtet und mit einem echten Testkauf (Stripe-Testkarte 4242...)
+durchgespielt – Credits kommen nach Kauf korrekt im Konto an. Zwei
+Stolperfallen für später (falls das Setup nochmal neu gemacht werden muss,
+z. B. beim Umstieg auf Live-Zahlungen):
+- **Stripe hat getrennte "Konten"**: die normale Kontoansicht mit
+  Testmodus-Umschalter ist NICHT dasselbe wie ein separates "Sandbox"-Konto
+  (falls eins existiert) – Produkte/Preise/Webhooks müssen alle im selben
+  Konto+Modus liegen wie der `STRIPE_SECRET_KEY`, sonst "No such price" /
+  "No such customer".
+- **Webhooks sind pro Modus getrennt**: ein im Live-Modus angelegter Webhook
+  feuert nicht bei Testmodus-Zahlungen (und umgekehrt) – im Zweifel unter
+  Workbench → Webhooks auf "Import" prüfen, ob ein bestehender Webhook aus
+  dem jeweils anderen Modus importiert werden kann, statt neu anzulegen.
+
+Beim Umstieg auf **Live-Zahlungen** (echtes Geld) müssen Produkte, Preise,
+Webhook und alle drei `STRIPE_PRICE_*`/`STRIPE_SECRET_KEY`/
+`STRIPE_WEBHOOK_SECRET`-Werte im Worker nochmal im **Live-Modus** neu
+angelegt/eingetragen werden – das Testmodus-Setup gilt nur fürs Testen.
 
 ## ⚠️ Damit Konten/Credits/Abo live gehen: manuelle Schritte (Finn + Malik)
 
