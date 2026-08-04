@@ -4,6 +4,26 @@ Stand: 2026-08-04. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ⚠️ NEU: Pro-Upgrade-Rabatt für Credits-Kunden – 2 manuelle Schritte (Malik)
+Wer schon Credits gekauft hat und danach zu Pro wechselt, bekommt automatisch
+einen pauschalen Rabatt auf die erste Pro-Zahlung (kein Verrechnen von
+Rest-Credits, bewusst einfach gehalten). Damit das greift:
+
+1. **D1-Spalte nachziehen** (die Datenbank existiert schon, `CREATE TABLE`
+   legt die neue Spalte nicht automatisch nach): im D1-Dashboard →
+   `overhertz-db` → Console →
+   ```sql
+   ALTER TABLE users ADD COLUMN has_bought_credits INTEGER NOT NULL DEFAULT 0;
+   ```
+   einmalig ausführen.
+2. **Stripe-Coupon anlegen** (im selben Stripe-Konto/Modus wie die Produkte!):
+   Produktkatalog → Gutscheine → neuer Coupon, z. B. „5 € Rabatt", Dauer
+   **„Einmalig"** (wichtig – sonst gilt der Rabatt auch für spätere
+   Verlängerungen). Die erzeugte Coupon-ID als Klartext-Variable
+   `STRIPE_COUPON_CREDITS_UPGRADE` im Worker eintragen. Ohne diese Variable
+   passiert einfach nichts (kein Rabatt, aber auch kein Fehler) – kann also
+   auch später nachgezogen werden.
+
 ## ✅ Zahlungssystem ist live (Stand 04.08., Testmodus)
 D1, Stripe Checkout (Credits/Pro/Pro jährlich) und der Webhook sind
 eingerichtet und mit einem echten Testkauf (Stripe-Testkarte 4242...)
