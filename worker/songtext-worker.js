@@ -406,6 +406,7 @@ async function handleKiEinschaetzung(request, env, cors) {
 
   const title = typeof body.title === "string" ? body.title.slice(0, 200) : "";
   const lyrics = typeof body.lyrics === "string" ? body.lyrics : "";
+  const genre = typeof body.genre === "string" ? body.genre.slice(0, 60) : "";
   const metrics = body.metrics && typeof body.metrics === "object" ? body.metrics : {};
 
   if (lyrics.trim().length < 10) {
@@ -425,15 +426,17 @@ async function handleKiEinschaetzung(request, env, cors) {
   }
 
   const promptLines = [
-    "Du bist ein erfahrener deutscher Songtexter, Ghostwriter und A&R-Berater fuer Deutschrap/Strassenmusik.",
-    "Du bekommst einen Songtext sowie automatisch gemessene technische Kennzahlen zum Track.",
+    "Du bist ein erfahrener Songtexter, Ghostwriter und A&R-Berater, der Musik aus allen Genres und Stilrichtungen einschaetzt - von Hip-Hop ueber Pop, Rock, elektronische Musik/EDM, Akustik/Singer-Songwriter bis hin zu Volksmusik und allem dazwischen.",
+    "Du bekommst einen Songtext sowie automatisch gemessene technische Kennzahlen zum Track, ggf. zusaetzlich das Genre.",
+    "Passe Ton, Vokabular und Empfehlungen IMMER an das jeweilige Genre an - was bei Hip-Hop als Hook funktioniert, ist bei Volksmusik oder Akustik-Balladen falsch, und umgekehrt. Wenn kein Genre angegeben ist, leite den passenden Stil aus Songtext und Kennzahlen ab, statt eine bestimmte Szene als Standard anzunehmen.",
     "Antworte AUSSCHLIESSLICH mit einem gueltigen JSON-Objekt (keine Markdown-Codebloecke, kein Fliesstext davor oder danach) mit genau diesen drei Feldern:",
-    '"einordnung": 2-4 Saetze, die den Track fuer den Kuenstler einordnen (Genre/Vibe/Zielgruppe) und dabei die technischen Kennzahlen sinnvoll einbeziehen (z.B. ob er radio-/playlisttauglich klingt).',
-    '"titelvorschlaege": ein Array mit genau 3 alternativen Songtitel-Ideen, die zum Text und zur Hook passen, kurz und einpraegsam.',
-    '"verbesserterText": der ueberarbeitete Songtext - Reime runder, Zeilen praegnanter, Hook einpraegsamer, ohne Sprache, Stil, Silbenzahl pro Zeile oder Grundaussage grundlegend zu veraendern, keine generischen Floskeln oder Fuellzeilen.',
+    '"einordnung": 2-4 Saetze, die den Track fuer den Kuenstler einordnen (Genre/Vibe/Zielgruppe), die technischen Kennzahlen sinnvoll einbeziehen (z.B. ob er radio-/playlisttauglich klingt) und kurz benennen, welches Setup/welche Produktion fuer dieses Genre typischerweise passt.',
+    '"titelvorschlaege": ein Array mit genau 3 alternativen Songtitel-Ideen, die zum Text, zur Hook und zum Genre passen, kurz und einpraegsam.',
+    '"verbesserterText": der ueberarbeitete Songtext - Reime runder, Zeilen praegnanter, Hook einpraegsamer, ohne Sprache, Stil, Silbenzahl pro Zeile, Grundaussage oder Genre-Konventionen grundlegend zu veraendern, keine generischen Floskeln oder Fuellzeilen.',
     "",
   ];
   if (title) promptLines.push('Aktueller Songtitel: "' + title + '"');
+  if (genre) promptLines.push("Genre (vom Nutzer angegeben/erkannt): " + genre);
   if (metricLines.length > 0) {
     promptLines.push("Technische Kennzahlen:");
     promptLines.push(...metricLines.map((l) => "- " + l));
