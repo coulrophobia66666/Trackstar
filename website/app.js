@@ -1564,11 +1564,11 @@ if (shareResultBtn) {
   });
 }
 
-async function requestKiEinschaetzung(title, lyrics, metrics) {
+async function requestKiEinschaetzung(title, lyrics, metrics, genre) {
   const res = await fetch(SONGTEXT_WORKER_URL, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ title, lyrics, metrics }),
+    body: JSON.stringify({ title, lyrics, metrics, genre: genre ? genreLabel(genre) : "" }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.error) throw new Error(data.error || t("kiRequestUnknownError"));
@@ -1897,7 +1897,7 @@ rewriteBtn.addEventListener("click", async () => {
   rewriteResult.hidden = true;
 
   try {
-    const result = await requestKiEinschaetzung(title, lyricsRaw, lastAnalysis || {});
+    const result = await requestKiEinschaetzung(title, lyricsRaw, lastAnalysis || {}, currentAnalysisSnapshot ? currentAnalysisSnapshot.genre : "");
     rewriteClassification.textContent = result.classification || t("rewriteNoClassification");
     rewriteTitleIdeas.innerHTML = "";
     for (const idea of result.titleIdeas || []) {
