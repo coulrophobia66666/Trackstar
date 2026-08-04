@@ -297,14 +297,24 @@ async function handleCreateCheckoutSession(request, env, cors) {
       await env.DB.prepare("UPDATE users SET stripe_customer_id = ? WHERE id = ?").bind(customerId, user.id).run();
     }
 
-    const session = await stripeRequest(env, "checkout/sessions", {
+    const sessionParams = {
       mode: planType === "credits" ? "payment" : "subscription",
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: siteOrigin + "/?checkout=success",
       cancel_url: siteOrigin + "/?checkout=cancel",
       metadata: { user_id: user.id, plan: planType },
-    });
+    };
+
+    // Wer schon mal Credits gekauft hat und jetzt erstmals auf Pro upgraden will, bekommt einen
+    // pauschalen Rabatt (Coupon-ID in Stripe hinterlegt, z.B. "einmalig 5 EUR ab") - kein
+    // individuelles Verrechnen von Rest-Credits, bewusst simpel gehalten.
+    const isFirstProUpgrade = (planType === "pro" || planType === "pro_annual") && !user.stripe_subscription_id;
+    if (user.has_bought_credits && isFirstProUpgrade && env.STRIPE_COUPON_CREDITS_UPGRADE) {
+      sessionParams.discounts = [{ coupon: env.STRIPE_COUPON_CREDITS_UPGRADE }];
+    }
+
+    const session = await stripeRequest(env, "checkout/sessions", sessionParams);
 
     return jsonResponse({ url: session.url }, 200, cors);
   } catch (err) {
@@ -353,7 +363,9 @@ async function handleStripeWebhook(request, env) {
     const userId = obj.metadata && obj.metadata.user_id;
     const plan = obj.metadata && obj.metadata.plan;
     if (userId && plan === "credits") {
-      await env.DB.prepare("UPDATE users SET credits = credits + 5, stripe_customer_id = COALESCE(stripe_customer_id, ?) WHERE id = ?")
+      await env.DB.prepare(
+        "UPDATE users SET credits = credits + 5, has_bought_credits = 1, stripe_customer_id = COALESCE(stripe_customer_id, ?) WHERE id = ?"
+      )
         .bind(obj.customer || null, userId)
         .run();
     } else if (userId && (plan === "pro" || plan === "pro_annual")) {
