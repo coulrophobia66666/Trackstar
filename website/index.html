@@ -37,6 +37,25 @@
             <input type="password" id="login-password" required minlength="8" />
           </div>
           <button type="submit" class="account-btn account-btn-primary" data-i18n="loginBtn">Einloggen</button>
+          <button type="button" id="forgot-password-link" class="link-btn" data-i18n="forgotPasswordLink">Passwort vergessen?</button>
+        </form>
+        <form id="request-reset-form" class="auth-form" hidden>
+          <h3 data-i18n="resetRequestHeading">Passwort zurücksetzen</h3>
+          <p class="hint" data-i18n="resetRequestHint">Gib deine E-Mail ein, wir schicken dir einen Link zum Zurücksetzen.</p>
+          <div class="field">
+            <label for="reset-request-email" data-i18n="emailLabel">E-Mail</label>
+            <input type="email" id="reset-request-email" required />
+          </div>
+          <button type="submit" class="account-btn account-btn-primary" data-i18n="resetRequestBtn">Link anfordern</button>
+          <button type="button" id="back-to-login-link" class="link-btn" data-i18n="backToLoginLink">Zurück zum Login</button>
+        </form>
+        <form id="reset-password-form" class="auth-form" hidden>
+          <h3 data-i18n="resetPasswordHeading">Neues Passwort setzen</h3>
+          <div class="field">
+            <label for="reset-new-password"><span data-i18n="newPasswordLabel">Neues Passwort</span> <span class="optional" data-i18n="passwordHint">(mind. 8 Zeichen)</span></label>
+            <input type="password" id="reset-new-password" required minlength="8" />
+          </div>
+          <button type="submit" class="account-btn account-btn-primary" data-i18n="resetPasswordBtn">Passwort setzen</button>
         </form>
         <form id="register-form" class="auth-form">
           <h3 data-i18n="registerHeading">Registrieren</h3>

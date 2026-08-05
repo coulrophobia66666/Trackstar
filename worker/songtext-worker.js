@@ -3,9 +3,10 @@
 // nie im Frontend-Code der statischen Website landen.
 //
 // Benoetigte Bindings/Variablen im Worker (Cloudflare-Dashboard -> Settings):
-//   Secrets:  ANTHROPIC_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+//   Secrets:  ANTHROPIC_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_API_KEY
 //   Klartext: STRIPE_PRICE_CREDITS, STRIPE_PRICE_PRO_MONTHLY, STRIPE_PRICE_PRO_ANNUAL
-//             (Stripe Price-IDs, z.B. "price_...", sind nicht geheim)
+//             (Stripe Price-IDs, z.B. "price_...", sind nicht geheim), RESEND_FROM_EMAIL
+//             (Absenderadresse fuer Passwort-Reset-Mails, z.B. "Overhertz <noreply@overhertz.app>")
 //   D1-Binding: DB (siehe wrangler.toml + schema.sql)
 //   Rate-Limit-Binding RATE_LIMITER wird beim Deploy automatisch angelegt.
 
@@ -79,6 +80,30 @@ function requireDb(env, cors) {
     return jsonResponse({ error: "Konten-System ist noch nicht eingerichtet (D1-Datenbank fehlt)." }, 501, cors);
   }
   return null;
+}
+
+/* ---------- E-Mail (Resend, fuer Passwort-Reset) ---------- */
+
+async function sendEmail(env, { to, subject, html, text }) {
+  if (!env.RESEND_API_KEY || !env.RESEND_FROM_EMAIL) return false;
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer " + env.RESEND_API_KEY,
+      },
+      body: JSON.stringify({ from: env.RESEND_FROM_EMAIL, to: [to], subject, html, text }),
+    });
+    if (!res.ok) {
+      console.error("Resend-Fehler", res.status, (await res.text().catch(() => "")).slice(0, 300));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Resend nicht erreichbar", err);
+    return false;
+  }
 }
 
 /* ---------- Passwoerter (PBKDF2 via Web Crypto, kein externes Paket noetig) ---------- */
@@ -196,6 +221,80 @@ async function handleMe(request, env, cors) {
   const user = await getUserFromRequest(request, env);
   if (!user) return jsonResponse({ error: "Nicht eingeloggt." }, 401, cors);
   return jsonResponse({ user: publicUser(user) }, 200, cors);
+}
+
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1 Stunde
+
+async function handleRequestPasswordReset(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const body = await safeJson(request);
+  const email = normalizeEmail(body.email);
+  if (!isValidEmail(email)) return jsonResponse({ error: "Ungueltige E-Mail-Adresse." }, 400, cors);
+
+  // Bewusst immer dieselbe Antwort, egal ob die E-Mail existiert - sonst liesse sich damit
+  // durchprobieren, welche E-Mails bei Overhertz registriert sind (User-Enumeration).
+  const genericMsg = { ok: true, message: "Falls ein Konto mit dieser E-Mail existiert, wurde ein Link zum Zuruecksetzen verschickt." };
+
+  const user = await env.DB.prepare("SELECT id, email FROM users WHERE email = ?").bind(email).first();
+  if (user) {
+    const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
+    const now = Date.now();
+    await env.DB.prepare("INSERT INTO password_resets (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)")
+      .bind(token, user.id, now, now + PASSWORD_RESET_TTL_MS)
+      .run();
+
+    const origin = ALLOWED_ORIGINS.has(request.headers.get("Origin") || "")
+      ? request.headers.get("Origin")
+      : [...ALLOWED_ORIGINS][0];
+    const resetUrl = origin + "/index.html?reset=" + token;
+
+    const sent = await sendEmail(env, {
+      to: user.email,
+      subject: "Overhertz - Passwort zuruecksetzen",
+      text:
+        "Hallo,\n\nhier ist dein Link zum Zuruecksetzen deines Overhertz-Passworts (1 Stunde gueltig):\n" +
+        resetUrl +
+        "\n\nHast du das nicht angefordert, kannst du diese E-Mail ignorieren.",
+      html:
+        '<p>Hallo,</p><p>hier ist dein Link zum Zurücksetzen deines Overhertz-Passworts (1 Stunde gültig):</p>' +
+        '<p><a href="' + resetUrl + '">' + resetUrl + "</a></p>" +
+        "<p>Hast du das nicht angefordert, kannst du diese E-Mail ignorieren.</p>",
+    });
+    if (!sent) {
+      console.error("Passwort-Reset: E-Mail-Versand fehlgeschlagen oder RESEND_API_KEY/RESEND_FROM_EMAIL nicht gesetzt.");
+    }
+  }
+
+  return jsonResponse(genericMsg, 200, cors);
+}
+
+async function handleResetPassword(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const body = await safeJson(request);
+  const token = typeof body.token === "string" ? body.token.trim() : "";
+  const password = typeof body.password === "string" ? body.password : "";
+  if (!token) return jsonResponse({ error: "Reset-Link ist ungueltig." }, 400, cors);
+  if (password.length < 8) return jsonResponse({ error: "Passwort muss mindestens 8 Zeichen haben." }, 400, cors);
+
+  const reset = await env.DB.prepare("SELECT user_id, expires_at FROM password_resets WHERE token = ?").bind(token).first();
+  if (!reset || reset.expires_at <= Date.now()) {
+    return jsonResponse({ error: "Reset-Link ist ungueltig oder abgelaufen." }, 400, cors);
+  }
+
+  const passwordHash = await hashPassword(password);
+  await env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?").bind(passwordHash, reset.user_id).run();
+  await env.DB.prepare("DELETE FROM password_resets WHERE token = ?").bind(token).run();
+  // Alle bestehenden Sessions invalidieren - nach einem Passwort-Reset soll man sich ueberall neu
+  // einloggen muessen (falls das alte Passwort z.B. wegen eines geklauten Geraets kompromittiert war).
+  await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(reset.user_id).run();
+
+  const user = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(reset.user_id).first();
+  const newToken = await createSession(env, reset.user_id);
+  return jsonResponse({ token: newToken, user: publicUser(user) }, 200, cors);
 }
 
 async function handleConsumeCredit(request, env, cors) {
@@ -552,6 +651,12 @@ export default {
     }
     if (url.pathname === "/auth/me" && request.method === "GET") {
       return handleMe(request, env, cors);
+    }
+    if (url.pathname === "/auth/request-password-reset" && request.method === "POST") {
+      return withRateLimit(env, "pwreset:" + clientIp, cors, () => handleRequestPasswordReset(request, env, cors));
+    }
+    if (url.pathname === "/auth/reset-password" && request.method === "POST") {
+      return withRateLimit(env, "pwreset:" + clientIp, cors, () => handleResetPassword(request, env, cors));
     }
     if (url.pathname === "/consume-credit" && request.method === "POST") {
       return withRateLimit(env, "credit:" + clientIp, cors, () => handleConsumeCredit(request, env, cors));

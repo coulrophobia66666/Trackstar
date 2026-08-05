@@ -7,6 +7,26 @@ unten).
 ## ✅ Erledigt seit dem letzten Stand
 - **Domain `overhertz.app` ist verbunden** (Cloudflare Custom Domain am
   `trackstar-web`-Worker) und live erreichbar.
+- **"Passwort vergessen"-Funktion gebaut** (D1-Tabelle `password_resets`,
+  Worker-Endpunkte, Formulare im Frontend) – siehe nächster Punkt für den
+  einen noch fehlenden manuellen Schritt.
+
+## ⚠️ NEU: Passwort-Reset braucht E-Mail-Versand (Finn) – 1 manueller Schritt
+Ohne diesen Schritt kommt bei "Passwort vergessen" die generische
+Bestätigung, aber es wird **keine E-Mail verschickt** (kein Fehler, aber
+auch kein Link beim Nutzer) – der Worker loggt das serverseitig als Fehler.
+
+1. Konto bei **resend.com** anlegen (kostenloses Kontingent reicht für den
+   Start).
+2. Absender-Domain verifizieren: Resend zeigt DNS-Einträge (SPF/DKIM) an,
+   die bei `overhertz.app` im Cloudflare-DNS eingetragen werden müssen
+   (Cloudflare verwaltet die Domain ja jetzt schon – siehe DNS-Records).
+3. API-Key erzeugen, als verschlüsseltes Secret `RESEND_API_KEY` im Worker
+   hinterlegen (gleiches Vorgehen wie bei `ANTHROPIC_API_KEY`).
+4. Klartext-Variable `RESEND_FROM_EMAIL` im Worker setzen, z. B.
+   `Overhertz <noreply@overhertz.app>`.
+5. Kurzer Test: "Passwort vergessen" mit echter E-Mail durchklicken, prüfen
+   ob die Mail ankommt und der Link funktioniert (1 Stunde gültig).
 
 ## ⚠️ Rechtstexte: Anwaltsprüfung läuft (Carla)
 Ist **in Arbeit, noch nicht final** – Hinweistexte in `impressum.html`/
