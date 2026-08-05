@@ -1423,13 +1423,25 @@ button#vocals-check-btn:disabled {
 /* Account-Bar, Login/Registrierung, Pricing */
 .account-bar {
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0.8rem;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
   padding: 1rem 0 0;
   font-size: 0.85rem;
   color: var(--text-secondary);
+}
+
+.account-actions,
+.account-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
   flex-wrap: wrap;
+}
+
+.account-meta {
+  text-align: right;
 }
 
 .account-info strong {
@@ -1570,6 +1582,49 @@ button#vocals-check-btn:disabled {
   border: 1px solid var(--gridline);
   background: var(--bg-plane);
   color: var(--text-primary);
+}
+
+.password-field {
+  position: relative;
+  width: 100%;
+}
+
+.password-field input {
+  padding-right: 2.5rem;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  color: var(--gold-bright);
+}
+
+.password-toggle .icon-eye-off {
+  display: none;
+}
+
+.password-toggle.is-visible .icon-eye {
+  display: none;
+}
+
+.password-toggle.is-visible .icon-eye-off {
+  display: block;
 }
 
 .auth-form button {

@@ -25,6 +25,8 @@ const I18N = {
     loginBtn: "Einloggen",
     registerHeading: "Registrieren",
     passwordHint: "(mind. 8 Zeichen)",
+    passwordShowLabel: "Passwort anzeigen",
+    passwordHideLabel: "Passwort verbergen",
     registerBtn: "Konto erstellen",
     forgotPasswordLink: "Passwort vergessen?",
     backToLoginLink: "Zurück zum Login",
@@ -369,6 +371,8 @@ const I18N = {
     loginBtn: "Log in",
     registerHeading: "Sign up",
     passwordHint: "(min. 8 characters)",
+    passwordShowLabel: "Show password",
+    passwordHideLabel: "Hide password",
     registerBtn: "Create account",
     forgotPasswordLink: "Forgot password?",
     backToLoginLink: "Back to login",
@@ -1853,11 +1857,15 @@ function renderAccountBar() {
       currentUser.plan;
     const isSubscribed = currentUser.plan === "pro" || currentUser.plan === "pro_annual";
     accountBar.innerHTML = `
-      <span class="account-info"><strong>${currentUser.email}</strong> · ${planLabel} · ${quotaText}</span>
-      <button type="button" id="history-toggle-btn" class="account-btn">${t("historyToggleBtn")}</button>
-      ${isSubscribed ? `<button type="button" id="manage-subscription-btn" class="account-btn">${t("accountManageSubscriptionBtn")}</button>` : ""}
-      <button type="button" id="logout-btn" class="account-btn">${t("accountLogoutBtn")}</button>
-      <button type="button" id="delete-account-btn" class="link-btn">${t("accountDeleteBtn")}</button>
+      <div class="account-actions">
+        <button type="button" id="history-toggle-btn" class="account-btn">${t("historyToggleBtn")}</button>
+        ${isSubscribed ? `<button type="button" id="manage-subscription-btn" class="account-btn">${t("accountManageSubscriptionBtn")}</button>` : ""}
+        <button type="button" id="logout-btn" class="account-btn">${t("accountLogoutBtn")}</button>
+      </div>
+      <div class="account-meta">
+        <span class="account-info"><strong>${currentUser.email}</strong> · ${planLabel} · ${quotaText}</span>
+        <button type="button" id="delete-account-btn" class="link-btn">${t("accountDeleteBtn")}</button>
+      </div>
     `;
     document.getElementById("logout-btn").addEventListener("click", handleLogout);
     document.getElementById("delete-account-btn").addEventListener("click", handleDeleteAccount);
@@ -2088,6 +2096,18 @@ function showAuthForm(formToShow) {
   });
   authStatus.textContent = "";
 }
+
+document.querySelectorAll(".password-toggle").forEach((btn) => {
+  const input = document.getElementById(btn.dataset.target);
+  if (!input) return;
+  btn.setAttribute("aria-label", t("passwordShowLabel"));
+  btn.addEventListener("click", () => {
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    btn.classList.toggle("is-visible", show);
+    btn.setAttribute("aria-label", show ? t("passwordHideLabel") : t("passwordShowLabel"));
+  });
+});
 
 if (forgotPasswordLink) {
   forgotPasswordLink.addEventListener("click", () => showAuthForm(requestResetForm));
