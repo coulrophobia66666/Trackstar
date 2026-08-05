@@ -4,6 +4,18 @@ Stand: 2026-08-05. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ NEU (05.08., sechster Durchgang): Wordmark-Logo, Text-Feinschliff
+- **Neues Logo im Seitenkopf**: Der quadratische Frequenzlinien-Icon vor
+  dem Schriftzug ist raus, stattdessen nur noch "Overhertz" mit einer
+  ruhigen, einzelnen Frequenzlinie direkt darunter (statt einer geraden
+  Linie) – zurückhaltender, wirkt wie ein Fachlabel statt wie eine App.
+  Aus einem frueher gezeigten Logo-Pitch mit drei Konzepten ("Wellenstern",
+  "Die Type", "Das Siegel") ausgewaehlt. Favicon/App-Icons bleiben unveraendert
+  beim bisherigen Frequenzlinien-Mark, da nur der Seitenkopf gemeint war.
+- **Weiterer Text-Feinschliff**: Genre-Hinweis "(wird automatisch geschätzt
+  – hier überschreibbar)" komplett entfernt, Songtext-Platzhalter im
+  Textfeld weiter gekürzt (endet jetzt nach "Vocals-Check.").
+
 ## ✅ NEU (05.08., fünfter Durchgang): Finale Farbpalette
 Nach Rückmeldung, dass der bisherige Blau-/Braunton auf Dauer nicht "elegant
 Plattenlabel" genug wirkt: Hintergrund von warmem Braunschwarz auf ein

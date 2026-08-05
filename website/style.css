@@ -57,11 +57,11 @@ body {
   padding: 3.5rem 1.5rem 3rem;
 }
 
-.header-mark {
-  width: 34px;
-  height: 34px;
-  margin: 0 auto 1.1rem;
-  color: var(--gold);
+.wordmark-line {
+  display: block;
+  width: 130px;
+  height: 12px;
+  margin: 0 auto 1.15rem;
   transform-origin: center;
   animation: heartbeat 1.3s ease-in-out 1;
 }
@@ -156,7 +156,7 @@ body {
   font-size: 2.4rem;
   font-weight: 600;
   letter-spacing: 0.005em;
-  margin: 0 0 0.75rem;
+  margin: 0;
   color: var(--text-primary);
 }
 
@@ -780,7 +780,7 @@ button#unlock-btn {
 .eq-band-wrap {
   width: 100%;
   height: 90px;
-  border-radius: 10px;
+  border-radius: 999px;
   overflow: hidden;
   background: #08090b;
   border: 1px solid rgba(205, 168, 107, 0.2);
@@ -1635,7 +1635,7 @@ button#vocals-check-btn:disabled {
   .star-rating,
   .achievement-badge,
   .confetti-piece,
-  .header-mark,
+  .wordmark-line,
   .shine-sweep,
   .shine-sweep::after {
     animation: none !important;
