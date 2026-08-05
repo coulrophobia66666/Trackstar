@@ -23,6 +23,12 @@
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#060506" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Overhertz" />
 </head>
 <body>
   <div class="page-shine-streak" id="page-shine-streak" aria-hidden="true"></div>
@@ -293,8 +299,19 @@
           </div>
 
           <div class="eq-editor-body" id="eq-editor-body">
-          <div class="eq-spectrum" id="eq-spectrum" aria-hidden="true"></div>
-          <p class="hint eq-spectrum-hint" data-i18n="eqSpectrumHint">Live-Frequenzanzeige während der Vorschau – zeigt direkt, wie sich deine Regler auswirken.</p>
+          <div class="eq-player">
+            <button type="button" id="eq-play-btn" class="account-btn account-btn-primary eq-play-btn" data-i18n="eqPlayBtn">▶ Vorschau abspielen</button>
+            <div class="eq-band-wrap">
+              <canvas id="eq-band-canvas" class="eq-band-canvas" aria-hidden="true"></canvas>
+            </div>
+            <div class="eq-seek-row">
+              <span class="eq-time" id="eq-time-current">0:00</span>
+              <input type="range" id="eq-seek" class="eq-seek" min="0" max="0" step="0.1" value="0" aria-label="Abspielposition" />
+              <span class="eq-time" id="eq-time-total">0:00</span>
+            </div>
+            <p class="hint eq-spectrum-hint" data-i18n="eqSpectrumHint">Live-Frequenzband während der Vorschau – zeigt direkt, wie sich deine Regler auswirken.</p>
+          </div>
+
           <div class="eq-sliders" id="eq-sliders"></div>
 
           <div class="eq-deesser">
@@ -351,16 +368,9 @@
             </div>
           </div>
 
-          <div class="eq-seek-row">
-            <span class="eq-time" id="eq-time-current">0:00</span>
-            <input type="range" id="eq-seek" class="eq-seek" min="0" max="0" step="0.1" value="0" aria-label="Abspielposition" />
-            <span class="eq-time" id="eq-time-total">0:00</span>
-          </div>
-
           <div class="eq-editor-controls">
             <button type="button" id="eq-suggest-btn" class="account-btn" data-i18n="eqSuggestBtn">Vorschlag übernehmen</button>
             <button type="button" id="eq-reset-btn" class="account-btn" data-i18n="eqResetBtn">Zurücksetzen</button>
-            <button type="button" id="eq-play-btn" class="account-btn account-btn-primary" data-i18n="eqPlayBtn">▶ Vorschau abspielen</button>
             <button type="button" id="eq-download-btn" class="account-btn" data-i18n="eqDownloadBtn">Bearbeitete Version herunterladen</button>
           </div>
           <p class="status-line" id="eq-status" role="status" aria-live="polite"></p>

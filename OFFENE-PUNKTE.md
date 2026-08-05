@@ -4,6 +4,32 @@ Stand: 2026-08-05. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ NEU (05.08., dritter Durchgang): PWA, EQ-Editor-Redesign, Farbmix
+- **App-Installierbarkeit (PWA)**: Die Seite lässt sich jetzt auf dem Handy/
+  Desktop als App-Icon installieren ("Zum Startbildschirm hinzufügen") –
+  öffnet dann ohne Browserleiste, fühlt sich wie eine echte App an. Kein
+  App-Store nötig. **Android/Chrome**: zeigt oft automatisch einen
+  Install-Hinweis, sonst über Browser-Menü → "App installieren".
+  **iPhone/Safari**: nur manuell über Teilen-Symbol → "Zum
+  Home-Bildschirm" (Apple erlaubt keinen Automatismus). Technisch: neue
+  `manifest.json`, ein schlanker Service Worker (`sw.js`, Netzwerk-first
+  mit Cache-Fallback – Nutzer bekommen bei bestehender Verbindung immer die
+  aktuellste Version), Icons in mehreren Größen. Kein manueller
+  Cloudflare-Schritt nötig, funktioniert automatisch mit dem nächsten
+  Deploy.
+- **EQ-Editor umsortiert**: Play-Button, Frequenzband-Anzeige und
+  Seek-Leiste liegen jetzt direkt zusammen oben im Editor statt über die
+  Seite verteilt – Abspielen, Scrubben und Anzeige gleichzeitig sichtbar,
+  ohne zu scrollen.
+- **Neues Frequenzband statt vertikaler Balken**: läuft während der
+  Vorschau von links nach rechts (Canvas-Spektrogramm), dunkler
+  Hintergrund, metallic Blau je nach Pegel.
+- **Farbpalette angepasst**: Auf Hinweis eines Nutzers mit
+  Rot-Grün-Sehschwäche (der bisherige Goldton war teils nicht sicher von
+  Grün zu unterscheiden) gibt's jetzt zwei bewusst unterscheidbare Akzente
+  – Gold bleibt für Buttons/Logo/Branding, ein neuer Blauton für
+  Hintergrund-Wash/Glanzeffekte und das neue Frequenzband.
+
 ## ✅ NEU (05.08., zweiter Durchgang): Automatischer Flow, Verlauf, Logo zurückgesetzt
 - **Vocals-Check läuft jetzt automatisch** direkt nach der Freischaltung, ohne
   Klick und ohne dass ein Songtext eingegeben sein muss – kein Warten mehr auf
