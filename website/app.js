@@ -3001,6 +3001,18 @@ if (ratingSubmitBtn) {
 
 /* ---------- Album-Check (Pro-Feature: mehrere Tracks am Stück pruefen) ---------- */
 
+// Dateinamen kommen 1:1 vom Nutzer (Upload) und landen unten per innerHTML in der Seite - ohne
+// Escaping koennte ein praeparierter Dateiname (z.B. "<img src=x onerror=...>.mp3") als HTML
+// ausgefuehrt werden statt als Text angezeigt zu werden.
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const albumBtn = document.getElementById("album-analyze-btn");
 const albumFilesInput = document.getElementById("album-files");
 const albumStatus = document.getElementById("album-status");
@@ -3070,14 +3082,14 @@ if (albumBtn) {
 
         card.innerHTML = `
           <div class="album-track-head">
-            <span class="album-track-name">${file.name}</span>
+            <span class="album-track-name">${escapeHtml(file.name)}</span>
             <span class="album-track-score" style="color:${grade.color}">${overallScore}/100 · ${grade.title}</span>
           </div>
           <p class="album-track-tip">${topTip.text}</p>
         `;
       } catch (err) {
         card.innerHTML = `
-          <div class="album-track-head"><span class="album-track-name">${file.name}</span></div>
+          <div class="album-track-head"><span class="album-track-name">${escapeHtml(file.name)}</span></div>
           <p class="album-track-tip">${t("albumTrackError", { msg: err && err.message ? err.message : t("albumAnalysisFailed") })}</p>
         `;
       }
