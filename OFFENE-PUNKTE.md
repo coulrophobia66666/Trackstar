@@ -1,8 +1,33 @@
 # Offene Punkte
 
-Stand: 2026-08-04. Code für alle Features unten ist geschrieben, committed
+Stand: 2026-08-05. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
+
+## ✅ NEU (05.08.): Rechtliches, Kündigung, Sicherheit, Sharing
+- **Dateigrößen-Limit beim Upload**: 100 MB pro Track (Einzel-Check und
+  Album-Check), verhindert dass riesige Dateien den Browser beim Decodieren
+  zum Absturz bringen. Sauber abgefangene Fehlermeldung, kein Credit-Verbrauch
+  bei Ablehnung.
+- **Kündigungsbutton** ("Abo verwalten/kündigen"): Pro-Kunden bekommen im
+  Konto-Bereich einen Button, der sie zum **Stripe Customer Portal**
+  weiterleitet – dort können sie jederzeit kündigen (Abo läuft dann bis zum
+  Ende der bezahlten Periode weiter, keine Teilrückerstattung) oder die
+  Zahlungsmethode ändern. Ohne aktive Kündigung verlängert sich das Abo
+  automatisch. **Manueller Schritt nötig, siehe unten.**
+- **AGB-Seite** (`website/agb.html`) und **Widerrufsbelehrung**
+  (`website/widerruf.html`) neu gebaut, im Footer verlinkt. **Entwurf,
+  noch nicht anwaltlich geprüft** – siehe Rechtstexte-Abschnitt unten.
+- **Konto-Löschfunktion** (DSGVO "Recht auf Löschung"): Button im
+  Konto-Bereich, löscht nach Bestätigung Nutzer, Sessions, Checks, Ratings
+  und Passwort-Reset-Tokens aus D1 und kündigt automatisch ein laufendes
+  Stripe-Abo, bevor der Account gelöscht wird.
+- **Open-Graph/Twitter-Meta-Tags + Share-Bild**: Links zu overhertz.app
+  zeigen jetzt bei WhatsApp/X/Discord/Slack etc. eine Vorschau mit Titel,
+  Beschreibung und einem eigens gerendertem 1200×630-Bild
+  (`website/og-image.png`).
+- **`robots.txt` und `sitemap.xml`** ergänzt für bessere Auffindbarkeit bei
+  Google & Co.
 
 ## ✅ Erledigt seit dem letzten Stand
 - **Domain `overhertz.app` ist verbunden** (Cloudflare Custom Domain am
@@ -43,13 +68,46 @@ serverseitig):
    prüfen ob die Mail ankommt und der Link funktioniert (1 Stunde
    gültig).
 
-## ⚠️ Rechtstexte: Anwaltsprüfung läuft (Carla)
-Ist **in Arbeit, noch nicht final** – Hinweistexte in `impressum.html`/
-`datenschutz.html` entsprechend angepasst ("wird aktuell geprüft"). Sobald
-die Rückmeldung wirklich final ist, Bescheid geben, dann wird der Hinweis
-ganz entfernt. Offene Detailfrage in der Datenschutz-Notiz: ob mit
-Cloudflare und Anthropic ein Auftragsverarbeitungsvertrag (AVV)
-abgeschlossen ist.
+## ⚠️ NEU: Stripe Customer Portal aktivieren – manueller Schritt (Finn/Malik)
+Der neue Kündigungsbutton ruft die Stripe-Billing-Portal-API auf – die muss
+im Stripe-Dashboard einmalig **im Live-Modus** konfiguriert werden, sonst
+kommt ein Fehler statt des Portals:
+1. Stripe-Dashboard → Einstellungen → **Billing → Customer Portal**
+   (bzw. "Kundenportal").
+2. Portal aktivieren, erlaubte Aktionen festlegen: mindestens "Abo
+   kündigen" (`Cancel subscriptions`) anhaken. Empfehlung: Kündigung zum
+   Ende der aktuellen Periode ("At period end"), nicht sofort – passt zu
+   dem, was in der AGB steht.
+3. Optional: Zahlungsmethode ändern, Rechnungshistorie einsehen ebenfalls
+   erlauben (macht das Portal für Kunden nützlicher).
+4. Einmal kurz selbst testen: als Pro-Kunde einloggen, "Abo
+   verwalten/kündigen" klicken, prüfen ob das Portal aufgeht und eine
+   Kündigung tatsächlich durchgeht.
+
+Ohne diesen Schritt bekommt der Nutzer beim Klick auf den Button eine
+Fehlermeldung ("Konnte nicht geöffnet werden") statt des Portals.
+
+## ⚠️ Rechtstexte: Anwaltsprüfung (Carla)
+**Impressum und Datenschutzerklärung sind laut Jeff jetzt final vom Anwalt
+geprüft** ("Anwalt kann jetzt abgehakt werden") – der Prüfen-Hinweis kann
+aus `impressum.html`/`datenschutz.html` raus, sobald das nochmal von Carla
+gegengecheckt wurde.
+
+**Neu und ausdrücklich noch NICHT anwaltlich geprüft**: `agb.html` und
+`widerruf.html` (beide als Entwurf gekennzeichnet, mit Hinweisbox auf der
+Seite). Bitte vor breitem kommerziellen Einsatz mitprüfen lassen – gleiche
+Prüfung wie damals bei Impressum/Datenschutz.
+
+**Offener Lücke in `widerruf.html` selbst dokumentiert**: Der Passus zum
+vorzeitigen Erlöschen des Widerrufsrechts bei digitalen Inhalten setzt eine
+ausdrückliche Zustimmungs-Checkbox **vor** Kaufabschluss voraus – die gibt
+es im aktuellen Stripe-Checkout-Flow noch nicht. Bis das nachgezogen ist,
+gilt sicherheitshalber die volle 14-tägige Frist ohne Einschränkung (steht
+so auch auf der Seite). Muss vor dem "richtig scharf stellen" der
+Sonderregel noch gebaut werden (Checkbox im Checkout-Vorlauf).
+
+Offene Detailfrage in der Datenschutz-Notiz: ob mit Cloudflare und Anthropic
+ein Auftragsverarbeitungsvertrag (AVV) abgeschlossen ist.
 
 ## ⚠️ NEU: Pro-Upgrade-Rabatt für Credits-Kunden – 2 manuelle Schritte (Malik)
 Wer schon Credits gekauft hat und danach zu Pro wechselt, bekommt automatisch
@@ -188,6 +246,23 @@ werden. Steht auch schon so auf der Seite (kleiner Hinweis im Footer, nur im
 EN-Modus sichtbar). Bitte auf dem Schirm behalten (Carla), falls eine
 englischsprachige Rechtstext-Version für den internationalen Auftritt
 irgendwann gebraucht wird.
+
+## Getestet (05.08., Playwright, lokal gegen die Website-Dateien)
+- `agb.html`/`widerruf.html` laden fehlerfrei, Footer-Links vorhanden und
+  verlinken korrekt.
+- OG/Twitter-Meta-Tags stehen im HTML (`og:title`, `og:image`,
+  `twitter:card`), `og-image.png` lädt (200, `image/png`).
+- `robots.txt`/`sitemap.xml` laden (200).
+- Upload einer 101-MB-Testdatei wird sauber mit Fehlermeldung abgelehnt
+  ("File is too large (101 MB) – 100 MB maximum."), kein Absturz.
+- Konto-Bereich (mit gemocktem eingeloggtem Pro-Nutzer): "Abo
+  verwalten/kündigen"- und "Konto löschen"-Button erscheinen, Klick auf
+  "Konto löschen" zeigt den Bestätigungsdialog mit korrektem Warntext.
+- Keine neuen JavaScript-Fehler im Browser (nur die bekannten, harmlosen
+  Google-Fonts-Netzwerkfehler durch die Sandbox-Firewall).
+- **Nicht testbar von hier**: der echte Stripe-Portal-Aufruf und die echte
+  Konto-Löschung gegen das Live-Backend (kein Zugriff auf Cloudflare/Stripe
+  von der Sandbox aus) – bitte einmal live durchklicken.
 
 ## Weiterhin offen
 - **Das Siegel** als spätere Verifizierungs-Badge-Funktion (eigenes Feature,

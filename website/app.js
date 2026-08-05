@@ -8,6 +8,10 @@
    parallel pflegen zu muessen. Rechtstexte (Impressum/Datenschutz) bleiben bewusst nur Deutsch. */
 
 const LANG_KEY = "overhertz_lang";
+// 100 MB deckt auch unkomprimiertes WAV bei ueblicher Songlaenge grosszuegig ab, verhindert aber,
+// dass der Browser (v.a. auf dem Handy) an einer versehentlich riesigen Datei haengen bleibt oder
+// abstuerzt - decodeAudioData laedt die komplette Datei unkomprimiert in den Speicher.
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 const I18N = {
   de: {
@@ -126,6 +130,8 @@ const I18N = {
     disclaimer: "Diese Analyse basiert auf automatischer Signalverarbeitung (Frequenzspektrum, Lautheit, Dynamik) sowie einer einfachen Textanalyse deines Songtexts. Sie ersetzt kein professionelles Mastering-Ohr oder A&R-Urteil, gibt dir aber eine schnelle Ersteinschätzung.",
     footerImpressum: "Impressum",
     footerDatenschutz: "Datenschutz",
+    footerAgb: "AGB",
+    footerWiderruf: "Widerrufsbelehrung",
     footerLegalNote: "",
 
     statusGood: "Gut",
@@ -253,12 +259,19 @@ const I18N = {
     unlockNoCredits: "Keine Credits mehr übrig – wähle ein Paket, um die Vollanalyse freizuschalten.",
 
     statusLoadingAudio: "Lade Audio…",
+    fileTooLarge: "Datei ist zu groß ({size} MB) – maximal 100 MB erlaubt.",
     statusDecoding: "Decodiere Audio…",
     statusAnalyzing: "Analysiere Frequenzen, Lautheit & Genre…",
     statusAnalyzeFailed: "Analyse fehlgeschlagen: {msg}",
 
     accountLoginRegisterBtn: "Login / Registrieren",
     accountLogoutBtn: "Abmelden",
+    accountManageSubscriptionBtn: "Abo verwalten/kündigen",
+    manageSubscriptionFailed: "Konnte nicht geöffnet werden.",
+    accountDeleteBtn: "Konto löschen",
+    accountDeleteConfirm: "Konto und alle zugehörigen Daten unwiderruflich löschen? Ein aktives Abo wird dabei automatisch gekündigt.",
+    accountDeleteSuccess: "Konto wurde gelöscht.",
+    accountDeleteFailed: "Konto konnte nicht gelöscht werden.",
     accountFreePlanLabel: "Free",
     accountProLabel: "Pro",
     accountProAnnualLabel: "Pro (jährlich)",
@@ -447,6 +460,8 @@ const I18N = {
     disclaimer: "This analysis is based on automatic signal processing (frequency spectrum, loudness, dynamics) plus a simple text analysis of your lyrics. It doesn't replace a professional mastering ear or A&R judgment, but gives you a quick first assessment.",
     footerImpressum: "Legal notice",
     footerDatenschutz: "Privacy policy",
+    footerAgb: "Terms",
+    footerWiderruf: "Right of withdrawal",
     footerLegalNote: "(legally binding version: German only)",
 
     statusGood: "Good",
@@ -574,12 +589,19 @@ const I18N = {
     unlockNoCredits: "No credits left – choose a plan to unlock the full analysis.",
 
     statusLoadingAudio: "Loading audio…",
+    fileTooLarge: "File is too large ({size} MB) – 100 MB maximum.",
     statusDecoding: "Decoding audio…",
     statusAnalyzing: "Analyzing frequencies, loudness & genre…",
     statusAnalyzeFailed: "Analysis failed: {msg}",
 
     accountLoginRegisterBtn: "Log in / Sign up",
     accountLogoutBtn: "Log out",
+    accountManageSubscriptionBtn: "Manage/cancel subscription",
+    manageSubscriptionFailed: "Couldn't open.",
+    accountDeleteBtn: "Delete account",
+    accountDeleteConfirm: "Permanently delete your account and all associated data? An active subscription will be cancelled automatically.",
+    accountDeleteSuccess: "Account deleted.",
+    accountDeleteFailed: "Couldn't delete account.",
     accountFreePlanLabel: "Free",
     accountProLabel: "Pro",
     accountProAnnualLabel: "Pro (annual)",
@@ -1783,11 +1805,17 @@ function renderAccountBar() {
     const planLabel =
       { free: t("accountFreePlanLabel"), pro: t("accountProLabel"), pro_annual: t("accountProAnnualLabel") }[currentUser.plan] ||
       currentUser.plan;
+    const isSubscribed = currentUser.plan === "pro" || currentUser.plan === "pro_annual";
     accountBar.innerHTML = `
       <span class="account-info"><strong>${currentUser.email}</strong> · ${planLabel} · ${quotaText}</span>
+      ${isSubscribed ? `<button type="button" id="manage-subscription-btn" class="account-btn">${t("accountManageSubscriptionBtn")}</button>` : ""}
       <button type="button" id="logout-btn" class="account-btn">${t("accountLogoutBtn")}</button>
+      <button type="button" id="delete-account-btn" class="link-btn">${t("accountDeleteBtn")}</button>
     `;
     document.getElementById("logout-btn").addEventListener("click", handleLogout);
+    document.getElementById("delete-account-btn").addEventListener("click", handleDeleteAccount);
+    const manageBtn = document.getElementById("manage-subscription-btn");
+    if (manageBtn) manageBtn.addEventListener("click", handleManageSubscription);
   } else {
     accountBar.innerHTML = `<button type="button" id="account-toggle" class="account-btn">${t("accountLoginRegisterBtn")}</button>`;
     document.getElementById("account-toggle").addEventListener("click", () => toggleAuthCard());
@@ -1821,6 +1849,28 @@ async function handleLogout() {
   setToken("");
   currentUser = null;
   renderAccountBar();
+}
+
+async function handleManageSubscription() {
+  const { ok, data } = await apiFetch("create-portal-session", { method: "POST" });
+  if (ok && data.url) {
+    window.location.href = data.url;
+  } else {
+    if (pricingStatus) pricingStatus.textContent = data.error || t("manageSubscriptionFailed");
+  }
+}
+
+async function handleDeleteAccount() {
+  if (!window.confirm(t("accountDeleteConfirm"))) return;
+  const { ok, data } = await apiFetch("auth/delete-account", { method: "POST" });
+  if (ok) {
+    setToken("");
+    currentUser = null;
+    renderAccountBar();
+    window.alert(t("accountDeleteSuccess"));
+  } else {
+    window.alert(data.error || t("accountDeleteFailed"));
+  }
 }
 
 if (loginForm) {
@@ -2178,6 +2228,11 @@ form.addEventListener("submit", async (e) => {
   const fileInput = document.getElementById("audio-file");
   const file = fileInput.files[0];
   if (!file) return;
+
+  if (file.size > MAX_UPLOAD_BYTES) {
+    statusLine.textContent = t("fileTooLarge", { size: Math.round(file.size / 1024 / 1024) });
+    return;
+  }
 
   const title = document.getElementById("track-title").value;
   const lyricsRaw = document.getElementById("track-lyrics").value;
@@ -3043,6 +3098,17 @@ if (albumBtn) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       albumStatus.textContent = t("albumChecking", { i: i + 1, total: files.length, name: file.name });
+
+      if (file.size > MAX_UPLOAD_BYTES) {
+        const card = document.createElement("div");
+        card.className = "album-track";
+        card.innerHTML = `
+          <div class="album-track-head"><span class="album-track-name">${escapeHtml(file.name)}</span></div>
+          <p class="album-track-tip">${t("fileTooLarge", { size: Math.round(file.size / 1024 / 1024) })}</p>
+        `;
+        albumResults.appendChild(card);
+        continue;
+      }
 
       const { ok, data } = await tryConsumeCredit();
       if (!ok) {

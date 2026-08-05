@@ -223,6 +223,36 @@ async function handleMe(request, env, cors) {
   return jsonResponse({ user: publicUser(user) }, 200, cors);
 }
 
+// DSGVO Art. 17 (Recht auf Loeschung): Konto samt aller zugehoerigen Daten unwiderruflich
+// entfernen. Ein evtl. aktives Stripe-Abo wird zuerst gekuendigt, damit niemand nach dem
+// Loeschen des Kontos weiter belastet wird, ohne noch Zugriff zu haben.
+async function handleDeleteAccount(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const user = await getUserFromRequest(request, env);
+  if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
+
+  if (user.stripe_subscription_id && env.STRIPE_SECRET_KEY) {
+    try {
+      await fetch("https://api.stripe.com/v1/subscriptions/" + user.stripe_subscription_id, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + env.STRIPE_SECRET_KEY },
+      });
+    } catch (err) {
+      console.error("Konto-Loeschung: Stripe-Abo konnte nicht gekuendigt werden", err);
+    }
+  }
+
+  await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id).run();
+  await env.DB.prepare("DELETE FROM password_resets WHERE user_id = ?").bind(user.id).run();
+  await env.DB.prepare("DELETE FROM ratings WHERE user_id = ?").bind(user.id).run();
+  await env.DB.prepare("DELETE FROM checks WHERE user_id = ?").bind(user.id).run();
+  await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id).run();
+
+  return jsonResponse({ ok: true }, 200, cors);
+}
+
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1 Stunde
 
 async function handleRequestPasswordReset(request, env, cors) {
@@ -433,6 +463,34 @@ async function handleCreateCheckoutSession(request, env, cors) {
     return jsonResponse({ url: session.url }, 200, cors);
   } catch (err) {
     return jsonResponse({ error: err.message || "Zahlung konnte nicht gestartet werden." }, 502, cors);
+  }
+}
+
+// Stripe Customer Portal: Selbstbedienung fuer Kuendigung/Zahlungsmethode-Update/Rechnungen.
+// Deckt die gesetzliche Kuendigungsbutton-Pflicht (§ 312k BGB) ab - Kuendigung ist dort jederzeit
+// moeglich, das Abo laeuft bis zum Ende der bezahlten Periode weiter (Stripe-Standardverhalten).
+async function handleCreatePortalSession(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+  if (!env.STRIPE_SECRET_KEY) return jsonResponse({ error: "Zahlung ist noch nicht eingerichtet." }, 501, cors);
+
+  const user = await getUserFromRequest(request, env);
+  if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
+  if (!user.stripe_customer_id) {
+    return jsonResponse({ error: "Noch kein Kauf getaetigt - es gibt noch nichts zu verwalten." }, 400, cors);
+  }
+
+  const origin = request.headers.get("Origin") || "";
+  const siteOrigin = ALLOWED_ORIGINS.has(origin) ? origin : [...ALLOWED_ORIGINS][0];
+
+  try {
+    const session = await stripeRequest(env, "billing_portal/sessions", {
+      customer: user.stripe_customer_id,
+      return_url: siteOrigin + "/",
+    });
+    return jsonResponse({ url: session.url }, 200, cors);
+  } catch (err) {
+    return jsonResponse({ error: err.message || "Konnte nicht geoeffnet werden." }, 502, cors);
   }
 }
 
@@ -671,6 +729,9 @@ export default {
     if (url.pathname === "/auth/me" && request.method === "GET") {
       return handleMe(request, env, cors);
     }
+    if (url.pathname === "/auth/delete-account" && request.method === "POST") {
+      return withRateLimit(env, "delacc:" + clientIp, cors, () => handleDeleteAccount(request, env, cors));
+    }
     if (url.pathname === "/auth/request-password-reset" && request.method === "POST") {
       return withRateLimit(env, "pwreset:" + clientIp, cors, () => handleRequestPasswordReset(request, env, cors));
     }
@@ -685,6 +746,9 @@ export default {
     }
     if (url.pathname === "/create-checkout-session" && request.method === "POST") {
       return handleCreateCheckoutSession(request, env, cors);
+    }
+    if (url.pathname === "/create-portal-session" && request.method === "POST") {
+      return handleCreatePortalSession(request, env, cors);
     }
 
     if (request.method !== "POST") {
