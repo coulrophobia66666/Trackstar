@@ -335,23 +335,25 @@ async function handleConsumeCredit(request, env, cors) {
   if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
 
   if ((user.plan === "pro" || user.plan === "pro_annual") && user.checks_used_period < PRO_MONTHLY_QUOTA) {
+    const checkId = crypto.randomUUID();
     await env.DB.prepare("UPDATE users SET checks_used_period = checks_used_period + 1 WHERE id = ?").bind(user.id).run();
     await env.DB.prepare("INSERT INTO checks (id, user_id, created_at) VALUES (?, ?, ?)")
-      .bind(crypto.randomUUID(), user.id, Date.now())
+      .bind(checkId, user.id, Date.now())
       .run();
     return jsonResponse(
-      { ok: true, plan: user.plan, credits: user.credits, quotaLeft: PRO_MONTHLY_QUOTA - user.checks_used_period - 1 },
+      { ok: true, plan: user.plan, credits: user.credits, quotaLeft: PRO_MONTHLY_QUOTA - user.checks_used_period - 1, checkId },
       200,
       cors
     );
   }
 
   if (user.credits > 0) {
+    const checkId = crypto.randomUUID();
     await env.DB.prepare("UPDATE users SET credits = credits - 1 WHERE id = ?").bind(user.id).run();
     await env.DB.prepare("INSERT INTO checks (id, user_id, created_at) VALUES (?, ?, ?)")
-      .bind(crypto.randomUUID(), user.id, Date.now())
+      .bind(checkId, user.id, Date.now())
       .run();
-    return jsonResponse({ ok: true, plan: user.plan, credits: user.credits - 1, quotaLeft: null }, 200, cors);
+    return jsonResponse({ ok: true, plan: user.plan, credits: user.credits - 1, quotaLeft: null, checkId }, 200, cors);
   }
 
   return jsonResponse({ ok: false, error: "Keine Credits mehr uebrig und kein aktives Pro-Abo." }, 402, cors);
@@ -374,6 +376,103 @@ async function handleSubmitRating(request, env, cors) {
     .run();
 
   return jsonResponse({ ok: true }, 200, cors);
+}
+
+/* ---------- Ergebnis-Verlauf ("Meine Checks") ----------
+   Speichert nur die fertigen Analyseergebnisse (Titel, Tipps, Fazit, ...) kontogebunden - nie
+   die Audiodatei selbst, die verlaesst weiterhin nie das Geraet des Nutzers. */
+
+async function handleSaveCheckResult(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const user = await getUserFromRequest(request, env);
+  if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
+
+  const body = await safeJson(request);
+  const checkId = typeof body.checkId === "string" ? body.checkId : "";
+  if (!checkId) return jsonResponse({ error: "checkId fehlt." }, 400, cors);
+
+  const owned = await env.DB.prepare("SELECT id FROM checks WHERE id = ? AND user_id = ?").bind(checkId, user.id).first();
+  if (!owned) return jsonResponse({ error: "Check nicht gefunden." }, 404, cors);
+
+  const title = typeof body.title === "string" ? body.title.slice(0, 200) : "";
+  const genre = typeof body.genre === "string" ? body.genre.slice(0, 60) : "";
+  const overallScore = Number.isFinite(body.overallScore) ? Math.round(body.overallScore) : null;
+  const classification = typeof body.classification === "string" ? body.classification.slice(0, 2000) : "";
+  const titleIdeas = Array.isArray(body.titleIdeas) ? JSON.stringify(body.titleIdeas.slice(0, 10).map((s) => String(s).slice(0, 200))) : null;
+  const improvedLyrics = typeof body.improvedLyrics === "string" ? body.improvedLyrics.slice(0, 6000) : "";
+  const tips = Array.isArray(body.tips) ? JSON.stringify(body.tips.slice(0, 20).map((s) => String(s).slice(0, 500))) : null;
+  const fazit = typeof body.fazit === "string" ? body.fazit.slice(0, 2000) : "";
+
+  await env.DB.prepare(
+    "UPDATE checks SET title = ?, genre = ?, overall_score = ?, classification = ?, title_ideas = ?, improved_lyrics = ?, tips = ?, fazit = ? WHERE id = ?"
+  )
+    .bind(title || null, genre || null, overallScore, classification || null, titleIdeas, improvedLyrics || null, tips, fazit || null, checkId)
+    .run();
+
+  return jsonResponse({ ok: true }, 200, cors);
+}
+
+async function handleMyChecks(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const user = await getUserFromRequest(request, env);
+  if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
+
+  const { results } = await env.DB.prepare(
+    "SELECT id, title, genre, overall_score, created_at FROM checks WHERE user_id = ? AND title IS NOT NULL ORDER BY created_at DESC LIMIT 50"
+  )
+    .bind(user.id)
+    .all();
+
+  return jsonResponse(
+    {
+      checks: results.map((r) => ({
+        id: r.id,
+        title: r.title,
+        genre: r.genre,
+        overallScore: r.overall_score,
+        createdAt: r.created_at,
+      })),
+    },
+    200,
+    cors
+  );
+}
+
+async function handleCheckDetail(request, env, cors, checkId) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const user = await getUserFromRequest(request, env);
+  if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
+  if (!checkId) return jsonResponse({ error: "checkId fehlt." }, 400, cors);
+
+  const row = await env.DB.prepare(
+    "SELECT id, title, genre, overall_score, classification, title_ideas, improved_lyrics, tips, fazit, created_at FROM checks WHERE id = ? AND user_id = ?"
+  )
+    .bind(checkId, user.id)
+    .first();
+  if (!row || !row.title) return jsonResponse({ error: "Check nicht gefunden." }, 404, cors);
+
+  return jsonResponse(
+    {
+      id: row.id,
+      title: row.title,
+      genre: row.genre,
+      overallScore: row.overall_score,
+      classification: row.classification,
+      titleIdeas: row.title_ideas ? JSON.parse(row.title_ideas) : [],
+      improvedLyrics: row.improved_lyrics,
+      tips: row.tips ? JSON.parse(row.tips) : [],
+      fazit: row.fazit,
+      createdAt: row.created_at,
+    },
+    200,
+    cors
+  );
 }
 
 /* ---------- Stripe: Checkout & Webhook ---------- */
@@ -578,15 +677,28 @@ async function handleKiEinschaetzung(request, env, cors) {
 
   const title = typeof body.title === "string" ? body.title.slice(0, 200) : "";
   const lyrics = typeof body.lyrics === "string" ? body.lyrics : "";
+  const transcript = typeof body.transcript === "string" ? body.transcript.slice(0, 6000) : "";
   const genre = typeof body.genre === "string" ? body.genre.slice(0, 60) : "";
   const metrics = body.metrics && typeof body.metrics === "object" ? body.metrics : {};
 
-  if (lyrics.trim().length < 10) {
+  const hasLyrics = lyrics.trim().length >= 10;
+  const hasTranscript = transcript.trim().length >= 10;
+
+  if (!hasLyrics && !hasTranscript) {
     return jsonResponse({ error: "Songtext fehlt oder ist zu kurz." }, 400, cors);
   }
   if (lyrics.length > 6000) {
     return jsonResponse({ error: "Songtext ist zu lang (max. 6000 Zeichen)." }, 400, cors);
   }
+
+  // Kein Songtext vom Nutzer, nur ein rohes (fehleranfaelliges) Transkript der Vocals: die KI
+  // rekonstruiert zuerst minimal-invasiv den wahrscheinlich gemeinten Text (kein kreatives
+  // Umschreiben, nur Transkriptions-Artefakte glaetten), bevor sie darauf aufbauend einordnet/
+  // ueberarbeitet - das Frontend zeigt die Rekonstruktion klar als KI-Schaetzung, nicht als Fakt.
+  const reconstructMode = !hasLyrics && hasTranscript;
+  // Songtext UND Transkript vorhanden: zusaetzlich einschaetzen, ob Abweichungen zwischen beiden
+  // eher an Aussprache/Diktion oder an ASR-/KI-Gesangs-Artefakten liegen.
+  const assessPronunciation = hasLyrics && hasTranscript;
 
   const metricLines = [];
   if (typeof metrics.overallScore === "number") metricLines.push("Gesamtscore: " + metrics.overallScore + "/100");
@@ -599,17 +711,40 @@ async function handleKiEinschaetzung(request, env, cors) {
 
   const promptLines = [
     "Du bist ein erfahrener Songtexter, Ghostwriter und A&R-Berater, der Musik aus allen Genres und Stilrichtungen einschaetzt - von Hip-Hop ueber Pop, Rock, elektronische Musik/EDM, Akustik/Singer-Songwriter bis hin zu Volksmusik und allem dazwischen.",
-    "Du bekommst einen Songtext sowie automatisch gemessene technische Kennzahlen zum Track, ggf. zusaetzlich das Genre.",
+    "Du bekommst " +
+      (reconstructMode
+        ? "ein automatisch erzeugtes (fehleranfaelliges) Transkript der gesungenen Vocals"
+        : "einen Songtext") +
+      " sowie automatisch gemessene technische Kennzahlen zum Track, ggf. zusaetzlich das Genre.",
     "Passe Ton, Vokabular und Empfehlungen IMMER an das jeweilige Genre an - was bei Hip-Hop als Hook funktioniert, ist bei Volksmusik oder Akustik-Balladen falsch, und umgekehrt. Wenn kein Genre angegeben ist, leite den passenden Stil aus Songtext und Kennzahlen ab, statt eine bestimmte Szene als Standard anzunehmen.",
     "Antworte AUSSCHLIESSLICH in genau diesem Format, ohne Markdown-Codebloecke, ohne zusaetzliche Ueberschriften oder Kommentare davor/danach:",
-    "###EINORDNUNG###",
+  ];
+  if (reconstructMode) {
+    promptLines.push(
+      "###REKONSTRUKTION###",
+      "Das Transkript stammt aus automatischer Spracherkennung von Gesang und enthaelt wahrscheinlich Fehler (Autotune, Beat im Hintergrund, Slang, falsch verstandene Woerter). Rekonstruiere MINIMAL-INVASIV den wahrscheinlich tatsaechlich gesungenen Text: nur klare Erkennungsfehler anhand von Kontext/Reimschema/Grammatik korrigieren, NICHT kreativ umschreiben oder verbessern - Zeilenzahl und Grundstruktur des Transkripts moeglichst beibehalten.",
+      "###EINORDNUNG###"
+    );
+  } else {
+    promptLines.push("###EINORDNUNG###");
+  }
+  promptLines.push(
     "2-4 Saetze, die den Track fuer den Kuenstler einordnen (Genre/Vibe/Zielgruppe), die technischen Kennzahlen sinnvoll einbeziehen (z.B. ob er radio-/playlisttauglich klingt) und kurz benennen, welches Setup/welche Produktion fuer dieses Genre typischerweise passt.",
     "###TITEL###",
     "Genau 3 alternative Songtitel-Ideen, die zum Text, zur Hook und zum Genre passen, kurz und einpraegsam - jede Idee auf einer eigenen Zeile, ohne Nummerierung oder Aufzaehlungszeichen.",
     "###TEXT###",
-    "Der ueberarbeitete Songtext - Reime runder, Zeilen praegnanter, Hook einpraegsamer, ohne Sprache, Stil, Silbenzahl pro Zeile, Grundaussage oder Genre-Konventionen grundlegend zu veraendern, keine generischen Floskeln oder Fuellzeilen.",
-    "",
-  ];
+    (reconstructMode
+      ? "Der ueberarbeitete Songtext, aufbauend auf deiner Rekonstruktion oben"
+      : "Der ueberarbeitete Songtext") +
+      " - Reime runder, Zeilen praegnanter, Hook einpraegsamer, ohne Sprache, Stil, Silbenzahl pro Zeile, Grundaussage oder Genre-Konventionen grundlegend zu veraendern, keine generischen Floskeln oder Fuellzeilen."
+  );
+  if (assessPronunciation) {
+    promptLines.push(
+      "###AUSSPRACHE###",
+      "2-3 Saetze: Vergleiche den echten Songtext mit dem automatischen Vocals-Transkript (unten beigefuegt) und schaetze ein, ob Abweichungen eher auf Aussprache-/Diktionsprobleme beim Gesang, auf typische KI-Gesangs-Artefakte (z.B. Suno/Udio) oder schlicht auf Fehler der automatischen Spracherkennung selbst zurueckgehen. Wenn kaum Abweichungen bestehen, sag das kurz und positiv."
+    );
+  }
+  promptLines.push("");
   if (title) promptLines.push('Aktueller Songtitel: "' + title + '"');
   if (genre) promptLines.push("Genre (vom Nutzer angegeben/erkannt): " + genre);
   if (metricLines.length > 0) {
@@ -617,8 +752,18 @@ async function handleKiEinschaetzung(request, env, cors) {
     promptLines.push(...metricLines.map((l) => "- " + l));
   }
   promptLines.push("");
-  promptLines.push("Songtext:");
-  promptLines.push(lyrics);
+  if (reconstructMode) {
+    promptLines.push("Automatisches Transkript der Vocals:");
+    promptLines.push(transcript);
+  } else {
+    promptLines.push("Songtext:");
+    promptLines.push(lyrics);
+    if (assessPronunciation) {
+      promptLines.push("");
+      promptLines.push("Automatisches Transkript der Vocals (zum Abgleich fuer die Ausspracheeinschaetzung):");
+      promptLines.push(transcript);
+    }
+  }
   const prompt = promptLines.join("\n");
 
   let apiRes;
@@ -749,6 +894,15 @@ export default {
     }
     if (url.pathname === "/create-portal-session" && request.method === "POST") {
       return handleCreatePortalSession(request, env, cors);
+    }
+    if (url.pathname === "/save-check-result" && request.method === "POST") {
+      return withRateLimit(env, "savecheck:" + clientIp, cors, () => handleSaveCheckResult(request, env, cors));
+    }
+    if (url.pathname === "/my-checks" && request.method === "GET") {
+      return handleMyChecks(request, env, cors);
+    }
+    if (url.pathname === "/check-detail" && request.method === "GET") {
+      return handleCheckDetail(request, env, cors, url.searchParams.get("id") || "");
     }
 
     if (request.method !== "POST") {

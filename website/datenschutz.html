@@ -54,12 +54,13 @@
       Klick hin, nicht automatisch.
     </p>
 
-    <h3>Vocals-Check (optionale Transkription)</h3>
+    <h3>Vocals-Check (automatische Transkription)</h3>
     <div class="good">
-      Wenn du in der Tiefenanalyse aktiv auf „Vocals transkribieren &amp; vergleichen" klickst, wird ein
-      Spracherkennungs-Modell (Whisper) von einem externen CDN (jsDelivr/Hugging Face) heruntergeladen und
-      läuft danach vollständig in deinem Browser. Deine Audiodatei wird dabei weiterhin nicht hochgeladen
-      oder übertragen – nur die Modell-Datei selbst kommt von dort, das ist keine Übertragung deiner Daten.
+      Nach dem Freischalten der Tiefenanalyse wird automatisch ein Spracherkennungs-Modell (Whisper) von
+      einem externen CDN (jsDelivr/Hugging Face) heruntergeladen und läuft danach vollständig in deinem
+      Browser, um die gesungenen Vocals zu transkribieren. Deine Audiodatei wird dabei weiterhin nicht
+      hochgeladen oder übertragen – nur die Modell-Datei selbst kommt von dort, das ist keine Übertragung
+      deiner Daten. Über den „Abbrechen"-Button lässt sich der Download/die Berechnung jederzeit stoppen.
     </div>
 
     <h3>Konto (E-Mail, Passwort, Credits/Abo-Stand)</h3>
@@ -70,6 +71,16 @@
       (Local Storage) abgelegt, damit du eingeloggt bleibst – dieses Token identifiziert nur deine Session,
       keine weiteren Daten.
     </p>
+
+    <h3>Gespeicherte Analyseergebnisse ("Meine Checks")</h3>
+    <div class="good">
+      Nach einer freigeschalteten Tiefenanalyse speichern wir das fertige Ergebnis (Songtitel, Genre,
+      Gesamtscore, Einordnung, Titel-Ideen, verbesserter Songtext, Verbesserungsvorschläge, Fazit)
+      kontogebunden in derselben Datenbank (Cloudflare D1), damit du später unter „Meine Checks" wieder
+      draufschauen kannst, was an deinem Track noch verbessert werden kann. Deine Audiodatei selbst wird
+      dabei zu keinem Zeitpunkt gespeichert oder übertragen – sie bleibt ausschließlich auf deinem Gerät.
+      Diese gespeicherten Ergebnisse werden mitgelöscht, wenn du dein Konto löschst.
+    </div>
 
     <h2>3. Hosting und Server-Logs</h2>
     <p>

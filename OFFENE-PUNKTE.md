@@ -4,6 +4,70 @@ Stand: 2026-08-05. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ NEU (05.08., zweiter Durchgang): Automatischer Flow, Verlauf, Logo zurückgesetzt
+- **Vocals-Check läuft jetzt automatisch** direkt nach der Freischaltung, ohne
+  Klick und ohne dass ein Songtext eingegeben sein muss – kein Warten mehr auf
+  einen Button. Ein "Abbrechen"-Button während des Ladens beendet Download/
+  Berechnung wirklich (nicht nur die Anzeige), wichtig für Handy-Nutzer, die
+  sich das ~140-MB-Modell sparen wollen. "Erneut transkribieren" bleibt als
+  manueller Retry.
+- **KI-Einschätzung läuft jetzt automatisch** nach der Freischaltung, ohne
+  Klick auf "KI-Einschätzung anzeigen". Mit Songtext läuft sie sofort; **ohne
+  Songtext** wartet sie auf das Vocals-Transkript und nutzt es als Basis – die
+  KI rekonstruiert zuerst einen wahrscheinlichen Songtext (klar als Schätzung
+  gekennzeichnet, kein Fakt) und baut Einordnung/Titel-Ideen/verbesserten Text
+  darauf auf. Der Vocals-Vergleich zeigt in diesem Fall die KI-Rekonstruktion
+  statt eines echten Songtexts als Referenz, ebenfalls klar markiert.
+- **Neu: Ausspracheeinschätzung.** Wenn sowohl echter Songtext als auch
+  Vocals-Transkript vorliegen, schätzt die KI zusätzlich ein, ob Abweichungen
+  eher an Aussprache/Diktion oder an KI-Gesangs-/ASR-Artefakten liegen.
+- **Songtitel ist jetzt Pflichtfeld** (nötig für die Zuordnung im neuen
+  Verlauf, siehe unten).
+- **Neu: "Meine Checks" (Ergebnis-Verlauf)** im Konto-Bereich. Nach jeder
+  freigeschalteten Tiefenanalyse wird das fertige Ergebnis (Titel, Genre,
+  Score, Einordnung, Titel-Ideen, verbesserter Songtext, Tipps, Fazit)
+  kontogebunden gespeichert – **nie die Audiodatei selbst**, die bleibt wie
+  immer nur auf dem Gerät. So kann man die Seite schließen, woanders am Track
+  weiterarbeiten und später nachschauen, was noch zu verbessern war. Wird bei
+  Konto-Löschung automatisch mitgelöscht. Datenschutzerklärung entsprechend
+  ergänzt. **Manueller Schritt nötig, siehe unten.**
+- **Logo zurückgesetzt**: auf ausdrücklichen Wunsch wieder das ursprüngliche
+  Frequenzlinien-Motiv (drei ineinanderlaufende Linien) statt der Wellenform,
+  jetzt klein **über** dem "Overhertz"-Schriftzug statt darunter. Überall
+  konsistent: Header, Favicon, App-Icon, Link-Vorschaubild.
+- **Bugfix Vocals-Check-Retry**: Ein fehlgeschlagener erster Transkriptions-
+  versuch (z. B. Abbruch durch Speicherdruck auf dem Handy) machte den
+  Vocals-Check für den Rest der Session komplett unbrauchbar – jeder weitere
+  Versuch bekam sofort wieder denselben alten Fehler statt neu zu laden.
+  Behoben (Worker wird nach jedem Fehlschlag verworfen und beim nächsten
+  Versuch frisch gestartet).
+
+## ⚠️ NEU: D1-Spalten für "Meine Checks" nachziehen – manueller Schritt (Finn)
+Die `checks`-Tabelle existiert schon, aber die neuen Ergebnis-Spalten legt
+`CREATE TABLE IF NOT EXISTS` nicht automatisch nach. Einmalig im
+D1-Dashboard → `overhertz-db` → Console ausführen:
+```sql
+ALTER TABLE checks ADD COLUMN title TEXT;
+ALTER TABLE checks ADD COLUMN genre TEXT;
+ALTER TABLE checks ADD COLUMN overall_score INTEGER;
+ALTER TABLE checks ADD COLUMN classification TEXT;
+ALTER TABLE checks ADD COLUMN title_ideas TEXT;
+ALTER TABLE checks ADD COLUMN improved_lyrics TEXT;
+ALTER TABLE checks ADD COLUMN tips TEXT;
+ALTER TABLE checks ADD COLUMN fazit TEXT;
+```
+Ohne diesen Schritt schlägt das Speichern eines Ergebnisses fehl (die
+Tiefenanalyse selbst funktioniert trotzdem normal weiter, nur "Meine Checks"
+bleibt leer bzw. zeigt einen Fehler).
+
+## ⚠️ Datenschutzerklärung: neue Datenverarbeitung seit dem letzten Anwalts-Check
+Die "Meine Checks"-Funktion ist eine **neue Datenverarbeitung** (gespeicherte
+Analyseergebnisse, kontogebunden), die erst NACH dem Stand kam, den Jeff als
+"vom Anwalt final geprüft" bestätigt hat. Der Datenschutztext ist bereits
+entsprechend ergänzt (Abschnitt "Gespeicherte Analyseergebnisse"), aber bitte
+kurz von Carla gegenchecken lassen, ob das noch unter die bestehende Freigabe
+fällt oder eine erneute kurze Prüfung braucht.
+
 ## ✅ NEU (05.08.): Rechtliches, Kündigung, Sicherheit, Sharing
 - **Dateigrößen-Limit beim Upload**: 100 MB pro Track (Einzel-Check und
   Album-Check), verhindert dass riesige Dateien den Browser beim Decodieren
