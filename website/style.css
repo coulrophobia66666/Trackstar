@@ -1359,18 +1359,25 @@ button#vocals-check-btn:disabled {
   color: #241d10;
 }
 
-.auth-form .link-btn {
-  display: block;
-  width: auto;
+.link-btn {
   font: inherit;
   font-size: 0.8rem;
   background: none;
   border: none;
   padding: 0;
-  margin-top: 0.6rem;
   color: var(--gold-bright);
   text-decoration: underline;
   cursor: pointer;
+}
+
+.auth-form .link-btn {
+  display: block;
+  width: auto;
+  margin-top: 0.6rem;
+}
+
+.account-bar .link-btn {
+  color: var(--text-secondary);
 }
 
 .auth-card h2, .pricing-card h2 {
