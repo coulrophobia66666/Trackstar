@@ -49,6 +49,7 @@ const I18N = {
     eyebrow: "KI Songcheck",
     subtitle: "Lad deinen Track hoch und finde heraus, ob er Star Potential hat. Der Kurzcheck ist kostenlos.",
     trackLabel: "Dein Track",
+    filePickerHint: "Zeigt dein Handy nur Fotos/Videos an? Auf \"Dateien\"/\"Durchsuchen\" wechseln, um deine Musikdatei zu finden.",
     titleLabel: "Songtitel",
     titlePlaceholder: "z. B. Natriumlicht",
     lyricsLabel: "Songtext",
@@ -392,6 +393,7 @@ const I18N = {
     eyebrow: "AI Song Check",
     subtitle: "Upload your track and find out if it has star potential. The quick check is free.",
     trackLabel: "Your track",
+    filePickerHint: "Does your phone only show photos/videos? Switch to \"Files\"/\"Browse\" to find your music file.",
     titleLabel: "Song title",
     titlePlaceholder: "e.g. Sodium Light",
     lyricsLabel: "Lyrics",
@@ -3589,6 +3591,30 @@ const albumFilesInput = document.getElementById("album-files");
 const albumStatus = document.getElementById("album-status");
 const albumResults = document.getElementById("album-results");
 
+// Album-Ergebnisse ueberleben sonst keinen Reload/Redirect (z.B. Stripe-Checkout fuer den
+// Pro-Kauf zwischendurch) - waren bisher reiner DOM-Stand ohne jede Persistenz, ein Sprung weg
+// von der Seite hat alles geloescht, obwohl dafuer schon Checks/Credits verbraucht wurden.
+const ALBUM_RESULTS_KEY = "overhertz_album_results";
+
+function saveAlbumResultsSnapshot() {
+  try {
+    sessionStorage.setItem(ALBUM_RESULTS_KEY, albumResults.innerHTML);
+  } catch {
+    /* sessionStorage evtl. nicht verfuegbar (privater Modus) - dann bleibt es halt unpersistiert */
+  }
+}
+
+function restoreAlbumResultsSnapshot() {
+  try {
+    const saved = sessionStorage.getItem(ALBUM_RESULTS_KEY);
+    if (saved) albumResults.innerHTML = saved;
+  } catch {
+    /* ignorieren */
+  }
+}
+
+restoreAlbumResultsSnapshot();
+
 if (albumBtn) {
   albumBtn.addEventListener("click", async () => {
     const files = Array.from((albumFilesInput && albumFilesInput.files) || []);
@@ -3608,6 +3634,11 @@ if (albumBtn) {
 
     albumBtn.disabled = true;
     albumResults.innerHTML = "";
+    try {
+      sessionStorage.removeItem(ALBUM_RESULTS_KEY);
+    } catch {
+      /* ignorieren */
+    }
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     const profile = genreProfile("");
 
@@ -3623,6 +3654,7 @@ if (albumBtn) {
           <p class="album-track-tip">${t("fileTooLarge", { size: Math.round(file.size / 1024 / 1024) })}</p>
         `;
         albumResults.appendChild(card);
+        saveAlbumResultsSnapshot();
         continue;
       }
 
@@ -3675,6 +3707,7 @@ if (albumBtn) {
           <p class="album-track-tip">${t("albumTrackError", { msg: err && err.message ? err.message : t("albumAnalysisFailed") })}</p>
         `;
       }
+      saveAlbumResultsSnapshot();
     }
 
     albumStatus.textContent = "";
