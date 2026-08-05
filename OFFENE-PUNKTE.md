@@ -4,6 +4,18 @@ Stand: 2026-08-04. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ Erledigt seit dem letzten Stand
+- **Domain `overhertz.app` ist verbunden** (Cloudflare Custom Domain am
+  `trackstar-web`-Worker) und live erreichbar.
+
+## ⚠️ Rechtstexte: Anwaltsprüfung läuft (Carla)
+Ist **in Arbeit, noch nicht final** – Hinweistexte in `impressum.html`/
+`datenschutz.html` entsprechend angepasst ("wird aktuell geprüft"). Sobald
+die Rückmeldung wirklich final ist, Bescheid geben, dann wird der Hinweis
+ganz entfernt. Offene Detailfrage in der Datenschutz-Notiz: ob mit
+Cloudflare und Anthropic ein Auftragsverarbeitungsvertrag (AVV)
+abgeschlossen ist.
+
 ## ⚠️ NEU: Pro-Upgrade-Rabatt für Credits-Kunden – 2 manuelle Schritte (Malik)
 Wer schon Credits gekauft hat und danach zu Pro wechselt, bekommt automatisch
 einen pauschalen Rabatt auf die erste Pro-Zahlung (kein Verrechnen von
@@ -143,16 +155,11 @@ englischsprachige Rechtstext-Version für den internationalen Auftritt
 irgendwann gebraucht wird.
 
 ## Weiterhin offen
-- **Cloudflare-Projekte umbenennen/neu anlegen** für die eigentliche
-  Overhertz-Domain (aktuell läuft alles noch unter den `trackstar-*`
-  workers.dev-URLs – funktioniert, ist aber nicht die Ziel-URL)
 - Logo einbauen: **Der Wellenstern** als Hauptlogo/Favicon,
   **Das Siegel** als spätere Verifizierungs-Badge-Funktion
 - Social-Handles reservieren (Instagram/TikTok/X), Marke „Overhertz" beim
   DPMA anmelden
 - Umsatzsteuer-ID in impressum.html ergänzen, falls vorhanden
-- Beide Rechtstexte vor echtem kommerziellen Start von einem Anwalt prüfen
-  lassen (Hinweis steht bereits als Entwurfs-Notiz in den Seiten selbst)
 - Stripe "Zahlungsbeschreibung"/Statement-Descriptor final im Dashboard
   setzen, falls noch nicht geschehen
 
