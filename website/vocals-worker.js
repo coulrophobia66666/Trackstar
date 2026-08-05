@@ -12,6 +12,12 @@ async function getTranscriber(onProgress) {
         progress_callback: onProgress,
       });
     })();
+    // Schlaegt das Laden fehl (z.B. Abbruch durch Speicherdruck auf dem Handy), Cache wieder
+    // leeren - sonst bekommt jeder weitere Versuch fuer den Rest der Session sofort denselben
+    // alten Fehler zurueck, statt das Modell neu zu laden.
+    transcriberPromise.catch(() => {
+      transcriberPromise = null;
+    });
   }
   return transcriberPromise;
 }

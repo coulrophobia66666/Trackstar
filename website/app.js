@@ -2305,12 +2305,21 @@ function transcribeInWorker(audioData, language, onProgress, onTranscribing) {
       } else if (msg.type === "error") {
         worker.removeEventListener("message", handleMessage);
         worker.removeEventListener("error", handleError);
+        // Nicht weiterverwenden: der Browser cacht einen fehlgeschlagenen Modell-Import fest an
+        // diese Worker-Instanz, ein erneuter Versuch im selben Worker wuerde nie neu laden,
+        // egal was im Worker selbst schon zurueckgesetzt wird.
+        worker.terminate();
+        if (vocalsWorker === worker) vocalsWorker = null;
         reject(new Error(msg.message));
       }
     };
     const handleError = (err) => {
       worker.removeEventListener("message", handleMessage);
       worker.removeEventListener("error", handleError);
+      // Der Worker-Thread selbst ist abgestuerzt (z.B. Out-of-Memory auf dem Handy) - nicht
+      // weiterverwenden, sonst laufen alle folgenden Versuche gegen eine tote Instanz.
+      worker.terminate();
+      if (vocalsWorker === worker) vocalsWorker = null;
       reject(new Error(err && err.message ? err.message : "Worker-Fehler"));
     };
     worker.addEventListener("message", handleMessage);
