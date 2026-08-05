@@ -42,23 +42,11 @@ unten).
   Behoben (Worker wird nach jedem Fehlschlag verworfen und beim nächsten
   Versuch frisch gestartet).
 
-## ⚠️ NEU: D1-Spalten für "Meine Checks" nachziehen – manueller Schritt (Finn)
-Die `checks`-Tabelle existiert schon, aber die neuen Ergebnis-Spalten legt
-`CREATE TABLE IF NOT EXISTS` nicht automatisch nach. Einmalig im
-D1-Dashboard → `overhertz-db` → Console ausführen:
-```sql
-ALTER TABLE checks ADD COLUMN title TEXT;
-ALTER TABLE checks ADD COLUMN genre TEXT;
-ALTER TABLE checks ADD COLUMN overall_score INTEGER;
-ALTER TABLE checks ADD COLUMN classification TEXT;
-ALTER TABLE checks ADD COLUMN title_ideas TEXT;
-ALTER TABLE checks ADD COLUMN improved_lyrics TEXT;
-ALTER TABLE checks ADD COLUMN tips TEXT;
-ALTER TABLE checks ADD COLUMN fazit TEXT;
-```
-Ohne diesen Schritt schlägt das Speichern eines Ergebnisses fehl (die
-Tiefenanalyse selbst funktioniert trotzdem normal weiter, nur "Meine Checks"
-bleibt leer bzw. zeigt einen Fehler).
+## ✅ D1-Spalten für "Meine Checks" sind live nachgezogen
+Die acht neuen Ergebnis-Spalten (`title`, `genre`, `overall_score`,
+`classification`, `title_ideas`, `improved_lyrics`, `tips`, `fazit`) auf der
+`checks`-Tabelle sind in der Live-D1-Datenbank angelegt. "Meine Checks"
+speichert und lädt Ergebnisse jetzt korrekt.
 
 ## ⚠️ Datenschutzerklärung: neue Datenverarbeitung seit dem letzten Anwalts-Check
 Die "Meine Checks"-Funktion ist eine **neue Datenverarbeitung** (gespeicherte
