@@ -87,7 +87,7 @@ const I18N = {
     freqBlockHint: "Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).",
     eqHeading: "EQ-Editor",
     eqIntro: "Passe die Frequenzen deines Tracks direkt hier an und hör dir das Ergebnis sofort an. Läuft komplett in deinem Browser, deine Audiodatei verlässt dabei nie dein Gerät.",
-    eqSpectrumHint: "Live-Frequenzband während der Vorschau – zeigt direkt, wie sich deine Regler auswirken.",
+    eqSpectrumHint: "Wellenform deines Tracks – die goldene Markierung zeigt die Abspielposition.",
     eqLockedHint: "Das Beheben (EQ, De-Esser, Lautheit angleichen, Stille kürzen, Fade-out) ist Teil des Pro-Plans. Die Vollanalyse siehst du auch mit Credits – fürs direkte Bearbeiten hier brauchst du Pro.",
     eqUpgradeBtn: "Auf Pro upgraden",
     eqDeesserToggle: "Zischlaute reduzieren (De-Esser)",
@@ -431,7 +431,7 @@ const I18N = {
     freqBlockHint: "Share of energy per frequency band, compared with a balanced reference range (grey zone).",
     eqHeading: "EQ editor",
     eqIntro: "Adjust your track's frequencies right here and hear the result instantly. Runs entirely in your browser, your audio file never leaves your device.",
-    eqSpectrumHint: "Live frequency band during preview – shows directly how your sliders affect the sound.",
+    eqSpectrumHint: "Waveform of your track – the gold marker shows the playback position.",
     eqLockedHint: "Fixing things (EQ, de-esser, loudness matching, trimming silence, fade-out) is part of the Pro plan. You can see the full analysis with Credits too – editing directly here needs Pro.",
     eqUpgradeBtn: "Upgrade to Pro",
     eqDeesserToggle: "Reduce sibilance (de-esser)",
@@ -2812,19 +2812,19 @@ let eqFadeOutEnabled = false;
 let eqLastMetrics = null;
 let eqLastProfile = null;
 
-// Zeitleiste (Scrubben) + Live-Frequenzband waehrend der Vorschau
-let eqAnalyser = null;
-let eqSpectrumDataArray = null;
+// Zeitleiste (Scrubben) + statisches Wellenform-Band (Look wie in klassischen DAWs/
+// Audio-Editoren: dichte gespiegelte Balken ueber den ganzen Track, Abspielposition als
+// Linie+Punkt darueber - statt eines live mitlaufenden Spektrogramms wie zuvor)
 let eqBandCanvasCtx = null;
 let eqBandCanvasWidth = 0;
 let eqBandCanvasHeight = 0;
+let eqWaveformPeaks = null;
 let eqPlaybackRafId = null;
 let eqPlaybackStartCtxTime = 0;
 let eqPlaybackDuration = 0;
 let eqSeeking = false;
 let eqPendingSeekOffset = 0;
-const EQ_BAND_MIN_HZ = 20;
-const EQ_BAND_MAX_HZ = 16000;
+const EQ_WAVEFORM_BUCKETS = 360;
 const EQ_BAND_BG = "#07080c";
 
 function ensureEqAudioCtx() {
@@ -2928,8 +2928,8 @@ function formatEqTime(seconds) {
 }
 
 // Richtet den Canvas fuer das Frequenzband ein (Groesse an tatsaechliche Darstellung inkl.
-// devicePixelRatio anpassen) - erst beim Start der Vorschau aufgerufen, nicht beim Aufbau des
-// EQ-Editors, weil der Container da noch hidden sein kann (getBoundingClientRect waere dann 0).
+// devicePixelRatio anpassen) - erst aufgerufen, wenn der Container sicher sichtbar ist, weil
+// der Container davor noch hidden sein kann (getBoundingClientRect waere dann 0).
 function setupEqBandCanvas() {
   const canvas = document.getElementById("eq-band-canvas");
   if (!canvas) return null;
@@ -2944,52 +2944,73 @@ function setupEqBandCanvas() {
   eqBandCanvasCtx = canvas.getContext("2d");
   eqBandCanvasWidth = width;
   eqBandCanvasHeight = height;
-  clearEqBandCanvas();
   return eqBandCanvasCtx;
 }
 
-function clearEqBandCanvas() {
-  if (!eqBandCanvasCtx) return;
-  eqBandCanvasCtx.fillStyle = EQ_BAND_BG;
-  eqBandCanvasCtx.fillRect(0, 0, eqBandCanvasWidth, eqBandCanvasHeight);
+// Downgesampelte Min/Max-Peaks fuer die statische Wellenform-Anzeige - einmal pro Track
+// berechnet (nicht pro Frame), damit das Zeichnen selbst beim Scrubben/Abspielen billig bleibt.
+function computeEqWaveformPeaks(buffer) {
+  const length = buffer.length;
+  const channelCount = buffer.numberOfChannels;
+  const channelData = [];
+  for (let ch = 0; ch < channelCount; ch++) channelData.push(buffer.getChannelData(ch));
+
+  const bucketCount = EQ_WAVEFORM_BUCKETS;
+  const samplesPerBucket = Math.max(1, Math.floor(length / bucketCount));
+  const stride = Math.max(1, Math.floor(samplesPerBucket / 400));
+  const peaks = new Array(bucketCount);
+
+  for (let i = 0; i < bucketCount; i++) {
+    const start = i * samplesPerBucket;
+    const end = i === bucketCount - 1 ? length : start + samplesPerBucket;
+    let min = 0;
+    let max = 0;
+    for (let j = start; j < end; j += stride) {
+      for (let ch = 0; ch < channelCount; ch++) {
+        const v = channelData[ch][j];
+        if (v > max) max = v;
+        if (v < min) min = v;
+      }
+    }
+    peaks[i] = [min, max];
+  }
+  return peaks;
 }
 
-// Schiebt den bisherigen Inhalt nach links und zeichnet rechts eine neue Spalte mit der
-// aktuellen Frequenzverteilung (logarithmisch ueber 20Hz-16kHz, wie bei einem Spektrogramm/EQ
-// ueblich - der Bassbereich bekommt dadurch mehr sichtbaren Platz als bei linearer Verteilung).
-// Lautere Frequenzen leuchten heller/weisser, leise bleiben dunkel.
-function scrollEqBandCanvas(analyser, sampleRate) {
+// Statische, gespiegelte Wellenform-Optik (wie in klassischen Audio-Editoren) statt eines live
+// mitlaufenden Spektrogramms - Abspielposition als heller Balken-Fortschritt plus Linie/Punkt
+// obendrauf. positionRatio: 0-1 fuer die aktuelle Abspiel-/Scrub-Position, null = keine Anzeige.
+function drawEqWaveform(positionRatio) {
   const ctx = eqBandCanvasCtx;
   if (!ctx) return;
   const w = eqBandCanvasWidth;
   const h = eqBandCanvasHeight;
-  const shiftPx = Math.max(1, Math.round(w / 300));
-
-  ctx.drawImage(ctx.canvas, shiftPx, 0, w - shiftPx, h, 0, 0, w - shiftPx, h);
   ctx.fillStyle = EQ_BAND_BG;
-  ctx.fillRect(w - shiftPx, 0, shiftPx, h);
+  ctx.fillRect(0, 0, w, h);
 
-  const bufferLength = analyser.frequencyBinCount;
-  if (!eqSpectrumDataArray || eqSpectrumDataArray.length !== bufferLength) {
-    eqSpectrumDataArray = new Uint8Array(bufferLength);
+  if (!eqWaveformPeaks) return;
+  const mid = h / 2;
+  const barCount = eqWaveformPeaks.length;
+  const barGap = Math.max(0.5, w / barCount / 6);
+  const barWidth = Math.max(1, w / barCount - barGap);
+  const playedIndex = positionRatio == null ? -1 : Math.floor(positionRatio * barCount);
+
+  for (let i = 0; i < barCount; i++) {
+    const [min, max] = eqWaveformPeaks[i];
+    const x = (i / barCount) * w;
+    const topH = Math.max(1.5, max * mid * 0.92);
+    const botH = Math.max(1.5, Math.abs(min) * mid * 0.92);
+    ctx.fillStyle = positionRatio != null && i <= playedIndex ? "#f0d19c" : "rgba(238, 238, 236, 0.55)";
+    ctx.fillRect(x, mid - topH, barWidth, topH + botH);
   }
-  analyser.getByteFrequencyData(eqSpectrumDataArray);
-  const binHz = sampleRate / analyser.fftSize;
-  const logMin = Math.log(EQ_BAND_MIN_HZ);
-  const logMax = Math.log(EQ_BAND_MAX_HZ);
 
-  for (let y = 0; y < h; y++) {
-    // y=0 (oben) = hohe Frequenzen, y=h (unten) = tiefe Frequenzen - klassische Spektrogramm-Optik
-    const t = 1 - y / h;
-    const hz = Math.exp(logMin + t * (logMax - logMin));
-    const bin = Math.min(bufferLength - 1, Math.max(0, Math.round(hz / binHz)));
-    const magnitude = eqSpectrumDataArray[bin] / 255;
-    // Dunkler Hintergrund -> helles Weiss, je lauter der Pegel in dem Frequenzbereich
-    const r = Math.round(8 + magnitude * (238 - 8));
-    const g = Math.round(9 + magnitude * (238 - 9));
-    const b = Math.round(11 + magnitude * (236 - 11));
-    ctx.fillStyle = `rgb(${r},${g},${b})`;
-    ctx.fillRect(w - shiftPx, y, shiftPx, 1);
+  if (positionRatio != null) {
+    const px = Math.min(w - 1, Math.max(0, positionRatio * w));
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(px - 1, 0, 2, h);
+    ctx.beginPath();
+    ctx.arc(px, h - Math.max(5, h * 0.08), Math.max(3, h * 0.045), 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -3026,8 +3047,9 @@ function tickEqPlayback() {
     eqPlaybackRafId = null;
     return;
   }
-  updateEqSeekDisplay(getEqElapsedPosition());
-  if (eqAnalyser) scrollEqBandCanvas(eqAnalyser, eqAudioCtx.sampleRate);
+  const elapsed = getEqElapsedPosition();
+  updateEqSeekDisplay(elapsed);
+  if (eqPlaybackDuration > 0) drawEqWaveform(elapsed / eqPlaybackDuration);
   eqPlaybackRafId = requestAnimationFrame(tickEqPlayback);
 }
 
@@ -3049,12 +3071,11 @@ function stopEqPreview() {
   eqFilters = [];
   eqDeEsserNodes = null;
   eqGainNode = null;
-  eqAnalyser = null;
   eqPlaying = false;
   eqSeeking = false;
   const btn = document.getElementById("eq-play-btn");
   if (btn) btn.textContent = t("eqPlayBtn");
-  clearEqBandCanvas();
+  drawEqWaveform(0);
 }
 
 // offsetSeconds: Startposition innerhalb des Buffers - ermoeglicht sowohl das Scrubben in der
@@ -3063,11 +3084,12 @@ function stopEqPreview() {
 function startEqPreview(offsetSeconds = 0) {
   if (!lastAudioBuffer) return;
   stopEqPreview();
-  setupEqBandCanvas();
   const ctx = ensureEqAudioCtx();
   const sourceBuffer = getEqSourceBuffer(ctx);
   const duration = sourceBuffer.duration;
   const startOffset = Math.max(0, Math.min(offsetSeconds, Math.max(0, duration - 0.05)));
+  setupEqBandCanvas();
+  drawEqWaveform(duration > 0 ? startOffset / duration : 0);
   const source = ctx.createBufferSource();
   source.buffer = sourceBuffer;
   // Mit Fade-out ergibt eine Endlos-Schleife keinen Sinn (man wuerde den harten Sprung nach
@@ -3089,14 +3111,8 @@ function startEqPreview(offsetSeconds = 0) {
   const gainNode = ctx.createGain();
   gainNode.gain.value = Math.pow(10, eqGainDb / 20);
   chainOutput.connect(gainNode);
+  gainNode.connect(ctx.destination);
   eqGainNode = gainNode;
-
-  const analyser = ctx.createAnalyser();
-  analyser.fftSize = 2048;
-  analyser.smoothingTimeConstant = 0.75;
-  gainNode.connect(analyser);
-  analyser.connect(ctx.destination);
-  eqAnalyser = analyser;
 
   if (eqFadeOutEnabled) {
     scheduleFadeOut(gainNode, ctx.currentTime, duration - startOffset, Math.min(2.5, duration / 3));
@@ -3261,6 +3277,7 @@ function renderEqSliders() {
 function initEqEditor(audioMetrics, profile) {
   eqLastMetrics = audioMetrics;
   eqLastProfile = profile;
+  eqWaveformPeaks = lastAudioBuffer ? computeEqWaveformPeaks(lastAudioBuffer) : null;
   eqGains = FREQ_BANDS.map(() => 0);
   eqDeEsserEnabled = false;
   eqDeEsserAmount = 0.5;
@@ -3302,6 +3319,16 @@ function initEqEditor(audioMetrics, profile) {
   const bodyEl = document.getElementById("eq-editor-body");
   if (lockedEl) lockedEl.hidden = isPro;
   if (bodyEl) bodyEl.hidden = !isPro;
+
+  // Erst im naechsten Frame zeichnen - der Container kann in diesem Moment noch hidden sein
+  // (z.B. beim Album-Akkordeon, wo "hidden" erst nach diesem Aufruf entfernt wird), davor
+  // liefert getBoundingClientRect() nur Nullen.
+  if (isPro && eqWaveformPeaks) {
+    requestAnimationFrame(() => {
+      setupEqBandCanvas();
+      drawEqWaveform(0);
+    });
+  }
 }
 
 const eqEditorUpgradeBtn = document.getElementById("eq-editor-upgrade-btn");
@@ -3442,8 +3469,14 @@ if (eqSeekBar) {
     eqSeeking = true;
   });
   eqSeekBar.addEventListener("input", () => {
+    const value = parseFloat(eqSeekBar.value) || 0;
     const currentEl = document.getElementById("eq-time-current");
-    if (currentEl) currentEl.textContent = formatEqTime(parseFloat(eqSeekBar.value) || 0);
+    if (currentEl) currentEl.textContent = formatEqTime(value);
+    // Playhead auf der Wellenform live mitziehen, auch wenn gerade nicht abgespielt wird -
+    // eqPlaybackDuration ist nur waehrend/nach der ersten Wiedergabe gesetzt, das Maximum der
+    // Zeitleiste (aus dem Track selbst) gilt aber immer.
+    const max = parseFloat(eqSeekBar.max) || 0;
+    if (max > 0) drawEqWaveform(value / max);
   });
   eqSeekBar.addEventListener("change", () => {
     const offset = parseFloat(eqSeekBar.value) || 0;

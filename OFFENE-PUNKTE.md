@@ -4,6 +4,16 @@ Stand: 2026-08-05. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ NEU (05.08., siebter Durchgang): EQ-Frequenzband als Wellenform
+Das Frequenzband im EQ-Editor zeigt jetzt eine statische, gespiegelte
+Wellenform des ganzen Tracks (dichte Balken wie in klassischen
+Audio-Editoren) statt eines live mitlaufenden Spektrogramms – die
+Abspielposition läuft als heller Balken-Fortschritt plus Linie/Punkt
+darüber, genau wie beim Referenzfoto (nur ohne dessen Lila-Farbe, Optik
+bleibt Gold/Weiß). Funktioniert unverändert sowohl bei der Einzelanalyse
+als auch beim Album-Check-Akkordeon (Wellenform wird pro Track neu
+berechnet, sobald man ihn aufklappt).
+
 ## ✅ NEU (05.08., sechster Durchgang): Wordmark-Logo, Text-Feinschliff
 - **Neues Logo im Seitenkopf**: Der quadratische Frequenzlinien-Icon vor
   dem Schriftzug ist raus, stattdessen nur noch "Overhertz" mit einer
