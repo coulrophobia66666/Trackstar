@@ -38,12 +38,6 @@ function jsonResponse(obj, status, corsHeaders) {
   });
 }
 
-function stripCodeFence(text) {
-  const trimmed = text.trim();
-  const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  return fenceMatch ? fenceMatch[1] : trimmed;
-}
-
 async function safeJson(request) {
   try {
     return await request.json();
@@ -431,10 +425,13 @@ async function handleKiEinschaetzung(request, env, cors) {
     "Du bist ein erfahrener Songtexter, Ghostwriter und A&R-Berater, der Musik aus allen Genres und Stilrichtungen einschaetzt - von Hip-Hop ueber Pop, Rock, elektronische Musik/EDM, Akustik/Singer-Songwriter bis hin zu Volksmusik und allem dazwischen.",
     "Du bekommst einen Songtext sowie automatisch gemessene technische Kennzahlen zum Track, ggf. zusaetzlich das Genre.",
     "Passe Ton, Vokabular und Empfehlungen IMMER an das jeweilige Genre an - was bei Hip-Hop als Hook funktioniert, ist bei Volksmusik oder Akustik-Balladen falsch, und umgekehrt. Wenn kein Genre angegeben ist, leite den passenden Stil aus Songtext und Kennzahlen ab, statt eine bestimmte Szene als Standard anzunehmen.",
-    "Antworte AUSSCHLIESSLICH mit einem gueltigen JSON-Objekt (keine Markdown-Codebloecke, kein Fliesstext davor oder danach) mit genau diesen drei Feldern:",
-    '"einordnung": 2-4 Saetze, die den Track fuer den Kuenstler einordnen (Genre/Vibe/Zielgruppe), die technischen Kennzahlen sinnvoll einbeziehen (z.B. ob er radio-/playlisttauglich klingt) und kurz benennen, welches Setup/welche Produktion fuer dieses Genre typischerweise passt.',
-    '"titelvorschlaege": ein Array mit genau 3 alternativen Songtitel-Ideen, die zum Text, zur Hook und zum Genre passen, kurz und einpraegsam.',
-    '"verbesserterText": der ueberarbeitete Songtext - Reime runder, Zeilen praegnanter, Hook einpraegsamer, ohne Sprache, Stil, Silbenzahl pro Zeile, Grundaussage oder Genre-Konventionen grundlegend zu veraendern, keine generischen Floskeln oder Fuellzeilen.',
+    "Antworte AUSSCHLIESSLICH in genau diesem Format, ohne Markdown-Codebloecke, ohne zusaetzliche Ueberschriften oder Kommentare davor/danach:",
+    "###EINORDNUNG###",
+    "2-4 Saetze, die den Track fuer den Kuenstler einordnen (Genre/Vibe/Zielgruppe), die technischen Kennzahlen sinnvoll einbeziehen (z.B. ob er radio-/playlisttauglich klingt) und kurz benennen, welches Setup/welche Produktion fuer dieses Genre typischerweise passt.",
+    "###TITEL###",
+    "Genau 3 alternative Songtitel-Ideen, die zum Text, zur Hook und zum Genre passen, kurz und einpraegsam - jede Idee auf einer eigenen Zeile, ohne Nummerierung oder Aufzaehlungszeichen.",
+    "###TEXT###",
+    "Der ueberarbeitete Songtext - Reime runder, Zeilen praegnanter, Hook einpraegsamer, ohne Sprache, Stil, Silbenzahl pro Zeile, Grundaussage oder Genre-Konventionen grundlegend zu veraendern, keine generischen Floskeln oder Fuellzeilen.",
     "",
   ];
   if (title) promptLines.push('Aktueller Songtitel: "' + title + '"');
@@ -460,6 +457,7 @@ async function handleKiEinschaetzung(request, env, cors) {
       body: JSON.stringify({
         model: "claude-sonnet-5",
         max_tokens: 4000,
+        stream: true,
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -473,32 +471,55 @@ async function handleKiEinschaetzung(request, env, cors) {
     return jsonResponse({ error: "KI-Anfrage fehlgeschlagen." }, 502, cors);
   }
 
-  const data = await apiRes.json();
-  // Erstes Content-Block mit Text suchen statt blind content[0] zu nehmen - bei manchen Modellen
-  // kann vor dem Text-Block noch ein anderer Blocktyp (z.B. thinking) stehen.
-  const textBlock = Array.isArray(data?.content) ? data.content.find((b) => b && b.type === "text") : null;
-  const rawText = (textBlock?.text || "").trim();
-  if (!rawText) {
-    console.error("KI-Einschaetzung: leere Antwort von Anthropic", JSON.stringify(data).slice(0, 500));
-    return jsonResponse({ error: "Keine Antwort von der KI erhalten." }, 502, cors);
-  }
+  // Reicht die Anthropic-SSE-Antwort nicht 1:1 durch, sondern extrahiert nur die reinen
+  // Text-Deltas - das Frontend braucht kein SSE-Parsing, sondern liest einfach Klartext, der
+  // nach und nach im ###EINORDNUNG###/###TITEL###/###TEXT###-Format hereinkommt.
+  const textStream = anthropicTextDeltaStream(apiRes.body);
+  return new Response(textStream, {
+    status: 200,
+    headers: { "content-type": "text/plain; charset=utf-8", ...cors },
+  });
+}
 
-  let parsed;
-  try {
-    parsed = JSON.parse(stripCodeFence(rawText));
-  } catch {
-    return jsonResponse({ error: "KI-Antwort konnte nicht gelesen werden." }, 502, cors);
-  }
+function anthropicTextDeltaStream(anthropicBody) {
+  const reader = anthropicBody.getReader();
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  let buffer = "";
 
-  const improved = typeof parsed.verbesserterText === "string" ? parsed.verbesserterText.trim() : "";
-  const classification = typeof parsed.einordnung === "string" ? parsed.einordnung.trim() : "";
-  const titleIdeas = Array.isArray(parsed.titelvorschlaege) ? parsed.titelvorschlaege.filter((t) => typeof t === "string").slice(0, 3) : [];
-
-  if (!improved) {
-    return jsonResponse({ error: "Keine verwertbare Antwort von der KI erhalten." }, 502, cors);
-  }
-
-  return jsonResponse({ improved, classification, titleIdeas }, 200, cors);
+  return new ReadableStream({
+    async start(controller) {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr) continue;
+            let evt;
+            try {
+              evt = JSON.parse(jsonStr);
+            } catch {
+              continue;
+            }
+            if (evt.type === "content_block_delta" && evt.delta && evt.delta.type === "text_delta") {
+              controller.enqueue(encoder.encode(evt.delta.text));
+            } else if (evt.type === "error") {
+              controller.error(new Error((evt.error && evt.error.message) || "Anthropic-Stream-Fehler"));
+              return;
+            }
+          }
+        }
+        controller.close();
+      } catch (err) {
+        controller.error(err);
+      }
+    },
+  });
 }
 
 /* ---------- Routing ---------- */

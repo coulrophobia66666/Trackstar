@@ -1627,15 +1627,66 @@ if (shareResultBtn) {
   });
 }
 
-async function requestKiEinschaetzung(title, lyrics, metrics, genre) {
+// Der Worker streamt die Anthropic-Antwort als Klartext im
+// ###EINORDNUNG###/###TITEL###/###TEXT###-Format (siehe songtext-worker.js), statt auf die
+// komplette Antwort zu warten - fuehlt sich dadurch spuerbar schneller an. parseKiStream() wird
+// bei jedem neu angekommenen Chunk erneut ueber den bisher gesammelten Text aufgerufen.
+function parseKiStream(raw) {
+  const MARK_EINORDNUNG = "###EINORDNUNG###";
+  const MARK_TITEL = "###TITEL###";
+  const MARK_TEXT = "###TEXT###";
+
+  const einordnungStart = raw.indexOf(MARK_EINORDNUNG);
+  const titelStart = raw.indexOf(MARK_TITEL);
+  const textStart = raw.indexOf(MARK_TEXT);
+
+  let classification = "";
+  if (einordnungStart !== -1) {
+    const end = titelStart !== -1 ? titelStart : raw.length;
+    classification = raw.slice(einordnungStart + MARK_EINORDNUNG.length, end).trim();
+  }
+
+  let titleIdeas = [];
+  if (titelStart !== -1) {
+    const end = textStart !== -1 ? textStart : raw.length;
+    titleIdeas = raw
+      .slice(titelStart + MARK_TITEL.length, end)
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+  }
+
+  const improved = textStart !== -1 ? raw.slice(textStart + MARK_TEXT.length).trim() : "";
+
+  return { classification, titleIdeas, improved };
+}
+
+async function streamKiEinschaetzung(title, lyrics, metrics, genre, onUpdate) {
   const res = await fetch(SONGTEXT_WORKER_URL, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ title, lyrics, metrics, genre: genre ? genreLabel(genre) : "" }),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.error) throw new Error(data.error || t("kiRequestUnknownError"));
-  return data;
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || t("kiRequestUnknownError"));
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let raw = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    raw += decoder.decode(value, { stream: true });
+    onUpdate(parseKiStream(raw));
+  }
+  raw += decoder.decode();
+  const final = parseKiStream(raw);
+  if (!final.improved) throw new Error(t("kiRequestUnknownError"));
+  return final;
 }
 
 /* ---------- Konten, Credits & Pro-Abo (D1 + Stripe über den Worker) ---------- */
@@ -1957,21 +2008,36 @@ rewriteBtn.addEventListener("click", async () => {
 
   rewriteBtn.disabled = true;
   rewriteStatus.textContent = t("rewriteLoading");
-  rewriteResult.hidden = true;
+  rewriteResult.hidden = false;
+  rewriteClassification.textContent = "";
+  rewriteTitleIdeas.innerHTML = "";
+  rewriteOutput.textContent = "";
 
-  try {
-    const result = await requestKiEinschaetzung(title, lyricsRaw, lastAnalysis || {}, currentAnalysisSnapshot ? currentAnalysisSnapshot.genre : "");
-    rewriteClassification.textContent = result.classification || t("rewriteNoClassification");
+  const renderTitleIdeas = (ideas) => {
     rewriteTitleIdeas.innerHTML = "";
-    for (const idea of result.titleIdeas || []) {
+    for (const idea of ideas) {
       const li = document.createElement("li");
       li.textContent = idea;
       rewriteTitleIdeas.appendChild(li);
     }
-    rewriteOutput.textContent = result.improved;
-    rewriteResult.hidden = false;
+  };
+
+  try {
+    const result = await streamKiEinschaetzung(
+      title,
+      lyricsRaw,
+      lastAnalysis || {},
+      currentAnalysisSnapshot ? currentAnalysisSnapshot.genre : "",
+      (partial) => {
+        if (partial.classification) rewriteClassification.textContent = partial.classification;
+        if (partial.titleIdeas.length > 0) renderTitleIdeas(partial.titleIdeas);
+        if (partial.improved) rewriteOutput.textContent = partial.improved;
+      }
+    );
+    if (!result.classification) rewriteClassification.textContent = t("rewriteNoClassification");
     rewriteStatus.textContent = "";
   } catch (err) {
+    rewriteResult.hidden = true;
     rewriteStatus.textContent = t("rewriteError", { msg: err && err.message ? err.message : t("unknownError") });
   } finally {
     rewriteBtn.disabled = false;
