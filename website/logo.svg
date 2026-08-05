@@ -1,12 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="16" fill="#0e0c09"/>
   <rect width="64" height="64" rx="16" fill="url(#ov-wash)"/>
-  <path d="M6,32 C13,15 20,15 26,25 C32,35 32,29 38,19 C44,9 51,9 58,26"
-        fill="none" stroke="#5fb8c7" stroke-width="2.2" stroke-linecap="round" opacity="0.55"/>
-  <path d="M6,36 C13,50 21,50 27,38 C32,28 32,34 38,44 C44,54 51,54 58,38"
-        fill="none" stroke="url(#ov-gold)" stroke-width="5.2" stroke-linecap="round"/>
+  <path d="M5.3,45.1 L6.7,45.3 L8.0,45.1 L9.3,44.5 L10.7,43.6 L12.0,42.3 L13.3,40.6 L14.7,38.8 L16.0,36.9 L17.3,34.9 L18.7,32.2 L20.0,29.9 L21.3,27.7 L22.7,25.5 L24.0,23.7 L25.3,22.0 L26.7,19.6 L28.0,18.7 L29.3,18.7 L30.7,19.3 L32.0,20.2 L33.3,21.6 L34.7,23.4 L36.0,24.9 L37.3,27.4 L38.7,29.7 L40.0,31.4 L41.3,33.9 L42.7,36.1 L44.0,38.1 L45.3,39.9 L46.7,41.5 L48.0,43.1 L49.3,44.1 L50.7,44.8 L52.0,45.3 L53.3,45.3 L54.7,45.0 L56.0,44.3 L57.3,44.0"
+        fill="none" stroke="url(#ov-gold)" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/>
+  <path d="M5.3,32.0 L6.7,34.1 L8.0,36.1 L9.3,37.8 L10.7,39.2 L12.0,40.1 L13.3,40.5 L14.7,40.4 L16.0,39.7 L17.3,38.6 L18.7,37.0 L20.0,35.1 L21.3,33.1 L22.7,30.9 L24.0,28.9 L25.3,27.4 L26.7,26.4 L28.0,25.9 L29.3,25.9 L30.7,26.4 L32.0,27.4 L33.3,28.9 L34.7,30.9 L36.0,33.0 L37.3,35.1 L38.7,37.0 L40.0,38.6 L41.3,39.7 L42.7,40.4 L44.0,40.5 L45.3,40.1 L46.7,39.2 L48.0,37.8 L49.3,36.1 L50.7,34.1 L52.0,32.0 L53.3,29.9 L54.7,27.9 L56.0,26.1 L57.3,24.6"
+        fill="none" stroke="#5fb8c7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M5.3,32.2 L6.7,30.5 L8.0,29.0 L9.3,27.9 L10.7,27.3 L12.0,27.3 L13.3,27.9 L14.7,29.0 L16.0,30.5 L17.3,32.4 L18.7,34.2 L20.0,35.9 L21.3,37.3 L22.7,38.2 L24.0,38.5 L25.3,38.2 L26.7,37.4 L28.0,36.1 L29.3,34.6 L30.7,32.9 L32.0,31.1 L33.3,29.6 L34.7,28.3 L36.0,27.4 L37.3,27.1 L38.7,27.3 L40.0,28.0 L41.3,29.3 L42.7,31.0 L44.0,32.8 L45.3,34.5 L46.7,35.9 L48.0,36.9 L49.3,37.5 L50.7,37.5 L52.0,37.0 L53.3,36.1 L54.7,34.8 L56.0,33.2 L57.3,31.6"
+        fill="none" stroke="url(#ov-gold)" stroke-width="2.0" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
   <defs>
-    <linearGradient id="ov-gold" x1="6" y1="0" x2="58" y2="0" gradientUnits="userSpaceOnUse">
+    <linearGradient id="ov-gold" x1="5" y1="0" x2="58" y2="0" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#f0d19c"/>
       <stop offset="1" stop-color="#cda86b"/>
     </linearGradient>
