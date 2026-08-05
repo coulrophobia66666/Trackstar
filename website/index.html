@@ -293,6 +293,8 @@
           </div>
 
           <div class="eq-editor-body" id="eq-editor-body">
+          <div class="eq-spectrum" id="eq-spectrum" aria-hidden="true"></div>
+          <p class="hint eq-spectrum-hint" data-i18n="eqSpectrumHint">Live-Frequenzanzeige während der Vorschau – zeigt direkt, wie sich deine Regler auswirken.</p>
           <div class="eq-sliders" id="eq-sliders"></div>
 
           <div class="eq-deesser">
@@ -347,6 +349,12 @@
                 <input type="text" id="eq-meta-artist" placeholder="Dein Künstlername" data-i18n-placeholder="eqMetaArtistPlaceholder" />
               </div>
             </div>
+          </div>
+
+          <div class="eq-seek-row">
+            <span class="eq-time" id="eq-time-current">0:00</span>
+            <input type="range" id="eq-seek" class="eq-seek" min="0" max="0" step="0.1" value="0" aria-label="Abspielposition" />
+            <span class="eq-time" id="eq-time-total">0:00</span>
           </div>
 
           <div class="eq-editor-controls">

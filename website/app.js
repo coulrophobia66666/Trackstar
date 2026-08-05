@@ -89,6 +89,7 @@ const I18N = {
     freqBlockHint: "Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).",
     eqHeading: "EQ-Editor",
     eqIntro: "Passe die Frequenzen deines Tracks direkt hier an und hör dir das Ergebnis sofort an. Läuft komplett in deinem Browser, deine Audiodatei verlässt dabei nie dein Gerät.",
+    eqSpectrumHint: "Live-Frequenzanzeige während der Vorschau – zeigt direkt, wie sich deine Regler auswirken.",
     eqLockedHint: "Das Beheben (EQ, De-Esser, Lautheit angleichen, Stille kürzen, Fade-out) ist Teil des Pro-Plans. Die Vollanalyse siehst du auch mit Credits – fürs direkte Bearbeiten hier brauchst du Pro.",
     eqUpgradeBtn: "Auf Pro upgraden",
     eqDeesserToggle: "Zischlaute reduzieren (De-Esser)",
@@ -431,6 +432,7 @@ const I18N = {
     freqBlockHint: "Share of energy per frequency band, compared with a balanced reference range (grey zone).",
     eqHeading: "EQ editor",
     eqIntro: "Adjust your track's frequencies right here and hear the result instantly. Runs entirely in your browser, your audio file never leaves your device.",
+    eqSpectrumHint: "Live frequency display during preview – shows directly how your sliders affect the sound.",
     eqLockedHint: "Fixing things (EQ, de-esser, loudness matching, trimming silence, fade-out) is part of the Pro plan. You can see the full analysis with Credits too – editing directly here needs Pro.",
     eqUpgradeBtn: "Upgrade to Pro",
     eqDeesserToggle: "Reduce sibilance (de-esser)",
@@ -2805,6 +2807,16 @@ let eqFadeOutEnabled = false;
 let eqLastMetrics = null;
 let eqLastProfile = null;
 
+// Zeitleiste (Scrubben) + Live-Frequenzanzeige waehrend der Vorschau
+let eqAnalyser = null;
+let eqSpectrumDataArray = null;
+let eqSpectrumBarEls = [];
+let eqPlaybackRafId = null;
+let eqPlaybackStartCtxTime = 0;
+let eqPlaybackDuration = 0;
+let eqSeeking = false;
+let eqPendingSeekOffset = 0;
+
 function ensureEqAudioCtx() {
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!eqAudioCtx) eqAudioCtx = new Ctx();
@@ -2898,8 +2910,110 @@ function updateDeEsserAmount(nodes, amount) {
   nodes.sidechainGain.gain.value = amount;
 }
 
+function formatEqTime(seconds) {
+  if (!isFinite(seconds) || seconds < 0) seconds = 0;
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// Baut die 7 Live-Spektrum-Balken einmalig auf (dieselben Frequenzbaender wie die EQ-Regler),
+// damit spaeter im RAF-Takt nur noch die Hoehe aktualisiert werden muss statt bei jedem Frame
+// das ganze DOM neu zu erzeugen.
+function renderEqSpectrumBars() {
+  const container = document.getElementById("eq-spectrum");
+  if (!container) return;
+  container.innerHTML = "";
+  eqSpectrumBarEls = FREQ_BANDS.map((band) => {
+    const wrap = document.createElement("div");
+    wrap.className = "eq-spectrum-bar-wrap";
+    const bar = document.createElement("div");
+    bar.className = "eq-spectrum-bar";
+    bar.style.height = "2px";
+    const label = document.createElement("div");
+    label.className = "eq-spectrum-label";
+    label.textContent = bandLabel(band);
+    wrap.appendChild(bar);
+    wrap.appendChild(label);
+    container.appendChild(wrap);
+    return bar;
+  });
+}
+
+// Mittelt die Analyser-Frequenzdaten (0-255) je Band auf denselben Hz-Bereichen wie FREQ_BANDS,
+// damit die Live-Anzeige direkt mit den EQ-Reglern korrespondiert.
+function updateEqSpectrumBars(analyser, sampleRate) {
+  if (eqSpectrumBarEls.length === 0) return;
+  const bufferLength = analyser.frequencyBinCount;
+  if (!eqSpectrumDataArray || eqSpectrumDataArray.length !== bufferLength) {
+    eqSpectrumDataArray = new Uint8Array(bufferLength);
+  }
+  analyser.getByteFrequencyData(eqSpectrumDataArray);
+  const binHz = sampleRate / analyser.fftSize;
+  FREQ_BANDS.forEach((band, i) => {
+    const [lo, hi] = band.range;
+    const startBin = Math.max(0, Math.floor(lo / binHz));
+    const endBin = Math.min(bufferLength - 1, Math.ceil(hi / binHz));
+    let sum = 0;
+    let count = 0;
+    for (let b = startBin; b <= endBin; b++) {
+      sum += eqSpectrumDataArray[b];
+      count++;
+    }
+    const magnitude = count > 0 ? sum / count / 255 : 0;
+    eqSpectrumBarEls[i].style.height = `${Math.max(2, magnitude * 100)}%`;
+  });
+}
+
+function resetEqSpectrumBars() {
+  eqSpectrumBarEls.forEach((bar) => (bar.style.height = "2px"));
+}
+
+function updateEqSeekBounds(duration) {
+  const seekBar = document.getElementById("eq-seek");
+  if (seekBar) seekBar.max = duration.toFixed(2);
+  const totalEl = document.getElementById("eq-time-total");
+  if (totalEl) totalEl.textContent = formatEqTime(duration);
+}
+
+function updateEqSeekDisplay(position) {
+  const seekBar = document.getElementById("eq-seek");
+  if (seekBar && !eqSeeking) seekBar.value = position.toFixed(2);
+  const currentEl = document.getElementById("eq-time-current");
+  if (currentEl) currentEl.textContent = formatEqTime(position);
+}
+
+// Aktuelle Abspielposition (in Sekunden innerhalb des Buffers) - genutzt sowohl vom RAF-Takt als
+// auch, um beim Aendern eines EQ-Reglers waehrend der Wiedergabe an derselben Stelle
+// weiterzuspielen statt (wie frueher) immer wieder von vorne zu starten.
+function getEqElapsedPosition() {
+  if (!eqPlaying || !eqAudioCtx || eqPlaybackDuration <= 0) return 0;
+  let elapsed = eqAudioCtx.currentTime - eqPlaybackStartCtxTime;
+  if (eqSourceNode && eqSourceNode.loop) {
+    elapsed = elapsed % eqPlaybackDuration;
+  } else {
+    elapsed = Math.min(elapsed, eqPlaybackDuration);
+  }
+  return elapsed;
+}
+
+function tickEqPlayback() {
+  if (!eqPlaying) {
+    eqPlaybackRafId = null;
+    return;
+  }
+  updateEqSeekDisplay(getEqElapsedPosition());
+  if (eqAnalyser) updateEqSpectrumBars(eqAnalyser, eqAudioCtx.sampleRate);
+  eqPlaybackRafId = requestAnimationFrame(tickEqPlayback);
+}
+
 function stopEqPreview() {
+  if (eqPlaybackRafId) {
+    cancelAnimationFrame(eqPlaybackRafId);
+    eqPlaybackRafId = null;
+  }
   if (eqSourceNode) {
+    eqSourceNode.onended = null;
     try {
       eqSourceNode.stop();
     } catch {
@@ -2911,16 +3025,24 @@ function stopEqPreview() {
   eqFilters = [];
   eqDeEsserNodes = null;
   eqGainNode = null;
+  eqAnalyser = null;
   eqPlaying = false;
+  eqSeeking = false;
   const btn = document.getElementById("eq-play-btn");
   if (btn) btn.textContent = t("eqPlayBtn");
+  resetEqSpectrumBars();
 }
 
-function startEqPreview() {
+// offsetSeconds: Startposition innerhalb des Buffers - ermoeglicht sowohl das Scrubben in der
+// Zeitleiste als auch das nahtlose Weiterspielen an derselben Stelle, wenn waehrend der
+// Wiedergabe ein EQ-Regler geaendert wird (frueher sprang das immer auf 0 zurueck).
+function startEqPreview(offsetSeconds = 0) {
   if (!lastAudioBuffer) return;
   stopEqPreview();
   const ctx = ensureEqAudioCtx();
   const sourceBuffer = getEqSourceBuffer(ctx);
+  const duration = sourceBuffer.duration;
+  const startOffset = Math.max(0, Math.min(offsetSeconds, Math.max(0, duration - 0.05)));
   const source = ctx.createBufferSource();
   source.buffer = sourceBuffer;
   // Mit Fade-out ergibt eine Endlos-Schleife keinen Sinn (man wuerde den harten Sprung nach
@@ -2942,19 +3064,37 @@ function startEqPreview() {
   const gainNode = ctx.createGain();
   gainNode.gain.value = Math.pow(10, eqGainDb / 20);
   chainOutput.connect(gainNode);
-  gainNode.connect(ctx.destination);
   eqGainNode = gainNode;
 
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.smoothingTimeConstant = 0.75;
+  gainNode.connect(analyser);
+  analyser.connect(ctx.destination);
+  eqAnalyser = analyser;
+
   if (eqFadeOutEnabled) {
-    scheduleFadeOut(gainNode, ctx.currentTime, sourceBuffer.duration, Math.min(2.5, sourceBuffer.duration / 3));
+    scheduleFadeOut(gainNode, ctx.currentTime, duration - startOffset, Math.min(2.5, duration / 3));
   }
 
-  source.start();
+  source.onended = () => {
+    // Nur bei natuerlichem Ende (nicht geloopt) reagieren - stop() im obigen stopEqPreview()
+    // setzt onended vorher auf null, laeuft also nie hier rein.
+    if (eqSourceNode === source) {
+      stopEqPreview();
+    }
+  };
+
+  source.start(0, startOffset);
   eqSourceNode = source;
   eqFilters = filters;
   eqPlaying = true;
+  eqPlaybackStartCtxTime = ctx.currentTime - startOffset;
+  eqPlaybackDuration = duration;
+  updateEqSeekBounds(duration);
   const btn = document.getElementById("eq-play-btn");
   if (btn) btn.textContent = t("eqPlayBtnStop");
+  eqPlaybackRafId = requestAnimationFrame(tickEqPlayback);
 }
 
 function updateEqFilterGains() {
@@ -3102,8 +3242,12 @@ function initEqEditor(audioMetrics, profile) {
   eqGainDb = 0;
   eqTrimIntroEnabled = false;
   eqFadeOutEnabled = false;
+  eqPendingSeekOffset = 0;
   stopEqPreview();
   renderEqSliders();
+  renderEqSpectrumBars();
+  if (lastAudioBuffer) updateEqSeekBounds(lastAudioBuffer.duration);
+  updateEqSeekDisplay(0);
   const status = document.getElementById("eq-status");
   if (status) status.textContent = "";
   const deEsserCheckbox = document.getElementById("eq-deesser-enabled");
@@ -3157,7 +3301,7 @@ if (eqDeEsserEnabledEl) {
   eqDeEsserEnabledEl.addEventListener("change", () => {
     eqDeEsserEnabled = eqDeEsserEnabledEl.checked;
     if (eqDeEsserStrengthWrap) eqDeEsserStrengthWrap.hidden = !eqDeEsserEnabled;
-    if (eqPlaying) startEqPreview(); // Graph neu aufbauen, damit De-Esser sauber rein/raus geschaltet wird
+    if (eqPlaying) startEqPreview(getEqElapsedPosition()); // Graph neu aufbauen (De-Esser rein/raus), an gleicher Stelle weiterspielen
   });
 }
 
@@ -3198,14 +3342,14 @@ if (eqGainMatchBtn) {
 if (eqTrimIntroEl) {
   eqTrimIntroEl.addEventListener("change", () => {
     eqTrimIntroEnabled = eqTrimIntroEl.checked;
-    if (eqPlaying) startEqPreview();
+    if (eqPlaying) startEqPreview(getEqElapsedPosition());
   });
 }
 
 if (eqFadeOutEl) {
   eqFadeOutEl.addEventListener("change", () => {
     eqFadeOutEnabled = eqFadeOutEl.checked;
-    if (eqPlaying) startEqPreview();
+    if (eqPlaying) startEqPreview(getEqElapsedPosition());
   });
 }
 
@@ -3237,7 +3381,7 @@ if (eqResetBtn) {
     if (eqDeEsserStrengthWrap) eqDeEsserStrengthWrap.hidden = true;
     if (eqTrimIntroEl) eqTrimIntroEl.checked = false;
     if (eqFadeOutEl) eqFadeOutEl.checked = false;
-    if (eqPlaying) startEqPreview();
+    if (eqPlaying) startEqPreview(getEqElapsedPosition());
     if (eqStatus) eqStatus.textContent = t("eqResetDone");
   });
 }
@@ -3250,14 +3394,42 @@ if (eqPlayBtn) {
     }
     try {
       if (eqPlaying) {
+        // Position merken, damit ein erneuter Play-Klick an derselben Stelle weitermacht statt
+        // wieder von vorn zu beginnen.
+        eqPendingSeekOffset = getEqElapsedPosition();
         stopEqPreview();
         if (eqStatus) eqStatus.textContent = "";
       } else {
-        startEqPreview();
+        startEqPreview(eqPendingSeekOffset);
         if (eqStatus) eqStatus.textContent = t("eqPreviewPlaying");
       }
     } catch (err) {
       if (eqStatus) eqStatus.textContent = t("eqPreviewFailed", { msg: err && err.message ? err.message : t("unknownError") });
+    }
+  });
+}
+
+// Zeitleiste: Ziehen springt sofort an die neue Stelle (waehrend Wiedergabe: Graph mit neuem
+// Offset neu starten; im Stand: Position merken fuer den naechsten Play-Klick) - so kann man
+// gezielt eine Stelle im Track wiederholt anhoeren, ohne jedes Mal von vorn zu starten.
+const eqSeekBar = document.getElementById("eq-seek");
+if (eqSeekBar) {
+  eqSeekBar.addEventListener("pointerdown", () => {
+    eqSeeking = true;
+  });
+  eqSeekBar.addEventListener("input", () => {
+    const currentEl = document.getElementById("eq-time-current");
+    if (currentEl) currentEl.textContent = formatEqTime(parseFloat(eqSeekBar.value) || 0);
+  });
+  eqSeekBar.addEventListener("change", () => {
+    const offset = parseFloat(eqSeekBar.value) || 0;
+    eqSeeking = false;
+    if (eqPlaying) {
+      startEqPreview(offset);
+      if (eqStatus) eqStatus.textContent = t("eqPreviewPlaying");
+    } else {
+      eqPendingSeekOffset = offset;
+      updateEqSeekDisplay(offset);
     }
   });
 }
