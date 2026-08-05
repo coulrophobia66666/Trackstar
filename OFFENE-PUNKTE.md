@@ -4,6 +4,17 @@ Stand: 2026-08-05. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ NEU (05.08., fünfter Durchgang): Finale Farbpalette
+Nach Rückmeldung, dass der bisherige Blau-/Braunton auf Dauer nicht "elegant
+Plattenlabel" genug wirkt: Hintergrund von warmem Braunschwarz auf ein
+kühleres Navy-Schwarz umgestellt (angelehnt an einen Referenzscreenshot),
+zweiter Farbakzent (bisher Blau/Teal) komplett durch Weiß ersetzt – Gold
+bleibt wie immer für Branding/Buttons/Logo. Betrifft Hintergrundlinien,
+Frequenzband-Spektrogramm im EQ-Editor, Glanzeffekte, Logo-Akzentlinie,
+App-Icons/OG-Bild. Auch das Konfetti beim Top-Ergebnis hatte einen
+Grünton drin – rausgenommen, jetzt nur noch Gold-Töne. Keine Braun-/
+Grüntöne mehr irgendwo im Interface (Rot-Grün-Sehschwäche).
+
 ## ✅ NEU (05.08., vierter Durchgang): Album-Check-Akkordeon, EQ-Reihenfolge, Kleinkram
 - **Album-Check: volle Tiefenanalyse pro Track.** Jeder Track im
   Album-Check hat jetzt einen "Details & Verbessern"-Button – klappt

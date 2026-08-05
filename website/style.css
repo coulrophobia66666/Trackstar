@@ -1,20 +1,20 @@
 :root {
   color-scheme: dark;
-  --bg-deep:        #060506;
-  --bg-plane:       #0a090c;
-  --surface-1:      #141017;
-  --surface-2:      #19141e;
+  --bg-deep:        #07080c;
+  --bg-plane:       #0b0e14;
+  --surface-1:      #10131b;
+  --surface-2:      #151a24;
   --text-primary:   #f5f0e6;
   --text-secondary: #b7b2a6;
   --text-muted:     #7d7869;
-  --gridline:       #2a2530;
+  --gridline:       rgba(255, 255, 255, 0.1);
   --border:         rgba(243, 239, 230, 0.07);
   --gold:           #cda86b;
   --gold-bright:    #f0d19c;
   --gold-deep:      #8a6a35;
   --gold-wash:      rgba(205, 168, 107, 0.16);
-  --accent-2:       #5fb8c7;
-  --accent-2-bright:#8fd6e2;
+  --accent-2:       #eeeeec;
+  --accent-2-bright:#ffffff;
   --status-good:      #4cc38a;
   --status-warning:   #dc9a3f;
   --status-critical:  #d64545;
@@ -28,8 +28,8 @@ body {
   margin: 0;
   font-family: var(--font-body);
   background:
-    radial-gradient(circle at 50% -8%, rgba(169, 212, 238, 0.13), transparent 55%),
-    radial-gradient(circle at 100% 100%, rgba(47, 88, 117, 0.09), transparent 60%),
+    radial-gradient(circle at 50% -8%, rgba(205, 168, 107, 0.11), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.05), transparent 60%),
     var(--bg-deep);
   color: var(--text-primary);
 }
@@ -84,9 +84,9 @@ body {
   background: linear-gradient(
     100deg,
     transparent 0%,
-    rgba(169, 212, 238, 0) 35%,
-    rgba(169, 212, 238, 0.32) 50%,
-    rgba(95, 184, 199, 0.22) 62%,
+    rgba(255, 255, 255, 0) 35%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(240, 209, 156, 0.2) 62%,
     transparent 100%
   );
   transform: skewX(-15deg);
@@ -118,7 +118,7 @@ body {
     120deg,
     transparent 0%,
     rgba(255, 255, 255, 0) 30%,
-    rgba(169, 212, 238, 0.5) 50%,
+    rgba(255, 255, 255, 0.5) 50%,
     rgba(255, 255, 255, 0) 70%,
     transparent 100%
   );
@@ -137,8 +137,8 @@ body {
   50% {
     box-shadow:
       0 24px 48px -26px rgba(0, 0, 0, 0.75),
-      0 0 0 1.5px rgba(169, 212, 238, 0.75),
-      0 0 28px 3px rgba(169, 212, 238, 0.4);
+      0 0 0 1.5px rgba(255, 255, 255, 0.7),
+      0 0 28px 3px rgba(255, 255, 255, 0.35);
   }
 }
 

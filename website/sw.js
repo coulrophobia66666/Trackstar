@@ -3,7 +3,7 @@
 // aktuellste Version - wichtig, weil sich Code hier haeufig aendert. Der Cache dient nur als
 // Fallback, wenn wirklich kein Netz da ist. Alles ausserhalb der Shell (API-Calls an den Worker,
 // Stripe, das Whisper-Modell vom CDN) wird gar nicht erst abgefangen.
-const CACHE_NAME = "overhertz-v1";
+const CACHE_NAME = "overhertz-v2";
 const APP_SHELL = ["/", "/index.html", "/style.css", "/app.js", "/logo.svg", "/manifest.json"];
 
 self.addEventListener("install", (event) => {

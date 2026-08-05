@@ -49,13 +49,11 @@ const I18N = {
     eyebrow: "KI Songcheck",
     subtitle: "Lad deinen Track hoch und finde heraus, ob er Star Potential hat. Der Kurzcheck ist kostenlos.",
     trackLabel: "Dein Track",
-    filePickerHint: "Zeigt dein Handy nur Fotos/Videos an? Auf \"Dateien\"/\"Durchsuchen\" wechseln, um deine Musikdatei zu finden.",
     titleLabel: "Songtitel",
     titlePlaceholder: "z. B. Natriumlicht",
     lyricsLabel: "Songtext",
     lyricsOptional: "(optional – für den Hook-Check)",
-    lyricsPlaceholder: "Text reinkopieren, dann prüfen wir auch, ob dein Titel in der Hook hängen bleibt…",
-    lyricsPrecisionHint: "Songtext eintragen für präzisen Vergleich beim Vocals-Check – ohne Songtext schätzt die KI den Text.",
+    lyricsPlaceholder: "Songtext eintragen für präzisen Vergleich beim Vocals-Check – ohne Songtext schätzt die KI den Text.",
     genreLabel: "Genre",
     genreOptional: "(wird automatisch geschätzt – hier überschreibbar)",
     genreGeneral: "Allgemein / kein Genre",
@@ -396,13 +394,11 @@ const I18N = {
     eyebrow: "AI Song Check",
     subtitle: "Upload your track and find out if it has star potential. The quick check is free.",
     trackLabel: "Your track",
-    filePickerHint: "Does your phone only show photos/videos? Switch to \"Files\"/\"Browse\" to find your music file.",
     titleLabel: "Song title",
     titlePlaceholder: "e.g. Sodium Light",
     lyricsLabel: "Lyrics",
     lyricsOptional: "(optional – for the hook check)",
-    lyricsPlaceholder: "Paste your lyrics here, and we'll also check whether your title sticks in the hook…",
-    lyricsPrecisionHint: "Enter lyrics for a precise Vocals-Check comparison – without lyrics, the AI estimates the text.",
+    lyricsPlaceholder: "Enter lyrics for a precise Vocals-Check comparison – without lyrics, the AI estimates the text.",
     genreLabel: "Genre",
     genreOptional: "(auto-detected – can be overridden here)",
     genreGeneral: "General / no genre",
@@ -1504,7 +1500,7 @@ function renderAchievements(container, achievements) {
 
 function fireConfetti(container) {
   if (!container) return;
-  const colors = ["#cda86b", "#e8caa0", "#4cc38a", "#f3efe6"];
+  const colors = ["#cda86b", "#f0d19c", "#8a6a35", "#f3efe6"];
   for (let i = 0; i < 26; i++) {
     const piece = document.createElement("div");
     piece.className = "confetti-piece";
@@ -2831,7 +2827,7 @@ let eqSeeking = false;
 let eqPendingSeekOffset = 0;
 const EQ_BAND_MIN_HZ = 20;
 const EQ_BAND_MAX_HZ = 16000;
-const EQ_BAND_BG = "#08090b";
+const EQ_BAND_BG = "#07080c";
 
 function ensureEqAudioCtx() {
   const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -2963,7 +2959,7 @@ function clearEqBandCanvas() {
 // Schiebt den bisherigen Inhalt nach links und zeichnet rechts eine neue Spalte mit der
 // aktuellen Frequenzverteilung (logarithmisch ueber 20Hz-16kHz, wie bei einem Spektrogramm/EQ
 // ueblich - der Bassbereich bekommt dadurch mehr sichtbaren Platz als bei linearer Verteilung).
-// Lautere Frequenzen leuchten heller/metallischer blau, leise bleiben dunkel.
+// Lautere Frequenzen leuchten heller/weisser, leise bleiben dunkel.
 function scrollEqBandCanvas(analyser, sampleRate) {
   const ctx = eqBandCanvasCtx;
   if (!ctx) return;
@@ -2990,10 +2986,10 @@ function scrollEqBandCanvas(analyser, sampleRate) {
     const hz = Math.exp(logMin + t * (logMax - logMin));
     const bin = Math.min(bufferLength - 1, Math.max(0, Math.round(hz / binHz)));
     const magnitude = eqSpectrumDataArray[bin] / 255;
-    // Dunkler Hintergrund -> helles Metallic-Blau, je lauter der Pegel in dem Frequenzbereich
-    const r = Math.round(8 + magnitude * (169 - 8));
-    const g = Math.round(9 + magnitude * (212 - 9));
-    const b = Math.round(11 + magnitude * (238 - 11));
+    // Dunkler Hintergrund -> helles Weiss, je lauter der Pegel in dem Frequenzbereich
+    const r = Math.round(8 + magnitude * (238 - 8));
+    const g = Math.round(9 + magnitude * (238 - 9));
+    const b = Math.round(11 + magnitude * (236 - 11));
     ctx.fillStyle = `rgb(${r},${g},${b})`;
     ctx.fillRect(w - shiftPx, y, shiftPx, 1);
   }
@@ -3897,12 +3893,12 @@ if (albumBtn) {
   window.addEventListener("resize", resize);
 
   const waves = [
-    { amp: 30, freq: 0.0016, speed: 0.35, phase: 0, yRatio: 0.14, color: "91,143,184", widthPx: 1.6, alpha: 0.55 },
-    { amp: 18, freq: 0.0024, speed: 0.5, phase: 2.1, yRatio: 0.24, color: "95,184,199", widthPx: 1.4, alpha: 0.42 },
-    { amp: 38, freq: 0.0011, speed: -0.28, phase: 4.2, yRatio: 0.42, color: "91,143,184", widthPx: 1.3, alpha: 0.3 },
-    { amp: 16, freq: 0.0028, speed: 0.6, phase: 1.3, yRatio: 0.66, color: "95,184,199", widthPx: 1.2, alpha: 0.24 },
-    { amp: 24, freq: 0.0018, speed: -0.4, phase: 5.5, yRatio: 0.86, color: "91,143,184", widthPx: 1.2, alpha: 0.2 },
-    { amp: 20, freq: 0.0021, speed: 0.45, phase: 3.3, yRatio: 1.05, color: "95,184,199", widthPx: 1.1, alpha: 0.16 },
+    { amp: 30, freq: 0.0016, speed: 0.35, phase: 0, yRatio: 0.14, color: "255,255,255", widthPx: 1.6, alpha: 0.4 },
+    { amp: 18, freq: 0.0024, speed: 0.5, phase: 2.1, yRatio: 0.24, color: "255,255,255", widthPx: 1.4, alpha: 0.3 },
+    { amp: 38, freq: 0.0011, speed: -0.28, phase: 4.2, yRatio: 0.42, color: "255,255,255", widthPx: 1.3, alpha: 0.22 },
+    { amp: 16, freq: 0.0028, speed: 0.6, phase: 1.3, yRatio: 0.66, color: "255,255,255", widthPx: 1.2, alpha: 0.18 },
+    { amp: 24, freq: 0.0018, speed: -0.4, phase: 5.5, yRatio: 0.86, color: "255,255,255", widthPx: 1.2, alpha: 0.15 },
+    { amp: 20, freq: 0.0021, speed: 0.45, phase: 3.3, yRatio: 1.05, color: "255,255,255", widthPx: 1.1, alpha: 0.12 },
   ];
 
   let t = 0;
