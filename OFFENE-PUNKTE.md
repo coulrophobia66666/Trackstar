@@ -20,59 +20,28 @@ unten).
   wurde dabei rotiert (alter Wert ungültig, kein Sicherheitsrisiko mehr).
 - **Bewertungs-Pop-up nach Download**: Nach dem Herunterladen der bearbeiteten
   Version (EQ-Editor, Pro-Feature) fragt ein Pop-up nach einer 1-5-Sterne-
-  Bewertung + optionalem Kommentar, landet in neuer D1-Tabelle `ratings` –
-  siehe nächster Punkt für den nötigen manuellen Schritt.
+  Bewertung + optionalem Kommentar, landet in D1-Tabelle `ratings`.
+  D1-Tabelle ist angelegt, Feature ist voll einsatzbereit.
+- **D1-Tabelle `password_resets` angelegt** – "Passwort vergessen" erzeugt
+  jetzt fehlerfrei Reset-Tokens. Fehlt nur noch der E-Mail-Versand, siehe
+  nächster Punkt.
 
-## ⚠️ NEU: D1-Tabelle für Bewertungen nachziehen (Finn)
-Wie beim Passwort-Reset legt `CREATE TABLE` in `schema.sql` die Tabelle in
-einer bestehenden Datenbank nicht automatisch an. Ohne diesen Schritt schlägt
-das Absenden einer Bewertung mit einem Datenbank-Fehler fehl: im
-D1-Dashboard → `overhertz-db` → Console →
-```sql
-CREATE TABLE IF NOT EXISTS ratings (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  stars INTEGER NOT NULL,
-  comment TEXT,
-  created_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_ratings_user ON ratings(user_id);
-```
-einmalig ausführen.
-
-## ⚠️ NEU: Passwort-Reset – 2 manuelle Schritte, BEVOR es live nutzbar ist (Finn)
-
-**1. D1-Tabelle nachziehen** (die Datenbank existiert schon, `CREATE TABLE`
-   in `schema.sql` legt sie in einer bestehenden Datenbank nicht automatisch
-   nach – ohne diesen Schritt schlägt "Passwort vergessen" mit einem
-   Datenbank-Fehler fehl): im D1-Dashboard → `overhertz-db` → Console →
-   ```sql
-   CREATE TABLE IF NOT EXISTS password_resets (
-     token TEXT PRIMARY KEY,
-     user_id TEXT NOT NULL,
-     created_at INTEGER NOT NULL,
-     expires_at INTEGER NOT NULL
-   );
-   CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
-   ```
-   einmalig ausführen.
-
-**2. E-Mail-Versand einrichten** (ohne diesen Schritt kommt bei "Passwort
-   vergessen" die generische Bestätigung, aber es wird **keine E-Mail
-   verschickt** – kein Fehler für den Nutzer, aber auch kein Link bei ihm,
-   der Worker loggt das serverseitig):
-   1. Konto bei **resend.com** anlegen (kostenloses Kontingent reicht für
-      den Start).
-   2. Absender-Domain verifizieren: Resend zeigt DNS-Einträge (SPF/DKIM)
-      an, die bei `overhertz.app` im Cloudflare-DNS eingetragen werden
-      müssen (Cloudflare verwaltet die Domain ja jetzt schon).
-   3. API-Key erzeugen, als verschlüsseltes Secret `RESEND_API_KEY` im
-      Worker hinterlegen (gleiches Vorgehen wie bei `ANTHROPIC_API_KEY`).
-   4. Klartext-Variable `RESEND_FROM_EMAIL` im Worker setzen, z. B.
-      `Overhertz <noreply@overhertz.app>`.
-   5. Kurzer Test: "Passwort vergessen" mit echter E-Mail durchklicken,
-      prüfen ob die Mail ankommt und der Link funktioniert (1 Stunde
-      gültig).
+## ⚠️ NEU: Passwort-Reset – E-Mail-Versand fehlt noch (Finn)
+Tokens werden erzeugt, aber es wird **keine E-Mail verschickt** (kein Fehler
+für den Nutzer, aber auch kein Link bei ihm – der Worker loggt das
+serverseitig):
+1. Konto bei **resend.com** anlegen (kostenloses Kontingent reicht für
+   den Start).
+2. Absender-Domain verifizieren: Resend zeigt DNS-Einträge (SPF/DKIM)
+   an, die bei `overhertz.app` im Cloudflare-DNS eingetragen werden
+   müssen (Cloudflare verwaltet die Domain ja jetzt schon).
+3. API-Key erzeugen, als verschlüsseltes Secret `RESEND_API_KEY` im
+   Worker hinterlegen (gleiches Vorgehen wie bei `ANTHROPIC_API_KEY`).
+4. Klartext-Variable `RESEND_FROM_EMAIL` im Worker setzen, z. B.
+   `Overhertz <noreply@overhertz.app>`.
+5. Kurzer Test: "Passwort vergessen" mit echter E-Mail durchklicken,
+   prüfen ob die Mail ankommt und der Link funktioniert (1 Stunde
+   gültig).
 
 ## ⚠️ Rechtstexte: Anwaltsprüfung läuft (Carla)
 Ist **in Arbeit, noch nicht final** – Hinweistexte in `impressum.html`/
