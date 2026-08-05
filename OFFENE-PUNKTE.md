@@ -10,6 +10,9 @@ unten).
 - **"Passwort vergessen"-Funktion gebaut** (D1-Tabelle `password_resets`,
   Worker-Endpunkte, Formulare im Frontend) – siehe nächster Punkt für den
   einen noch fehlenden manuellen Schritt.
+- **Logo eingebaut**: eigenes Wellenform-Motiv (`website/logo.svg`, bewusst
+  ohne Stern) als Header-Mark, Favicon und Apple-Touch-Icon
+  (`apple-touch-icon.png`).
 
 ## ⚠️ NEU: Passwort-Reset – 2 manuelle Schritte, BEVOR es live nutzbar ist (Finn)
 
@@ -192,8 +195,8 @@ englischsprachige Rechtstext-Version für den internationalen Auftritt
 irgendwann gebraucht wird.
 
 ## Weiterhin offen
-- Logo einbauen: **Der Wellenstern** als Hauptlogo/Favicon,
-  **Das Siegel** als spätere Verifizierungs-Badge-Funktion
+- **Das Siegel** als spätere Verifizierungs-Badge-Funktion (eigenes Feature,
+  noch nicht gebaut) – das Hauptlogo/Favicon ist erledigt (siehe oben)
 - Social-Handles reservieren (Instagram/TikTok/X), Marke „Overhertz" beim
   DPMA anmelden
 - Umsatzsteuer-ID in impressum.html ergänzen, falls vorhanden
