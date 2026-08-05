@@ -22,6 +22,14 @@ const I18N = {
     registerHeading: "Registrieren",
     passwordHint: "(mind. 8 Zeichen)",
     registerBtn: "Konto erstellen",
+    forgotPasswordLink: "Passwort vergessen?",
+    backToLoginLink: "Zurück zum Login",
+    resetRequestHeading: "Passwort zurücksetzen",
+    resetRequestHint: "Gib deine E-Mail ein, wir schicken dir einen Link zum Zurücksetzen.",
+    resetRequestBtn: "Link anfordern",
+    resetPasswordHeading: "Neues Passwort setzen",
+    newPasswordLabel: "Neues Passwort",
+    resetPasswordBtn: "Passwort setzen",
     pricingHeading: "Preise",
     pricingHint: "Der Kurzcheck (Ampel-Urteil + größtes Problem) ist immer kostenlos. Für die Tiefenanalyse:",
     planCreditsTitle: "Credits",
@@ -263,6 +271,11 @@ const I18N = {
     authRegistering: "Konto wird erstellt…",
     authRegisterFailed: "Registrierung fehlgeschlagen.",
     authPleaseLoginFirst: "Bitte zuerst einloggen oder registrieren.",
+    resetRequestSending: "Wird angefordert…",
+    resetRequestFailed: "Anfrage fehlgeschlagen.",
+    resetPasswordSetting: "Wird gesetzt…",
+    resetPasswordFailed: "Zurücksetzen fehlgeschlagen.",
+    resetPasswordSuccess: "Neues Passwort gesetzt, du bist eingeloggt.",
 
     pricingRedirecting: "Weiterleitung zur Zahlung…",
     pricingFailed: "Zahlung konnte nicht gestartet werden.",
@@ -322,6 +335,14 @@ const I18N = {
     registerHeading: "Sign up",
     passwordHint: "(min. 8 characters)",
     registerBtn: "Create account",
+    forgotPasswordLink: "Forgot password?",
+    backToLoginLink: "Back to login",
+    resetRequestHeading: "Reset password",
+    resetRequestHint: "Enter your email and we'll send you a reset link.",
+    resetRequestBtn: "Request link",
+    resetPasswordHeading: "Set new password",
+    newPasswordLabel: "New password",
+    resetPasswordBtn: "Set password",
     pricingHeading: "Pricing",
     pricingHint: "The quick check (traffic-light verdict + biggest problem) is always free. For the in-depth analysis:",
     planCreditsTitle: "Credits",
@@ -563,6 +584,11 @@ const I18N = {
     authRegistering: "Creating account…",
     authRegisterFailed: "Registration failed.",
     authPleaseLoginFirst: "Please log in or register first.",
+    resetRequestSending: "Requesting…",
+    resetRequestFailed: "Request failed.",
+    resetPasswordSetting: "Setting…",
+    resetPasswordFailed: "Reset failed.",
+    resetPasswordSuccess: "New password set, you're logged in.",
 
     pricingRedirecting: "Redirecting to payment…",
     pricingFailed: "Payment couldn't be started.",
@@ -1627,15 +1653,66 @@ if (shareResultBtn) {
   });
 }
 
-async function requestKiEinschaetzung(title, lyrics, metrics, genre) {
+// Der Worker streamt die Anthropic-Antwort als Klartext im
+// ###EINORDNUNG###/###TITEL###/###TEXT###-Format (siehe songtext-worker.js), statt auf die
+// komplette Antwort zu warten - fuehlt sich dadurch spuerbar schneller an. parseKiStream() wird
+// bei jedem neu angekommenen Chunk erneut ueber den bisher gesammelten Text aufgerufen.
+function parseKiStream(raw) {
+  const MARK_EINORDNUNG = "###EINORDNUNG###";
+  const MARK_TITEL = "###TITEL###";
+  const MARK_TEXT = "###TEXT###";
+
+  const einordnungStart = raw.indexOf(MARK_EINORDNUNG);
+  const titelStart = raw.indexOf(MARK_TITEL);
+  const textStart = raw.indexOf(MARK_TEXT);
+
+  let classification = "";
+  if (einordnungStart !== -1) {
+    const end = titelStart !== -1 ? titelStart : raw.length;
+    classification = raw.slice(einordnungStart + MARK_EINORDNUNG.length, end).trim();
+  }
+
+  let titleIdeas = [];
+  if (titelStart !== -1) {
+    const end = textStart !== -1 ? textStart : raw.length;
+    titleIdeas = raw
+      .slice(titelStart + MARK_TITEL.length, end)
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+  }
+
+  const improved = textStart !== -1 ? raw.slice(textStart + MARK_TEXT.length).trim() : "";
+
+  return { classification, titleIdeas, improved };
+}
+
+async function streamKiEinschaetzung(title, lyrics, metrics, genre, onUpdate) {
   const res = await fetch(SONGTEXT_WORKER_URL, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ title, lyrics, metrics, genre: genre ? genreLabel(genre) : "" }),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.error) throw new Error(data.error || t("kiRequestUnknownError"));
-  return data;
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || t("kiRequestUnknownError"));
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let raw = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    raw += decoder.decode(value, { stream: true });
+    onUpdate(parseKiStream(raw));
+  }
+  raw += decoder.decode();
+  const final = parseKiStream(raw);
+  if (!final.improved) throw new Error(t("kiRequestUnknownError"));
+  return final;
 }
 
 /* ---------- Konten, Credits & Pro-Abo (D1 + Stripe über den Worker) ---------- */
@@ -1766,6 +1843,72 @@ if (registerForm) {
       authStatus.textContent = data.error || t("authRegisterFailed");
     }
   });
+}
+
+/* ---------- Passwort vergessen / zuruecksetzen ---------- */
+
+const forgotPasswordLink = document.getElementById("forgot-password-link");
+const backToLoginLink = document.getElementById("back-to-login-link");
+const requestResetForm = document.getElementById("request-reset-form");
+const resetPasswordForm = document.getElementById("reset-password-form");
+
+function showAuthForm(formToShow) {
+  [loginForm, registerForm, requestResetForm, resetPasswordForm].forEach((f) => {
+    if (f) f.hidden = f !== formToShow;
+  });
+  authStatus.textContent = "";
+}
+
+if (forgotPasswordLink) {
+  forgotPasswordLink.addEventListener("click", () => showAuthForm(requestResetForm));
+}
+if (backToLoginLink) {
+  backToLoginLink.addEventListener("click", () => showAuthForm(loginForm));
+}
+
+if (requestResetForm) {
+  requestResetForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("reset-request-email").value;
+    authStatus.textContent = t("resetRequestSending");
+    const { ok, data } = await apiFetch("auth/request-password-reset", { method: "POST", body: JSON.stringify({ email }) });
+    if (ok) {
+      authStatus.textContent = data.message || "";
+      requestResetForm.reset();
+    } else {
+      authStatus.textContent = data.error || t("resetRequestFailed");
+    }
+  });
+}
+
+if (resetPasswordForm) {
+  resetPasswordForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const token = resetPasswordForm.dataset.token || "";
+    const password = document.getElementById("reset-new-password").value;
+    authStatus.textContent = t("resetPasswordSetting");
+    const { ok, data } = await apiFetch("auth/reset-password", { method: "POST", body: JSON.stringify({ token, password }) });
+    if (ok) {
+      setToken(data.token);
+      currentUser = data.user;
+      renderAccountBar();
+      authStatus.textContent = t("resetPasswordSuccess");
+      resetPasswordForm.hidden = true;
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete("reset");
+      window.history.replaceState({}, "", cleanUrl);
+    } else {
+      authStatus.textContent = data.error || t("resetPasswordFailed");
+    }
+  });
+}
+
+// Reset-Link (?reset=<token>) direkt beim Laden erkennen und die passende Karte oeffnen.
+const resetTokenFromUrl = new URLSearchParams(window.location.search).get("reset");
+if (resetTokenFromUrl && resetPasswordForm) {
+  resetPasswordForm.dataset.token = resetTokenFromUrl;
+  toggleAuthCard(true);
+  showAuthForm(resetPasswordForm);
 }
 
 document.querySelectorAll(".plan-select-btn").forEach((btn) => {
@@ -1957,21 +2100,36 @@ rewriteBtn.addEventListener("click", async () => {
 
   rewriteBtn.disabled = true;
   rewriteStatus.textContent = t("rewriteLoading");
-  rewriteResult.hidden = true;
+  rewriteResult.hidden = false;
+  rewriteClassification.textContent = "";
+  rewriteTitleIdeas.innerHTML = "";
+  rewriteOutput.textContent = "";
 
-  try {
-    const result = await requestKiEinschaetzung(title, lyricsRaw, lastAnalysis || {}, currentAnalysisSnapshot ? currentAnalysisSnapshot.genre : "");
-    rewriteClassification.textContent = result.classification || t("rewriteNoClassification");
+  const renderTitleIdeas = (ideas) => {
     rewriteTitleIdeas.innerHTML = "";
-    for (const idea of result.titleIdeas || []) {
+    for (const idea of ideas) {
       const li = document.createElement("li");
       li.textContent = idea;
       rewriteTitleIdeas.appendChild(li);
     }
-    rewriteOutput.textContent = result.improved;
-    rewriteResult.hidden = false;
+  };
+
+  try {
+    const result = await streamKiEinschaetzung(
+      title,
+      lyricsRaw,
+      lastAnalysis || {},
+      currentAnalysisSnapshot ? currentAnalysisSnapshot.genre : "",
+      (partial) => {
+        if (partial.classification) rewriteClassification.textContent = partial.classification;
+        if (partial.titleIdeas.length > 0) renderTitleIdeas(partial.titleIdeas);
+        if (partial.improved) rewriteOutput.textContent = partial.improved;
+      }
+    );
+    if (!result.classification) rewriteClassification.textContent = t("rewriteNoClassification");
     rewriteStatus.textContent = "";
   } catch (err) {
+    rewriteResult.hidden = true;
     rewriteStatus.textContent = t("rewriteError", { msg: err && err.message ? err.message : t("unknownError") });
   } finally {
     rewriteBtn.disabled = false;
