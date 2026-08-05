@@ -11,22 +11,39 @@ unten).
   Worker-Endpunkte, Formulare im Frontend) – siehe nächster Punkt für den
   einen noch fehlenden manuellen Schritt.
 
-## ⚠️ NEU: Passwort-Reset braucht E-Mail-Versand (Finn) – 1 manueller Schritt
-Ohne diesen Schritt kommt bei "Passwort vergessen" die generische
-Bestätigung, aber es wird **keine E-Mail verschickt** (kein Fehler, aber
-auch kein Link beim Nutzer) – der Worker loggt das serverseitig als Fehler.
+## ⚠️ NEU: Passwort-Reset – 2 manuelle Schritte, BEVOR es live nutzbar ist (Finn)
 
-1. Konto bei **resend.com** anlegen (kostenloses Kontingent reicht für den
-   Start).
-2. Absender-Domain verifizieren: Resend zeigt DNS-Einträge (SPF/DKIM) an,
-   die bei `overhertz.app` im Cloudflare-DNS eingetragen werden müssen
-   (Cloudflare verwaltet die Domain ja jetzt schon – siehe DNS-Records).
-3. API-Key erzeugen, als verschlüsseltes Secret `RESEND_API_KEY` im Worker
-   hinterlegen (gleiches Vorgehen wie bei `ANTHROPIC_API_KEY`).
-4. Klartext-Variable `RESEND_FROM_EMAIL` im Worker setzen, z. B.
-   `Overhertz <noreply@overhertz.app>`.
-5. Kurzer Test: "Passwort vergessen" mit echter E-Mail durchklicken, prüfen
-   ob die Mail ankommt und der Link funktioniert (1 Stunde gültig).
+**1. D1-Tabelle nachziehen** (die Datenbank existiert schon, `CREATE TABLE`
+   in `schema.sql` legt sie in einer bestehenden Datenbank nicht automatisch
+   nach – ohne diesen Schritt schlägt "Passwort vergessen" mit einem
+   Datenbank-Fehler fehl): im D1-Dashboard → `overhertz-db` → Console →
+   ```sql
+   CREATE TABLE IF NOT EXISTS password_resets (
+     token TEXT PRIMARY KEY,
+     user_id TEXT NOT NULL,
+     created_at INTEGER NOT NULL,
+     expires_at INTEGER NOT NULL
+   );
+   CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
+   ```
+   einmalig ausführen.
+
+**2. E-Mail-Versand einrichten** (ohne diesen Schritt kommt bei "Passwort
+   vergessen" die generische Bestätigung, aber es wird **keine E-Mail
+   verschickt** – kein Fehler für den Nutzer, aber auch kein Link bei ihm,
+   der Worker loggt das serverseitig):
+   1. Konto bei **resend.com** anlegen (kostenloses Kontingent reicht für
+      den Start).
+   2. Absender-Domain verifizieren: Resend zeigt DNS-Einträge (SPF/DKIM)
+      an, die bei `overhertz.app` im Cloudflare-DNS eingetragen werden
+      müssen (Cloudflare verwaltet die Domain ja jetzt schon).
+   3. API-Key erzeugen, als verschlüsseltes Secret `RESEND_API_KEY` im
+      Worker hinterlegen (gleiches Vorgehen wie bei `ANTHROPIC_API_KEY`).
+   4. Klartext-Variable `RESEND_FROM_EMAIL` im Worker setzen, z. B.
+      `Overhertz <noreply@overhertz.app>`.
+   5. Kurzer Test: "Passwort vergessen" mit echter E-Mail durchklicken,
+      prüfen ob die Mail ankommt und der Link funktioniert (1 Stunde
+      gültig).
 
 ## ⚠️ Rechtstexte: Anwaltsprüfung läuft (Carla)
 Ist **in Arbeit, noch nicht final** – Hinweistexte in `impressum.html`/
