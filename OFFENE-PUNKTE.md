@@ -7,8 +7,14 @@ unten).
 ## ✅ Erledigt seit dem letzten Stand
 - **Domain `overhertz.app` ist verbunden** (Cloudflare Custom Domain am
   `trackstar-web`-Worker) und live erreichbar.
-- **Rechtstexte von einem Anwalt geprüft** – Entwurfs-Hinweise in
-  `impressum.html`/`datenschutz.html` entsprechend entfernt.
+
+## ⚠️ Rechtstexte: Anwaltsprüfung läuft (Carla)
+Ist **in Arbeit, noch nicht final** – Hinweistexte in `impressum.html`/
+`datenschutz.html` entsprechend angepasst ("wird aktuell geprüft"). Sobald
+die Rückmeldung wirklich final ist, Bescheid geben, dann wird der Hinweis
+ganz entfernt. Offene Detailfrage in der Datenschutz-Notiz: ob mit
+Cloudflare und Anthropic ein Auftragsverarbeitungsvertrag (AVV)
+abgeschlossen ist.
 
 ## ⚠️ NEU: Pro-Upgrade-Rabatt für Credits-Kunden – 2 manuelle Schritte (Malik)
 Wer schon Credits gekauft hat und danach zu Pro wechselt, bekommt automatisch
