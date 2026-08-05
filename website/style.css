@@ -28,8 +28,8 @@ body {
   margin: 0;
   font-family: var(--font-body);
   background:
-    radial-gradient(circle at 50% -8%, rgba(240, 209, 156, 0.13), transparent 55%),
-    radial-gradient(circle at 100% 100%, rgba(138, 106, 53, 0.09), transparent 60%),
+    radial-gradient(circle at 50% -8%, rgba(169, 212, 238, 0.13), transparent 55%),
+    radial-gradient(circle at 100% 100%, rgba(47, 88, 117, 0.09), transparent 60%),
     var(--bg-deep);
   color: var(--text-primary);
 }
@@ -84,8 +84,8 @@ body {
   background: linear-gradient(
     100deg,
     transparent 0%,
-    rgba(240, 209, 156, 0) 35%,
-    rgba(240, 209, 156, 0.32) 50%,
+    rgba(169, 212, 238, 0) 35%,
+    rgba(169, 212, 238, 0.32) 50%,
     rgba(95, 184, 199, 0.22) 62%,
     transparent 100%
   );
@@ -118,7 +118,7 @@ body {
     120deg,
     transparent 0%,
     rgba(255, 255, 255, 0) 30%,
-    rgba(240, 209, 156, 0.5) 50%,
+    rgba(169, 212, 238, 0.5) 50%,
     rgba(255, 255, 255, 0) 70%,
     transparent 100%
   );
@@ -137,8 +137,8 @@ body {
   50% {
     box-shadow:
       0 24px 48px -26px rgba(0, 0, 0, 0.75),
-      0 0 0 1.5px rgba(240, 209, 156, 0.75),
-      0 0 28px 3px rgba(240, 209, 156, 0.4);
+      0 0 0 1.5px rgba(169, 212, 238, 0.75),
+      0 0 28px 3px rgba(169, 212, 238, 0.4);
   }
 }
 
@@ -762,42 +762,38 @@ button#unlock-btn {
   color: var(--text-primary);
 }
 
-.eq-spectrum {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 70px;
-  padding: 0 4px;
-  margin-top: 0.6rem;
+/* Player-Block: Play-Button, Frequenzband und Seek-Leiste direkt zusammen, damit man
+   scrubben/abspielen und die Anzeige gleichzeitig sehen kann, ohne zu scrollen. */
+.eq-player {
+  border: 1px solid var(--gridline);
+  border-radius: 18px;
+  padding: 1rem;
+  margin-bottom: 1.2rem;
+  background: rgba(255, 255, 255, 0.02);
 }
 
-.eq-spectrum-bar-wrap {
-  flex: 1;
-  height: 100%;
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: center;
-}
-
-.eq-spectrum-bar {
+.eq-play-btn {
   width: 100%;
-  max-width: 22px;
-  min-height: 2px;
-  border-radius: 4px 4px 0 0;
-  background: var(--accent-2, currentColor);
-  opacity: 0.85;
-  transition: height 60ms linear;
+  margin-bottom: 0.8rem;
 }
 
-.eq-spectrum-label {
-  font-size: 0.62rem;
-  color: var(--text-muted);
-  margin-top: 4px;
-  text-align: center;
+.eq-band-wrap {
+  width: 100%;
+  height: 90px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #08090b;
+  border: 1px solid rgba(205, 168, 107, 0.2);
+}
+
+.eq-band-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .eq-spectrum-hint {
-  margin: 0.3rem 0 0 !important;
+  margin: 0.6rem 0 0 !important;
 }
 
 .eq-sliders {
@@ -974,7 +970,7 @@ button#unlock-btn {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  margin-bottom: 0.9rem;
+  margin-top: 0.6rem;
 }
 
 .eq-seek {

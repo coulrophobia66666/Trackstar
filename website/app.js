@@ -89,7 +89,7 @@ const I18N = {
     freqBlockHint: "Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).",
     eqHeading: "EQ-Editor",
     eqIntro: "Passe die Frequenzen deines Tracks direkt hier an und hör dir das Ergebnis sofort an. Läuft komplett in deinem Browser, deine Audiodatei verlässt dabei nie dein Gerät.",
-    eqSpectrumHint: "Live-Frequenzanzeige während der Vorschau – zeigt direkt, wie sich deine Regler auswirken.",
+    eqSpectrumHint: "Live-Frequenzband während der Vorschau – zeigt direkt, wie sich deine Regler auswirken.",
     eqLockedHint: "Das Beheben (EQ, De-Esser, Lautheit angleichen, Stille kürzen, Fade-out) ist Teil des Pro-Plans. Die Vollanalyse siehst du auch mit Credits – fürs direkte Bearbeiten hier brauchst du Pro.",
     eqUpgradeBtn: "Auf Pro upgraden",
     eqDeesserToggle: "Zischlaute reduzieren (De-Esser)",
@@ -432,7 +432,7 @@ const I18N = {
     freqBlockHint: "Share of energy per frequency band, compared with a balanced reference range (grey zone).",
     eqHeading: "EQ editor",
     eqIntro: "Adjust your track's frequencies right here and hear the result instantly. Runs entirely in your browser, your audio file never leaves your device.",
-    eqSpectrumHint: "Live frequency display during preview – shows directly how your sliders affect the sound.",
+    eqSpectrumHint: "Live frequency band during preview – shows directly how your sliders affect the sound.",
     eqLockedHint: "Fixing things (EQ, de-esser, loudness matching, trimming silence, fade-out) is part of the Pro plan. You can see the full analysis with Credits too – editing directly here needs Pro.",
     eqUpgradeBtn: "Upgrade to Pro",
     eqDeesserToggle: "Reduce sibilance (de-esser)",
@@ -2807,15 +2807,20 @@ let eqFadeOutEnabled = false;
 let eqLastMetrics = null;
 let eqLastProfile = null;
 
-// Zeitleiste (Scrubben) + Live-Frequenzanzeige waehrend der Vorschau
+// Zeitleiste (Scrubben) + Live-Frequenzband waehrend der Vorschau
 let eqAnalyser = null;
 let eqSpectrumDataArray = null;
-let eqSpectrumBarEls = [];
+let eqBandCanvasCtx = null;
+let eqBandCanvasWidth = 0;
+let eqBandCanvasHeight = 0;
 let eqPlaybackRafId = null;
 let eqPlaybackStartCtxTime = 0;
 let eqPlaybackDuration = 0;
 let eqSeeking = false;
 let eqPendingSeekOffset = 0;
+const EQ_BAND_MIN_HZ = 20;
+const EQ_BAND_MAX_HZ = 16000;
+const EQ_BAND_BG = "#08090b";
 
 function ensureEqAudioCtx() {
   const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -2917,56 +2922,70 @@ function formatEqTime(seconds) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-// Baut die 7 Live-Spektrum-Balken einmalig auf (dieselben Frequenzbaender wie die EQ-Regler),
-// damit spaeter im RAF-Takt nur noch die Hoehe aktualisiert werden muss statt bei jedem Frame
-// das ganze DOM neu zu erzeugen.
-function renderEqSpectrumBars() {
-  const container = document.getElementById("eq-spectrum");
-  if (!container) return;
-  container.innerHTML = "";
-  eqSpectrumBarEls = FREQ_BANDS.map((band) => {
-    const wrap = document.createElement("div");
-    wrap.className = "eq-spectrum-bar-wrap";
-    const bar = document.createElement("div");
-    bar.className = "eq-spectrum-bar";
-    bar.style.height = "2px";
-    const label = document.createElement("div");
-    label.className = "eq-spectrum-label";
-    label.textContent = bandLabel(band);
-    wrap.appendChild(bar);
-    wrap.appendChild(label);
-    container.appendChild(wrap);
-    return bar;
-  });
+// Richtet den Canvas fuer das Frequenzband ein (Groesse an tatsaechliche Darstellung inkl.
+// devicePixelRatio anpassen) - erst beim Start der Vorschau aufgerufen, nicht beim Aufbau des
+// EQ-Editors, weil der Container da noch hidden sein kann (getBoundingClientRect waere dann 0).
+function setupEqBandCanvas() {
+  const canvas = document.getElementById("eq-band-canvas");
+  if (!canvas) return null;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const width = Math.max(1, Math.round(rect.width * dpr));
+  const height = Math.max(1, Math.round(rect.height * dpr));
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+  eqBandCanvasCtx = canvas.getContext("2d");
+  eqBandCanvasWidth = width;
+  eqBandCanvasHeight = height;
+  clearEqBandCanvas();
+  return eqBandCanvasCtx;
 }
 
-// Mittelt die Analyser-Frequenzdaten (0-255) je Band auf denselben Hz-Bereichen wie FREQ_BANDS,
-// damit die Live-Anzeige direkt mit den EQ-Reglern korrespondiert.
-function updateEqSpectrumBars(analyser, sampleRate) {
-  if (eqSpectrumBarEls.length === 0) return;
+function clearEqBandCanvas() {
+  if (!eqBandCanvasCtx) return;
+  eqBandCanvasCtx.fillStyle = EQ_BAND_BG;
+  eqBandCanvasCtx.fillRect(0, 0, eqBandCanvasWidth, eqBandCanvasHeight);
+}
+
+// Schiebt den bisherigen Inhalt nach links und zeichnet rechts eine neue Spalte mit der
+// aktuellen Frequenzverteilung (logarithmisch ueber 20Hz-16kHz, wie bei einem Spektrogramm/EQ
+// ueblich - der Bassbereich bekommt dadurch mehr sichtbaren Platz als bei linearer Verteilung).
+// Lautere Frequenzen leuchten heller/metallischer blau, leise bleiben dunkel.
+function scrollEqBandCanvas(analyser, sampleRate) {
+  const ctx = eqBandCanvasCtx;
+  if (!ctx) return;
+  const w = eqBandCanvasWidth;
+  const h = eqBandCanvasHeight;
+  const shiftPx = Math.max(1, Math.round(w / 300));
+
+  ctx.drawImage(ctx.canvas, shiftPx, 0, w - shiftPx, h, 0, 0, w - shiftPx, h);
+  ctx.fillStyle = EQ_BAND_BG;
+  ctx.fillRect(w - shiftPx, 0, shiftPx, h);
+
   const bufferLength = analyser.frequencyBinCount;
   if (!eqSpectrumDataArray || eqSpectrumDataArray.length !== bufferLength) {
     eqSpectrumDataArray = new Uint8Array(bufferLength);
   }
   analyser.getByteFrequencyData(eqSpectrumDataArray);
   const binHz = sampleRate / analyser.fftSize;
-  FREQ_BANDS.forEach((band, i) => {
-    const [lo, hi] = band.range;
-    const startBin = Math.max(0, Math.floor(lo / binHz));
-    const endBin = Math.min(bufferLength - 1, Math.ceil(hi / binHz));
-    let sum = 0;
-    let count = 0;
-    for (let b = startBin; b <= endBin; b++) {
-      sum += eqSpectrumDataArray[b];
-      count++;
-    }
-    const magnitude = count > 0 ? sum / count / 255 : 0;
-    eqSpectrumBarEls[i].style.height = `${Math.max(2, magnitude * 100)}%`;
-  });
-}
+  const logMin = Math.log(EQ_BAND_MIN_HZ);
+  const logMax = Math.log(EQ_BAND_MAX_HZ);
 
-function resetEqSpectrumBars() {
-  eqSpectrumBarEls.forEach((bar) => (bar.style.height = "2px"));
+  for (let y = 0; y < h; y++) {
+    // y=0 (oben) = hohe Frequenzen, y=h (unten) = tiefe Frequenzen - klassische Spektrogramm-Optik
+    const t = 1 - y / h;
+    const hz = Math.exp(logMin + t * (logMax - logMin));
+    const bin = Math.min(bufferLength - 1, Math.max(0, Math.round(hz / binHz)));
+    const magnitude = eqSpectrumDataArray[bin] / 255;
+    // Dunkler Hintergrund -> helles Metallic-Blau, je lauter der Pegel in dem Frequenzbereich
+    const r = Math.round(8 + magnitude * (169 - 8));
+    const g = Math.round(9 + magnitude * (212 - 9));
+    const b = Math.round(11 + magnitude * (238 - 11));
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(w - shiftPx, y, shiftPx, 1);
+  }
 }
 
 function updateEqSeekBounds(duration) {
@@ -3003,7 +3022,7 @@ function tickEqPlayback() {
     return;
   }
   updateEqSeekDisplay(getEqElapsedPosition());
-  if (eqAnalyser) updateEqSpectrumBars(eqAnalyser, eqAudioCtx.sampleRate);
+  if (eqAnalyser) scrollEqBandCanvas(eqAnalyser, eqAudioCtx.sampleRate);
   eqPlaybackRafId = requestAnimationFrame(tickEqPlayback);
 }
 
@@ -3030,7 +3049,7 @@ function stopEqPreview() {
   eqSeeking = false;
   const btn = document.getElementById("eq-play-btn");
   if (btn) btn.textContent = t("eqPlayBtn");
-  resetEqSpectrumBars();
+  clearEqBandCanvas();
 }
 
 // offsetSeconds: Startposition innerhalb des Buffers - ermoeglicht sowohl das Scrubben in der
@@ -3039,6 +3058,7 @@ function stopEqPreview() {
 function startEqPreview(offsetSeconds = 0) {
   if (!lastAudioBuffer) return;
   stopEqPreview();
+  setupEqBandCanvas();
   const ctx = ensureEqAudioCtx();
   const sourceBuffer = getEqSourceBuffer(ctx);
   const duration = sourceBuffer.duration;
@@ -3245,7 +3265,6 @@ function initEqEditor(audioMetrics, profile) {
   eqPendingSeekOffset = 0;
   stopEqPreview();
   renderEqSliders();
-  renderEqSpectrumBars();
   if (lastAudioBuffer) updateEqSeekBounds(lastAudioBuffer.duration);
   updateEqSeekDisplay(0);
   const status = document.getElementById("eq-status");
@@ -3699,11 +3718,11 @@ if (albumBtn) {
   window.addEventListener("resize", resize);
 
   const waves = [
-    { amp: 30, freq: 0.0016, speed: 0.35, phase: 0, yRatio: 0.14, color: "205,168,107", widthPx: 1.6, alpha: 0.55 },
+    { amp: 30, freq: 0.0016, speed: 0.35, phase: 0, yRatio: 0.14, color: "91,143,184", widthPx: 1.6, alpha: 0.55 },
     { amp: 18, freq: 0.0024, speed: 0.5, phase: 2.1, yRatio: 0.24, color: "95,184,199", widthPx: 1.4, alpha: 0.42 },
-    { amp: 38, freq: 0.0011, speed: -0.28, phase: 4.2, yRatio: 0.42, color: "205,168,107", widthPx: 1.3, alpha: 0.3 },
+    { amp: 38, freq: 0.0011, speed: -0.28, phase: 4.2, yRatio: 0.42, color: "91,143,184", widthPx: 1.3, alpha: 0.3 },
     { amp: 16, freq: 0.0028, speed: 0.6, phase: 1.3, yRatio: 0.66, color: "95,184,199", widthPx: 1.2, alpha: 0.24 },
-    { amp: 24, freq: 0.0018, speed: -0.4, phase: 5.5, yRatio: 0.86, color: "205,168,107", widthPx: 1.2, alpha: 0.2 },
+    { amp: 24, freq: 0.0018, speed: -0.4, phase: 5.5, yRatio: 0.86, color: "91,143,184", widthPx: 1.2, alpha: 0.2 },
     { amp: 20, freq: 0.0021, speed: 0.45, phase: 3.3, yRatio: 1.05, color: "95,184,199", widthPx: 1.1, alpha: 0.16 },
   ];
 
@@ -3786,3 +3805,14 @@ if (albumBtn) {
     });
   }
 })();
+
+/* ---------- PWA: "Zum Startbildschirm hinzufuegen" ----------
+   Registriert den Service Worker (noetig, damit Chrome/Android den Install-Hinweis anbietet -
+   iOS braucht das nicht, dort geht's nur manuell ueber Teilen -> Zum Home-Bildschirm). Rein
+   additiv: schlaegt der Browser das nicht vor oder scheitert die Registrierung, bleibt die Seite
+   unveraendert normal nutzbar. */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
