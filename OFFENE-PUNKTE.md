@@ -4,6 +4,15 @@ Stand: 2026-08-05. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ NEU (05.08., achter Durchgang): Konto-Leiste aufgeräumt, Passwort anzeigen
+- **Konto-Leiste umsortiert**: "Meine Checks", "Abo verwalten/kündigen" und
+  "Abmelden" stehen jetzt oben in einer Reihe zusammen. E-Mail-Adresse,
+  Plan und Kontingent stehen darunter, rechtsbündig, zusammen mit
+  "Konto löschen".
+- **Passwort anzeigen/verbergen**: Bei Login, Registrierung und neuem
+  Passwort setzen gibt's jetzt ein Augen-Symbol im Feld, das den
+  eingegebenen Text kurz sichtbar macht (Tippfehler leichter erkennbar).
+
 ## ✅ NEU (05.08., siebter Durchgang): EQ-Frequenzband als Wellenform
 Das Frequenzband im EQ-Editor zeigt jetzt eine statische, gespiegelte
 Wellenform des ganzen Tracks (dichte Balken wie in klassischen
