@@ -13,6 +13,11 @@ unten).
 - **Logo eingebaut**: eigenes Wellenform-Motiv (`website/logo.svg`, bewusst
   ohne Stern) als Header-Mark, Favicon und Apple-Touch-Icon
   (`apple-touch-icon.png`).
+- **Stripe läuft jetzt live** (echtes Geld): Produkte, Preise, Webhook und
+  alle Worker-Variablen (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+  `STRIPE_PRICE_*`) im Live-Modus neu eingerichtet, mit echtem Testkauf
+  (Credits, 7 €) erfolgreich durchgespielt. Der alte `sk_live_...`-Schlüssel
+  wurde dabei rotiert (alter Wert ungültig, kein Sicherheitsrisiko mehr).
 
 ## ⚠️ NEU: Passwort-Reset – 2 manuelle Schritte, BEVOR es live nutzbar ist (Finn)
 
