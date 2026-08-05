@@ -291,6 +291,14 @@ const I18N = {
     eqDownloadStarted: "Download gestartet.",
     eqRenderFailed: "Rendern fehlgeschlagen: {msg}",
     eqEditorProOnlyMsg: "Das Beheben (EQ-Editor, De-Esser) ist Teil des Pro-Plans.",
+    ratingModalHeading: "Wie zufrieden bist du mit dem Ergebnis?",
+    ratingModalHint: "Dein Feedback hilft uns, Overhertz zu verbessern.",
+    ratingCommentPlaceholder: "Optional: was können wir besser machen? (freiwillig)",
+    ratingSkipBtn: "Später",
+    ratingSubmitBtn: "Absenden",
+    ratingSubmitting: "Wird gesendet…",
+    ratingThanks: "Danke für dein Feedback!",
+    ratingFailed: "Konnte nicht gesendet werden: {msg}",
 
     vocalsSkipMsg: "Kein Problem – lässt sich jederzeit später (z. B. am Laptop) nachholen.",
     vocalsNoAudio: "Kein Audio verfügbar – bitte Track erneut analysieren.",
@@ -604,6 +612,14 @@ const I18N = {
     eqDownloadStarted: "Download started.",
     eqRenderFailed: "Rendering failed: {msg}",
     eqEditorProOnlyMsg: "Fixing things (EQ editor, de-esser) is part of the Pro plan.",
+    ratingModalHeading: "How happy are you with the result?",
+    ratingModalHint: "Your feedback helps us improve Overhertz.",
+    ratingCommentPlaceholder: "Optional: what could we do better? (not required)",
+    ratingSkipBtn: "Later",
+    ratingSubmitBtn: "Submit",
+    ratingSubmitting: "Sending…",
+    ratingThanks: "Thanks for your feedback!",
+    ratingFailed: "Couldn't send: {msg}",
 
     vocalsSkipMsg: "No problem – you can do this later (e.g. on a laptop).",
     vocalsNoAudio: "No audio available – please analyze the track again.",
@@ -2908,10 +2924,77 @@ if (eqDownloadBtn) {
       const baseName = sanitizeFilename(tagTitle) || "overhertz-eq-bearbeitet";
       downloadBlob(blob, `${baseName}.wav`);
       if (eqStatus) eqStatus.textContent = t("eqDownloadStarted");
+      showRatingModal();
     } catch (err) {
       if (eqStatus) eqStatus.textContent = t("eqRenderFailed", { msg: err && err.message ? err.message : t("unknownError") });
     } finally {
       eqDownloadBtn.disabled = false;
+    }
+  });
+}
+
+/* ---------- Bewertungs-Pop-up nach dem Download der bearbeiteten Version ---------- */
+
+const ratingModalOverlay = document.getElementById("rating-modal-overlay");
+const ratingStarsEl = document.getElementById("rating-stars");
+const ratingCommentEl = document.getElementById("rating-comment");
+const ratingSubmitBtn = document.getElementById("rating-submit-btn");
+const ratingSkipBtn = document.getElementById("rating-skip-btn");
+const ratingStatusEl = document.getElementById("rating-status");
+let ratingSelectedStars = 0;
+
+function showRatingModal() {
+  if (!ratingModalOverlay) return;
+  ratingSelectedStars = 0;
+  if (ratingCommentEl) ratingCommentEl.value = "";
+  if (ratingStatusEl) ratingStatusEl.textContent = "";
+  if (ratingSubmitBtn) ratingSubmitBtn.disabled = true;
+  renderRatingStars();
+  ratingModalOverlay.hidden = false;
+}
+
+function hideRatingModal() {
+  if (ratingModalOverlay) ratingModalOverlay.hidden = true;
+}
+
+function renderRatingStars() {
+  if (!ratingStarsEl) return;
+  ratingStarsEl.querySelectorAll(".rating-star").forEach((btn) => {
+    const value = Number(btn.dataset.value);
+    btn.classList.toggle("is-filled", value <= ratingSelectedStars);
+    btn.setAttribute("aria-pressed", value <= ratingSelectedStars ? "true" : "false");
+  });
+}
+
+if (ratingStarsEl) {
+  ratingStarsEl.querySelectorAll(".rating-star").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      ratingSelectedStars = Number(btn.dataset.value);
+      renderRatingStars();
+      if (ratingSubmitBtn) ratingSubmitBtn.disabled = false;
+    });
+  });
+}
+
+if (ratingSkipBtn) {
+  ratingSkipBtn.addEventListener("click", hideRatingModal);
+}
+
+if (ratingSubmitBtn) {
+  ratingSubmitBtn.addEventListener("click", async () => {
+    if (ratingSelectedStars < 1) return;
+    ratingSubmitBtn.disabled = true;
+    if (ratingStatusEl) ratingStatusEl.textContent = t("ratingSubmitting");
+    const { ok, data } = await apiFetch("rate-download", {
+      method: "POST",
+      body: JSON.stringify({ stars: ratingSelectedStars, comment: ratingCommentEl ? ratingCommentEl.value : "" }),
+    });
+    if (ok) {
+      if (ratingStatusEl) ratingStatusEl.textContent = t("ratingThanks");
+      setTimeout(hideRatingModal, 1200);
+    } else {
+      if (ratingStatusEl) ratingStatusEl.textContent = t("ratingFailed", { msg: data.error || t("unknownError") });
+      ratingSubmitBtn.disabled = false;
     }
   });
 }

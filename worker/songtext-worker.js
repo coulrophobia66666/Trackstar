@@ -327,6 +327,25 @@ async function handleConsumeCredit(request, env, cors) {
   return jsonResponse({ ok: false, error: "Keine Credits mehr uebrig und kein aktives Pro-Abo." }, 402, cors);
 }
 
+async function handleSubmitRating(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const user = await getUserFromRequest(request, env);
+  if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
+
+  const body = await safeJson(request);
+  const stars = Number.isInteger(body.stars) ? body.stars : -1;
+  if (stars < 1 || stars > 5) return jsonResponse({ error: "Bewertung muss zwischen 1 und 5 Sternen liegen." }, 400, cors);
+  const comment = typeof body.comment === "string" ? body.comment.trim().slice(0, 1000) : "";
+
+  await env.DB.prepare("INSERT INTO ratings (id, user_id, stars, comment, created_at) VALUES (?, ?, ?, ?, ?)")
+    .bind(crypto.randomUUID(), user.id, stars, comment || null, Date.now())
+    .run();
+
+  return jsonResponse({ ok: true }, 200, cors);
+}
+
 /* ---------- Stripe: Checkout & Webhook ---------- */
 
 function flattenParams(obj, body, prefix = "") {
@@ -660,6 +679,9 @@ export default {
     }
     if (url.pathname === "/consume-credit" && request.method === "POST") {
       return withRateLimit(env, "credit:" + clientIp, cors, () => handleConsumeCredit(request, env, cors));
+    }
+    if (url.pathname === "/rate-download" && request.method === "POST") {
+      return withRateLimit(env, "rate:" + clientIp, cors, () => handleSubmitRating(request, env, cors));
     }
     if (url.pathname === "/create-checkout-session" && request.method === "POST") {
       return handleCreateCheckoutSession(request, env, cors);
