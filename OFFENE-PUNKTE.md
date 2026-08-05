@@ -4,6 +4,35 @@ Stand: 2026-08-05. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ NEU (05.08., vierter Durchgang): Album-Check-Akkordeon, EQ-Reihenfolge, Kleinkram
+- **Album-Check: volle Tiefenanalyse pro Track.** Jeder Track im
+  Album-Check hat jetzt einen "Details & Verbessern"-Button – klappt
+  Frequenzchart, alle Tipps und Fazit auf, genau wie bei der Einzelanalyse.
+  Kein Zusatz-Credit, ist ja pro Track schon mit dem Album-Check bezahlt.
+  Im aufgeklappten Bereich steht auch der volle EQ-Editor zum tatsächlichen
+  Bearbeiten (Regler, De-Esser, Lautheit, Download) – für genau diesen
+  Track. Immer nur ein Track gleichzeitig offen (Akkordeon), damit die
+  Seite bei vielen Tracks nicht endlos lang wird; ein Klick auf einen
+  anderen Track klappt den vorherigen automatisch zu. **Ausnahme:**
+  KI-Einschätzung und Vocals-Check bleiben Einzeltrack-only, weil der
+  Album-Check keine Songtexte pro Track einsammelt – das ist eine bewusste
+  Grenze, keine Baustelle.
+  Technischer Hinweis: Nach einem Seiten-Reload (z. B. mitten in einem
+  Stripe-Checkout) bleiben Frequenzchart/Tipps/Fazit sichtbar, aber die
+  Audiodatei selbst ist weg (wie beim Einzeltrack-EQ-Editor nach
+  Checkout-Redirect auch) – zum Abspielen/Bearbeiten muss das Album dann
+  erneut hochgeladen werden, ein Hinweistext erklärt das an Ort und Stelle.
+- **EQ-Editor-Reihenfolge angepasst**: "Vorschlag übernehmen",
+  "Zurücksetzen" und "Bearbeitete Version herunterladen" stehen jetzt
+  direkt unter Player/Frequenzband (vorher ganz unten nach allen Reglern)
+  – dann kommt der De-Esser. Kürzerer Weg zu den wichtigsten Aktionen.
+- **Datei-Auswahl-Hinweis**: Bei Handys, die im Datei-Dialog erst nur
+  Fotos/Videos anzeigen, steht jetzt ein Hinweistext unter dem
+  Datei-Feld ("Dateien"/"Durchsuchen" antippen).
+- **Bugfix Album-Check-Persistenz**: Ergebnisse gingen bisher bei jedem
+  Reload verloren (z. B. mitten im Stripe-Checkout für ein Pro-Upgrade),
+  obwohl die Credits schon verbraucht waren. Überleben jetzt einen Reload.
+
 ## ✅ NEU (05.08., dritter Durchgang): PWA, EQ-Editor-Redesign, Farbmix
 - **App-Installierbarkeit (PWA)**: Die Seite lässt sich jetzt auf dem Handy/
   Desktop als App-Icon installieren ("Zum Startbildschirm hinzufügen") –

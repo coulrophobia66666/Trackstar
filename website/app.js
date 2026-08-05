@@ -350,6 +350,9 @@ const I18N = {
     albumNoChecksLeft: "keine Checks mehr übrig",
     albumTrackError: "Fehler: {msg}",
     albumAnalysisFailed: "Analyse fehlgeschlagen.",
+    albumTrackDetailBtn: "Details & Verbessern",
+    albumTrackCollapseBtn: "Einklappen",
+    albumTrackNoAudio: "Audiodatei nach Neuladen der Seite nicht mehr verfügbar – zum Bearbeiten (Abspielen, EQ, Download) Album bitte erneut hochladen. Frequenzchart, Tipps und Fazit bleiben trotzdem sichtbar.",
 
     checkoutProcessing: "Zahlung wird verarbeitet…",
     checkoutStillProcessing: "Zahlung wird noch verarbeitet ({err}) – gleich nochmal auf 'Vollanalyse ansehen' klicken.",
@@ -694,6 +697,9 @@ const I18N = {
     albumNoChecksLeft: "no checks left",
     albumTrackError: "Error: {msg}",
     albumAnalysisFailed: "Analysis failed.",
+    albumTrackDetailBtn: "Details & improve",
+    albumTrackCollapseBtn: "Collapse",
+    albumTrackNoAudio: "Audio file is no longer available after reloading the page – to edit (play, EQ, download) please re-upload the album. Frequency chart, tips and summary stay visible either way.",
 
     checkoutProcessing: "Processing payment…",
     checkoutStillProcessing: "Payment is still processing ({err}) – try clicking 'View full analysis' again in a moment.",
@@ -2259,6 +2265,9 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
   const achievements = buildAchievements(audioMetrics, scores, profile.loudnessTarget);
   renderAchievements(document.getElementById("achievements"), achievements);
 
+  // Falls gerade ein Album-Track-Detail offen ist (EQ-Editor dorthin verschoben): erst zurueck
+  // an seinen Stammplatz, bevor er hier fuer die Einzelanalyse neu befuellt wird.
+  collapseOpenAlbumTrack();
   initEqEditor(audioMetrics, profile);
 
   const tips = buildTips(audioMetrics, lyrics, scores, profile);
@@ -3595,6 +3604,17 @@ const albumResults = document.getElementById("album-results");
 // Pro-Kauf zwischendurch) - waren bisher reiner DOM-Stand ohne jede Persistenz, ein Sprung weg
 // von der Seite hat alles geloescht, obwohl dafuer schon Checks/Credits verbraucht wurden.
 const ALBUM_RESULTS_KEY = "overhertz_album_results";
+// Strukturierte Daten separat von der reinen Anzeige (innerHTML) gesichert, damit "Details &
+// Verbessern" nach einem Reload weiterhin Frequenzchart/Tipps/Fazit zeigen kann - nur die
+// File-Objekte selbst ueberleben keinen Reload (wie beim Einzeltrack-EQ-Editor nach Checkout-
+// Redirect auch schon: Anzeige bleibt, live abspielen/bearbeiten braucht die Originaldatei erneut).
+const ALBUM_TRACKS_DATA_KEY = "overhertz_album_tracks_data";
+
+let albumTracksData = [];
+let albumOpenIndex = -1;
+const albumEqEditorEl = document.getElementById("eq-editor");
+const albumEqEditorHomeParent = albumEqEditorEl ? albumEqEditorEl.parentNode : null;
+const albumEqEditorHomeNext = albumEqEditorEl ? albumEqEditorEl.nextSibling : null;
 
 function saveAlbumResultsSnapshot() {
   try {
@@ -3613,7 +3633,106 @@ function restoreAlbumResultsSnapshot() {
   }
 }
 
+function saveAlbumTracksDataSnapshot() {
+  try {
+    const serializable = albumTracksData.map((d) =>
+      d ? { fileName: d.fileName, audioMetrics: d.audioMetrics, tips: d.tips, fazit: d.fazit } : null
+    );
+    sessionStorage.setItem(ALBUM_TRACKS_DATA_KEY, JSON.stringify(serializable));
+  } catch {
+    /* ignorieren */
+  }
+}
+
+function restoreAlbumTracksDataSnapshot() {
+  try {
+    const saved = sessionStorage.getItem(ALBUM_TRACKS_DATA_KEY);
+    if (saved) {
+      albumTracksData = JSON.parse(saved).map((d) => (d ? Object.assign({ file: null }, d) : null));
+    }
+  } catch {
+    /* ignorieren */
+  }
+}
+
 restoreAlbumResultsSnapshot();
+restoreAlbumTracksDataSnapshot();
+
+// Akkordeon: pro Track ein "Details & Verbessern"-Button, der Frequenzchart/Tipps/Fazit wie
+// bei der Einzelanalyse aufklappt und den (einzigen) EQ-Editor dorthin verschiebt - kein
+// zusaetzlicher Credit-Verbrauch, ist ja schon bezahlt. Immer nur ein Track offen, sonst wird
+// die Seite bei vielen Tracks ewig lang zum Scrollen.
+function collapseOpenAlbumTrack() {
+  if (albumOpenIndex === -1) return;
+  stopEqPreview();
+  const prevBtn = albumResults.querySelector(`.album-track-toggle[data-index="${albumOpenIndex}"]`);
+  const prevDetail = document.getElementById(`album-track-detail-${albumOpenIndex}`);
+  if (prevBtn) {
+    prevBtn.textContent = t("albumTrackDetailBtn");
+    prevBtn.classList.remove("is-open");
+  }
+  if (prevDetail) prevDetail.hidden = true;
+  if (albumEqEditorEl && albumEqEditorHomeParent) {
+    albumEqEditorHomeParent.insertBefore(albumEqEditorEl, albumEqEditorHomeNext);
+  }
+  albumOpenIndex = -1;
+}
+
+async function expandAlbumTrack(index) {
+  const data = albumTracksData[index];
+  const detail = document.getElementById(`album-track-detail-${index}`);
+  const btn = albumResults.querySelector(`.album-track-toggle[data-index="${index}"]`);
+  if (!data || !detail || !btn) return;
+
+  const profile = genreProfile("");
+  renderFreqChart(document.getElementById(`album-freq-chart-${index}`), data.audioMetrics.bandPercents, profile.refs);
+  renderTips(document.getElementById(`album-tips-list-${index}`), data.tips);
+  renderFazit(document.getElementById(`album-fazit-${index}`), data.fazit);
+
+  const noAudioNote = detail.querySelector(".album-track-detail-note");
+
+  if (data.file && albumEqEditorEl) {
+    try {
+      const arrayBuffer = await data.file.arrayBuffer();
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioCtx();
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+      ctx.close();
+      lastAudioBuffer = audioBuffer;
+      const eqSlot = document.getElementById(`album-eq-slot-${index}`);
+      if (eqSlot) eqSlot.appendChild(albumEqEditorEl);
+      initEqEditor(data.audioMetrics, profile);
+      const metaTitleEl = document.getElementById("eq-meta-title");
+      if (metaTitleEl) metaTitleEl.value = data.fileName.replace(/\.[^/.]+$/, "");
+      if (noAudioNote) noAudioNote.hidden = true;
+    } catch {
+      lastAudioBuffer = null;
+      if (noAudioNote) noAudioNote.hidden = false;
+    }
+  } else {
+    lastAudioBuffer = null;
+    if (noAudioNote) noAudioNote.hidden = false;
+  }
+
+  detail.hidden = false;
+  btn.textContent = t("albumTrackCollapseBtn");
+  btn.classList.add("is-open");
+  albumOpenIndex = index;
+}
+
+function toggleAlbumTrackDetail(index) {
+  const wasOpen = albumOpenIndex === index;
+  collapseOpenAlbumTrack();
+  if (!wasOpen) expandAlbumTrack(index);
+}
+
+if (albumResults) {
+  albumResults.addEventListener("click", (e) => {
+    const btn = e.target.closest(".album-track-toggle");
+    if (!btn) return;
+    toggleAlbumTrackDetail(Number(btn.dataset.index));
+  });
+}
 
 if (albumBtn) {
   albumBtn.addEventListener("click", async () => {
@@ -3633,9 +3752,12 @@ if (albumBtn) {
     }
 
     albumBtn.disabled = true;
+    collapseOpenAlbumTrack();
     albumResults.innerHTML = "";
+    albumTracksData = [];
     try {
       sessionStorage.removeItem(ALBUM_RESULTS_KEY);
+      sessionStorage.removeItem(ALBUM_TRACKS_DATA_KEY);
     } catch {
       /* ignorieren */
     }
@@ -3647,6 +3769,7 @@ if (albumBtn) {
       albumStatus.textContent = t("albumChecking", { i: i + 1, total: files.length, name: file.name });
 
       if (file.size > MAX_UPLOAD_BYTES) {
+        albumTracksData[i] = null;
         const card = document.createElement("div");
         card.className = "album-track";
         card.innerHTML = `
@@ -3655,6 +3778,7 @@ if (albumBtn) {
         `;
         albumResults.appendChild(card);
         saveAlbumResultsSnapshot();
+        saveAlbumTracksDataSnapshot();
         continue;
       }
 
@@ -3693,6 +3817,9 @@ if (albumBtn) {
         const grade = gradeForScore(overallScore);
         const tips = buildTips(audioMetrics, { hasLyrics: false, hasTitle: false }, scores, profile);
         const topTip = pickTopTip(tips);
+        const fazit = buildFazit(overallScore, tips);
+
+        albumTracksData[i] = { file, fileName: file.name, audioMetrics, tips, fazit };
 
         card.innerHTML = `
           <div class="album-track-head">
@@ -3700,14 +3827,33 @@ if (albumBtn) {
             <span class="album-track-score" style="color:${grade.color}">${overallScore}/100 · ${grade.title}</span>
           </div>
           <p class="album-track-tip">${topTip.text}</p>
+          <button type="button" class="account-btn album-track-toggle" data-index="${i}">${t("albumTrackDetailBtn")}</button>
+          <div class="album-track-detail" id="album-track-detail-${i}" hidden>
+            <div class="freq-block">
+              <h4>${t("freqBlockHeading")}</h4>
+              <div class="freq-chart" id="album-freq-chart-${i}"></div>
+            </div>
+            <div class="tips-block">
+              <h4>${t("tipsHeading")}</h4>
+              <ul class="tips" id="album-tips-list-${i}"></ul>
+            </div>
+            <div class="fazit-wrap">
+              <h4>${t("fazitHeading")}</h4>
+              <div id="album-fazit-${i}"></div>
+            </div>
+            <p class="album-track-detail-note" hidden>${t("albumTrackNoAudio")}</p>
+            <div class="album-eq-slot" id="album-eq-slot-${i}"></div>
+          </div>
         `;
       } catch (err) {
+        albumTracksData[i] = null;
         card.innerHTML = `
           <div class="album-track-head"><span class="album-track-name">${escapeHtml(file.name)}</span></div>
           <p class="album-track-tip">${t("albumTrackError", { msg: err && err.message ? err.message : t("albumAnalysisFailed") })}</p>
         `;
       }
       saveAlbumResultsSnapshot();
+      saveAlbumTracksDataSnapshot();
     }
 
     albumStatus.textContent = "";
