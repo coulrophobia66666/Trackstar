@@ -995,6 +995,10 @@ button#unlock-btn {
   gap: 0.6rem;
 }
 
+.eq-editor-controls-top {
+  margin-bottom: 1.2rem;
+}
+
 .eq-editor-controls .account-btn {
   flex: 1 1 auto;
 }
@@ -1378,10 +1382,42 @@ button#vocals-check-btn:disabled {
 }
 
 .album-track-tip {
-  margin: 0;
+  margin: 0 0 0.7rem;
   color: var(--text-secondary);
   font-size: 0.86rem;
   line-height: 1.5;
+}
+
+.album-track-toggle {
+  width: 100%;
+}
+
+.album-track-toggle.is-open {
+  border-color: var(--accent-2, var(--gold));
+  color: var(--accent-2, var(--gold));
+}
+
+.album-track-detail {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--gridline);
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.album-track-detail h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: var(--text-primary);
+}
+
+.album-track-detail-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-style: italic;
 }
 
 /* Account-Bar, Login/Registrierung, Pricing */
