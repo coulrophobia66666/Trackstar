@@ -172,7 +172,6 @@
               <span data-i18n="trackLabel">Dein Track</span>
             </label>
             <input type="file" id="audio-file" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus,.wma" required />
-            <p class="hint" data-i18n="filePickerHint">Zeigt dein Handy nur Fotos/Videos an? Auf "Dateien"/"Durchsuchen" wechseln, um deine Musikdatei zu finden.</p>
           </div>
 
           <div class="field">
@@ -188,8 +187,7 @@
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 2.5h6l2.5 2.5v8.5H4V2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6 8h4M6 10.5h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
               <span data-i18n="lyricsLabel">Songtext</span> <span class="optional" data-i18n="lyricsOptional">(optional – für den Hook-Check)</span>
             </label>
-            <textarea id="track-lyrics" rows="5" placeholder="Text reinkopieren, dann prüfen wir auch, ob dein Titel in der Hook hängen bleibt…" data-i18n-placeholder="lyricsPlaceholder"></textarea>
-            <p class="hint lyrics-precision-hint" data-i18n="lyricsPrecisionHint">Songtext eintragen für präzisen Vergleich beim Vocals-Check – ohne Songtext schätzt die KI den Text.</p>
+            <textarea id="track-lyrics" rows="5" placeholder="Songtext eintragen für präzisen Vergleich beim Vocals-Check – ohne Songtext schätzt die KI den Text." data-i18n-placeholder="lyricsPlaceholder"></textarea>
           </div>
 
           <div class="field">
@@ -228,7 +226,6 @@
         <div class="field">
           <label for="album-files" data-i18n="albumFilesLabel">Tracks auswählen</label>
           <input type="file" id="album-files" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus,.wma" multiple />
-          <p class="hint" data-i18n="filePickerHint">Zeigt dein Handy nur Fotos/Videos an? Auf "Dateien"/"Durchsuchen" wechseln, um deine Musikdatei zu finden.</p>
         </div>
         <button type="button" id="album-analyze-btn" class="account-btn account-btn-primary" data-i18n="albumAnalyzeBtn">Album analysieren</button>
         <p class="status-line" id="album-status" role="status" aria-live="polite"></p>
