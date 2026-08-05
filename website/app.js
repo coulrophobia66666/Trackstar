@@ -54,6 +54,7 @@ const I18N = {
     lyricsLabel: "Songtext",
     lyricsOptional: "(optional – für den Hook-Check)",
     lyricsPlaceholder: "Text reinkopieren, dann prüfen wir auch, ob dein Titel in der Hook hängen bleibt…",
+    lyricsPrecisionHint: "Songtext eintragen für präzisen Vergleich beim Vocals-Check – ohne Songtext schätzt die KI den Text.",
     genreLabel: "Genre",
     genreOptional: "(wird automatisch geschätzt – hier überschreibbar)",
     genreGeneral: "Allgemein / kein Genre",
@@ -113,16 +114,21 @@ const I18N = {
     tipsHeading: "Verbesserungsvorschläge",
     fazitHeading: "Fazit — dein Wegweiser",
     rewriteHeading: "KI-Einschätzung",
-    rewriteHint: "Lass dir eine Einordnung, Titel-Ideen und einen verfeinerten Songtext von der KI erstellen – Stil, Sprache und Aussage bleiben erhalten.",
+    rewriteHint: "Läuft automatisch: Einordnung, Titel-Ideen und ein verfeinerter Songtext von der KI – Stil, Sprache und Aussage bleiben erhalten.",
     rewriteBtn: "KI-Einschätzung anzeigen",
+    rewriteRegenerateBtn: "Neu generieren",
+    rewriteReconstructionHeading: "Geschätzter Songtext",
+    rewriteReconstructionHint: "Kein Songtext eingegeben – die KI hat diesen Text aus dem automatischen Vocals-Transkript rekonstruiert. Schätzung, kein Fakt.",
     rewriteClassificationHeading: "Einordnung",
     rewriteTitleIdeasHeading: "Titel-Ideen",
     rewriteOutputHeading: "Verbesserter Songtext",
+    rewritePronunciationHeading: "Aussprache-Einschätzung",
     vocalsHeading: "Vocals-Check",
-    vocalsIntro: "Transkribiert die gesungenen Vocals per KI direkt in deinem Browser (Audio verlässt dabei nie dein Gerät) und vergleicht sie mit deinem eingegebenen Songtext – praktisch, um Aussprache-/Text-Artefakte von KI-Gesang (z. B. Suno, Udio) aufzuspüren. Automatische Spracherkennung von Gesang ist selbst fehleranfällig (Autotune, Beat im Hintergrund, Slang) – als Hinweis lesen, nicht als harten Fakt.",
-    vocalsChoiceHint: "Lädt einmalig ein KI-Modell (~140 MB) herunter und rechnet direkt auf diesem Gerät – auf dem Handy kann das dauern und Datenvolumen/Akku kosten. Am Laptop/PC läuft's meist schneller.",
-    vocalsSkipBtn: "Auf dem Handy bleiben",
-    vocalsCheckBtn: "Trotzdem transkribieren",
+    vocalsIntro: "Transkribiert die gesungenen Vocals automatisch per KI direkt in deinem Browser (Audio verlässt dabei nie dein Gerät) und vergleicht sie mit deinem Songtext (oder, falls keiner eingegeben wurde, mit einer KI-Schätzung des Texts) – praktisch, um Aussprache-/Text-Artefakte von KI-Gesang (z. B. Suno, Udio) aufzuspüren. Automatische Spracherkennung von Gesang ist selbst fehleranfällig (Autotune, Beat im Hintergrund, Slang) – als Hinweis lesen, nicht als harten Fakt. Lädt einmalig ein KI-Modell (~140 MB) herunter – auf dem Handy kann das Datenvolumen/Akku kosten.",
+    vocalsCancelBtn: "Abbrechen",
+    vocalsCancelled: "Abgebrochen – kein Datenvolumen/Akku mehr verbraucht.",
+    vocalsRetryBtn: "Erneut transkribieren",
+    vocalsEstimatedNote: "Kein Songtext eingegeben – Vergleich läuft gegen eine KI-Schätzung des Texts, nicht gegen einen echten Songtext.",
     vocalsResultHeading: "Textabgleich",
     vocalsTranscriptHeading: "Rohes Transkript",
     vocalsTranscriptHint: "(automatisch, KI-generiert)",
@@ -272,6 +278,14 @@ const I18N = {
     accountDeleteConfirm: "Konto und alle zugehörigen Daten unwiderruflich löschen? Ein aktives Abo wird dabei automatisch gekündigt.",
     accountDeleteSuccess: "Konto wurde gelöscht.",
     accountDeleteFailed: "Konto konnte nicht gelöscht werden.",
+    historyToggleBtn: "Meine Checks",
+    historyHeading: "Meine Checks",
+    historyHint: "Deine bisherigen Tiefenanalysen – nur die Ergebnisse (Tipps, Fazit, Einordnung), nicht die Audiodateien selbst.",
+    historyBackBtn: "← Zurück zur Liste",
+    historyLoading: "Lädt…",
+    historyLoadFailed: "Konnte nicht geladen werden.",
+    historyEmpty: "Noch keine Tiefenanalysen gespeichert.",
+    historyUntitled: "Unbenannt",
     accountFreePlanLabel: "Free",
     accountProLabel: "Pro",
     accountProAnnualLabel: "Pro (jährlich)",
@@ -313,9 +327,7 @@ const I18N = {
     ratingThanks: "Danke für dein Feedback!",
     ratingFailed: "Konnte nicht gesendet werden: {msg}",
 
-    vocalsSkipMsg: "Kein Problem – lässt sich jederzeit später (z. B. am Laptop) nachholen.",
     vocalsNoAudio: "Kein Audio verfügbar – bitte Track erneut analysieren.",
-    vocalsNoLyrics: "Kein Songtext eingegeben – nichts zum Abgleichen.",
     vocalsLoadingModel: "Lade Transkriptions-Modell (einmalig, danach gecacht)…",
     vocalsLoadingModelProgress: "Lade Transkriptions-Modell… {pct}%",
     vocalsPreparingAudio: "Bereite Audio auf (16kHz Mono)…",
@@ -384,6 +396,7 @@ const I18N = {
     lyricsLabel: "Lyrics",
     lyricsOptional: "(optional – for the hook check)",
     lyricsPlaceholder: "Paste your lyrics here, and we'll also check whether your title sticks in the hook…",
+    lyricsPrecisionHint: "Enter lyrics for a precise Vocals-Check comparison – without lyrics, the AI estimates the text.",
     genreLabel: "Genre",
     genreOptional: "(auto-detected – can be overridden here)",
     genreGeneral: "General / no genre",
@@ -443,16 +456,21 @@ const I18N = {
     tipsHeading: "Improvement suggestions",
     fazitHeading: "Summary — your roadmap",
     rewriteHeading: "AI assessment",
-    rewriteHint: "Get an assessment, title ideas, and a refined lyric version from the AI – style, language, and meaning are preserved.",
+    rewriteHint: "Runs automatically: an assessment, title ideas, and a refined lyric version from the AI – style, language, and meaning are preserved.",
     rewriteBtn: "Show AI assessment",
+    rewriteRegenerateBtn: "Regenerate",
+    rewriteReconstructionHeading: "Estimated lyrics",
+    rewriteReconstructionHint: "No lyrics entered – the AI reconstructed this text from the automatic vocals transcript. An estimate, not a fact.",
     rewriteClassificationHeading: "Assessment",
     rewriteTitleIdeasHeading: "Title ideas",
     rewriteOutputHeading: "Improved lyrics",
+    rewritePronunciationHeading: "Pronunciation assessment",
     vocalsHeading: "Vocals check",
-    vocalsIntro: "Transcribes the sung vocals via AI directly in your browser (audio never leaves your device) and compares them with the lyrics you entered – useful for spotting pronunciation/text artifacts from AI vocals (e.g. Suno, Udio). Automatic speech recognition on singing is itself error-prone (autotune, background beat, slang) – read it as a hint, not a hard fact.",
-    vocalsChoiceHint: "Downloads an AI model (~140 MB) once and runs it right on this device – on mobile this can take a while and cost data/battery. Usually faster on laptop/desktop.",
-    vocalsSkipBtn: "Stay on mobile",
-    vocalsCheckBtn: "Transcribe anyway",
+    vocalsIntro: "Automatically transcribes the sung vocals via AI directly in your browser (audio never leaves your device) and compares them with your lyrics (or, if none were entered, with an AI estimate of the text) – useful for spotting pronunciation/text artifacts from AI vocals (e.g. Suno, Udio). Automatic speech recognition on singing is itself error-prone (autotune, background beat, slang) – read it as a hint, not a hard fact. Downloads an AI model (~140 MB) once – on mobile this can cost data/battery.",
+    vocalsCancelBtn: "Cancel",
+    vocalsCancelled: "Cancelled – no more data/battery used.",
+    vocalsRetryBtn: "Transcribe again",
+    vocalsEstimatedNote: "No lyrics entered – comparison runs against an AI estimate of the text, not real lyrics.",
     vocalsResultHeading: "Lyrics comparison",
     vocalsTranscriptHeading: "Raw transcript",
     vocalsTranscriptHint: "(automatic, AI-generated)",
@@ -602,6 +620,14 @@ const I18N = {
     accountDeleteConfirm: "Permanently delete your account and all associated data? An active subscription will be cancelled automatically.",
     accountDeleteSuccess: "Account deleted.",
     accountDeleteFailed: "Couldn't delete account.",
+    historyToggleBtn: "My checks",
+    historyHeading: "My checks",
+    historyHint: "Your past deep analyses – results only (tips, summary, assessment), not the audio files themselves.",
+    historyBackBtn: "← Back to list",
+    historyLoading: "Loading…",
+    historyLoadFailed: "Couldn't load.",
+    historyEmpty: "No deep analyses saved yet.",
+    historyUntitled: "Untitled",
     accountFreePlanLabel: "Free",
     accountProLabel: "Pro",
     accountProAnnualLabel: "Pro (annual)",
@@ -643,9 +669,7 @@ const I18N = {
     ratingThanks: "Thanks for your feedback!",
     ratingFailed: "Couldn't send: {msg}",
 
-    vocalsSkipMsg: "No problem – you can do this later (e.g. on a laptop).",
     vocalsNoAudio: "No audio available – please analyze the track again.",
-    vocalsNoLyrics: "No lyrics entered – nothing to compare.",
     vocalsLoadingModel: "Loading transcription model (one-time, then cached)…",
     vocalsLoadingModelProgress: "Loading transcription model… {pct}%",
     vocalsPreparingAudio: "Preparing audio (16kHz mono)…",
@@ -1665,6 +1689,8 @@ const SONGTEXT_WORKER_URL = "https://trackstar.coulrophobia66666.workers.dev/";
 
 let lastAnalysis = null;
 let lastShareInfo = null;
+let lastFazitText = "";
+let currentCheckId = null;
 
 const shareResultBtn = document.getElementById("share-result-btn");
 if (shareResultBtn) {
@@ -1696,13 +1722,23 @@ if (shareResultBtn) {
 // komplette Antwort zu warten - fuehlt sich dadurch spuerbar schneller an. parseKiStream() wird
 // bei jedem neu angekommenen Chunk erneut ueber den bisher gesammelten Text aufgerufen.
 function parseKiStream(raw) {
+  const MARK_REKONSTRUKTION = "###REKONSTRUKTION###";
   const MARK_EINORDNUNG = "###EINORDNUNG###";
   const MARK_TITEL = "###TITEL###";
   const MARK_TEXT = "###TEXT###";
+  const MARK_AUSSPRACHE = "###AUSSPRACHE###";
 
+  const rekonstruktionStart = raw.indexOf(MARK_REKONSTRUKTION);
   const einordnungStart = raw.indexOf(MARK_EINORDNUNG);
   const titelStart = raw.indexOf(MARK_TITEL);
   const textStart = raw.indexOf(MARK_TEXT);
+  const ausspracheStart = raw.indexOf(MARK_AUSSPRACHE);
+
+  let reconstruction = "";
+  if (rekonstruktionStart !== -1) {
+    const end = einordnungStart !== -1 ? einordnungStart : raw.length;
+    reconstruction = raw.slice(rekonstruktionStart + MARK_REKONSTRUKTION.length, end).trim();
+  }
 
   let classification = "";
   if (einordnungStart !== -1) {
@@ -1721,16 +1757,22 @@ function parseKiStream(raw) {
       .slice(0, 3);
   }
 
-  const improved = textStart !== -1 ? raw.slice(textStart + MARK_TEXT.length).trim() : "";
+  let improved = "";
+  if (textStart !== -1) {
+    const end = ausspracheStart !== -1 ? ausspracheStart : raw.length;
+    improved = raw.slice(textStart + MARK_TEXT.length, end).trim();
+  }
 
-  return { classification, titleIdeas, improved };
+  const pronunciation = ausspracheStart !== -1 ? raw.slice(ausspracheStart + MARK_AUSSPRACHE.length).trim() : "";
+
+  return { reconstruction, classification, titleIdeas, improved, pronunciation };
 }
 
-async function streamKiEinschaetzung(title, lyrics, metrics, genre, onUpdate) {
+async function streamKiEinschaetzung(title, lyrics, metrics, genre, transcript, onUpdate) {
   const res = await fetch(SONGTEXT_WORKER_URL, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ title, lyrics, metrics, genre: genre ? genreLabel(genre) : "" }),
+    body: JSON.stringify({ title, lyrics, metrics, genre: genre ? genreLabel(genre) : "", transcript: transcript || "" }),
   });
 
   if (!res.ok) {
@@ -1808,12 +1850,14 @@ function renderAccountBar() {
     const isSubscribed = currentUser.plan === "pro" || currentUser.plan === "pro_annual";
     accountBar.innerHTML = `
       <span class="account-info"><strong>${currentUser.email}</strong> · ${planLabel} · ${quotaText}</span>
+      <button type="button" id="history-toggle-btn" class="account-btn">${t("historyToggleBtn")}</button>
       ${isSubscribed ? `<button type="button" id="manage-subscription-btn" class="account-btn">${t("accountManageSubscriptionBtn")}</button>` : ""}
       <button type="button" id="logout-btn" class="account-btn">${t("accountLogoutBtn")}</button>
       <button type="button" id="delete-account-btn" class="link-btn">${t("accountDeleteBtn")}</button>
     `;
     document.getElementById("logout-btn").addEventListener("click", handleLogout);
     document.getElementById("delete-account-btn").addEventListener("click", handleDeleteAccount);
+    document.getElementById("history-toggle-btn").addEventListener("click", toggleHistoryCard);
     const manageBtn = document.getElementById("manage-subscription-btn");
     if (manageBtn) manageBtn.addEventListener("click", handleManageSubscription);
   } else {
@@ -1871,6 +1915,122 @@ async function handleDeleteAccount() {
   } else {
     window.alert(data.error || t("accountDeleteFailed"));
   }
+}
+
+/* ---------- Verlauf ("Meine Checks") - gespeicherte Analyseergebnisse, keine Audiodateien ---------- */
+
+const historyCard = document.getElementById("history-card");
+const historyStatus = document.getElementById("history-status");
+const historyList = document.getElementById("history-list");
+const historyDetail = document.getElementById("history-detail");
+const historyBackBtn = document.getElementById("history-back-btn");
+
+function toggleHistoryCard() {
+  if (!historyCard) return;
+  const willOpen = historyCard.hidden;
+  historyCard.hidden = !willOpen;
+  if (willOpen) {
+    historyDetail.hidden = true;
+    historyList.hidden = false;
+    loadHistoryList();
+    historyCard.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+async function loadHistoryList() {
+  historyStatus.textContent = t("historyLoading");
+  historyList.innerHTML = "";
+  const { ok, data } = await apiFetch("my-checks", { method: "GET" });
+  if (!ok) {
+    historyStatus.textContent = data.error || t("historyLoadFailed");
+    return;
+  }
+  if (!data.checks || data.checks.length === 0) {
+    historyStatus.textContent = t("historyEmpty");
+    return;
+  }
+  historyStatus.textContent = "";
+  for (const check of data.checks) {
+    const li = document.createElement("li");
+    li.className = "history-item";
+    const date = new Date(check.createdAt).toLocaleDateString();
+    const scoreText = typeof check.overallScore === "number" ? `${check.overallScore}/100` : "";
+    const genreText = check.genre ? genreLabel(check.genre) : "";
+    const metaParts = [date, genreText, scoreText].filter(Boolean).join(" · ");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "history-item-btn";
+    btn.innerHTML = `<span class="history-item-title">${escapeHtml(check.title || t("historyUntitled"))}</span><span class="history-item-meta">${escapeHtml(metaParts)}</span>`;
+    btn.addEventListener("click", () => showHistoryDetail(check.id));
+    li.appendChild(btn);
+    historyList.appendChild(li);
+  }
+}
+
+async function showHistoryDetail(checkId) {
+  historyList.hidden = true;
+  historyDetail.hidden = false;
+  historyStatus.textContent = t("historyLoading");
+  const { ok, data } = await apiFetch("check-detail?id=" + encodeURIComponent(checkId), { method: "GET" });
+  if (!ok) {
+    historyStatus.textContent = data.error || t("historyLoadFailed");
+    return;
+  }
+  historyStatus.textContent = "";
+
+  document.getElementById("history-detail-title").textContent = data.title || t("historyUntitled");
+  const date = new Date(data.createdAt).toLocaleDateString();
+  const scoreText = typeof data.overallScore === "number" ? `${data.overallScore}/100` : "";
+  const genreText = data.genre ? genreLabel(data.genre) : "";
+  document.getElementById("history-detail-meta").textContent = [date, genreText, scoreText].filter(Boolean).join(" · ");
+
+  const classificationBlock = document.getElementById("history-detail-classification-block");
+  classificationBlock.hidden = !data.classification;
+  document.getElementById("history-detail-classification").textContent = data.classification || "";
+
+  const titleIdeasBlock = document.getElementById("history-detail-titleideas-block");
+  const titleIdeasEl = document.getElementById("history-detail-titleideas");
+  titleIdeasEl.innerHTML = "";
+  if (data.titleIdeas && data.titleIdeas.length > 0) {
+    titleIdeasBlock.hidden = false;
+    for (const idea of data.titleIdeas) {
+      const li = document.createElement("li");
+      li.textContent = idea;
+      titleIdeasEl.appendChild(li);
+    }
+  } else {
+    titleIdeasBlock.hidden = true;
+  }
+
+  const tipsBlock = document.getElementById("history-detail-tips-block");
+  const tipsEl = document.getElementById("history-detail-tips");
+  tipsEl.innerHTML = "";
+  if (data.tips && data.tips.length > 0) {
+    tipsBlock.hidden = false;
+    for (const tip of data.tips) {
+      const li = document.createElement("li");
+      li.className = "tip-item";
+      li.textContent = tip;
+      tipsEl.appendChild(li);
+    }
+  } else {
+    tipsBlock.hidden = true;
+  }
+
+  const fazitBlock = document.getElementById("history-detail-fazit-block");
+  fazitBlock.hidden = !data.fazit;
+  document.getElementById("history-detail-fazit").textContent = data.fazit || "";
+
+  const lyricsBlock = document.getElementById("history-detail-lyrics-block");
+  lyricsBlock.hidden = !data.improvedLyrics;
+  document.getElementById("history-detail-lyrics").textContent = data.improvedLyrics || "";
+}
+
+if (historyBackBtn) {
+  historyBackBtn.addEventListener("click", () => {
+    historyDetail.hidden = true;
+    historyList.hidden = false;
+  });
 }
 
 if (loginForm) {
@@ -2018,12 +2178,20 @@ const analyzeBtn = document.getElementById("analyze-btn");
 const freeResultsEl = document.getElementById("free-results");
 const premiumResultsEl = document.getElementById("premium-results");
 const unlockBtn = document.getElementById("unlock-btn");
+const rewriteBlock = document.getElementById("rewrite-block");
 const rewriteBtn = document.getElementById("rewrite-btn");
 const rewriteStatus = document.getElementById("rewrite-status");
 const rewriteResult = document.getElementById("rewrite-result");
 const rewriteOutput = document.getElementById("rewrite-output");
 const rewriteClassification = document.getElementById("rewrite-classification");
 const rewriteTitleIdeas = document.getElementById("rewrite-title-ideas");
+const vocalsBlockEl = document.getElementById("vocals-block");
+const vocalsCheckBtn = document.getElementById("vocals-check-btn");
+const vocalsCancelBtn = document.getElementById("vocals-cancel-btn");
+const vocalsStatus = document.getElementById("vocals-status");
+const vocalsResult = document.getElementById("vocals-result");
+const vocalsEstimatedNote = document.getElementById("vocals-estimated-note");
+let lastVocalsTranscript = "";
 
 let genreManuallySet = false;
 const trackGenreSelect = document.getElementById("track-genre");
@@ -2135,19 +2303,25 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
   renderFreqChart(document.getElementById("freq-chart"), audioMetrics.bandPercents, profile.refs);
   renderTips(document.getElementById("tips-list"), tips);
 
-  renderFazit(document.getElementById("fazit-block"), buildFazit(overallScore, tips));
+  const fazit = buildFazit(overallScore, tips);
+  renderFazit(document.getElementById("fazit-block"), fazit);
+  lastFazitText = [fazit.intro, ...fazit.steps.map((s) => "- " + s), fazit.closing].join("\n");
 
-  const rewriteBlock = document.getElementById("rewrite-block");
-  rewriteBlock.hidden = !lyrics.hasLyrics;
+  // Rewrite-/Vocals-Block werden nicht mehr am eingegebenen Songtext gehangen - beide starten
+  // nach Freischaltung automatisch (siehe startAutoPremiumFlow), auch ohne Songtext (dann per
+  // Vocals-Transkript als Basis). Reset hier nur den Anzeigezustand, nicht die Sichtbarkeit -
+  // die steuert startAutoPremiumFlow bzw. bleibt hidden bis zur Freischaltung.
   document.getElementById("rewrite-status").textContent = "";
   document.getElementById("rewrite-result").hidden = true;
+  rewriteBtn.hidden = true;
 
   const vocalsBlockEl = document.getElementById("vocals-block");
   if (vocalsBlockEl) {
-    vocalsBlockEl.hidden = !lyrics.hasLyrics;
+    vocalsBlockEl.hidden = true;
     document.getElementById("vocals-status").textContent = "";
     document.getElementById("vocals-result").hidden = true;
-    document.getElementById("vocals-choice").hidden = false;
+    if (vocalsCheckBtn) vocalsCheckBtn.hidden = true;
+    if (vocalsCancelBtn) vocalsCancelBtn.hidden = true;
   }
 
   const submissions = buildSubmissions(overallScore, genre);
@@ -2156,20 +2330,40 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
   freeResultsEl.hidden = false;
 }
 
-rewriteBtn.addEventListener("click", async () => {
+const rewriteReconstructionBlock = document.getElementById("rewrite-reconstruction-block");
+const rewriteReconstruction = document.getElementById("rewrite-reconstruction");
+const rewritePronunciationBlock = document.getElementById("rewrite-pronunciation-block");
+const rewritePronunciation = document.getElementById("rewrite-pronunciation");
+
+let lastKiResult = null;
+
+// Laeuft automatisch nach der Freischaltung (startAutoPremiumFlow), rewriteBtn selbst dient nur
+// noch als manueller "Neu generieren"-Retrigger. Ohne eigenen Songtext wird transcript als Basis
+// verwendet - die KI rekonstruiert dann zuerst den wahrscheinlichen Text (###REKONSTRUKTION###),
+// bevor sie einordnet/ueberarbeitet.
+async function runKiEinschaetzung() {
   if (!SONGTEXT_WORKER_URL) {
     rewriteStatus.textContent = t("rewriteNotConfigured");
-    return;
+    return null;
   }
   const title = document.getElementById("track-title").value;
   const lyricsRaw = document.getElementById("track-lyrics").value;
+  const hasLyrics = lyricsRaw.trim().length >= 10;
+  const transcript = !hasLyrics ? lastVocalsTranscript || "" : "";
+  if (!hasLyrics && transcript.trim().length < 10) {
+    return null;
+  }
 
   rewriteBtn.disabled = true;
   rewriteStatus.textContent = t("rewriteLoading");
   rewriteResult.hidden = false;
+  rewriteReconstructionBlock.hidden = true;
+  rewriteReconstruction.textContent = "";
   rewriteClassification.textContent = "";
   rewriteTitleIdeas.innerHTML = "";
   rewriteOutput.textContent = "";
+  rewritePronunciationBlock.hidden = true;
+  rewritePronunciation.textContent = "";
 
   const renderTitleIdeas = (ideas) => {
     rewriteTitleIdeas.innerHTML = "";
@@ -2186,21 +2380,97 @@ rewriteBtn.addEventListener("click", async () => {
       lyricsRaw,
       lastAnalysis || {},
       currentAnalysisSnapshot ? currentAnalysisSnapshot.genre : "",
+      transcript,
       (partial) => {
+        if (partial.reconstruction) {
+          rewriteReconstructionBlock.hidden = false;
+          rewriteReconstruction.textContent = partial.reconstruction;
+        }
         if (partial.classification) rewriteClassification.textContent = partial.classification;
         if (partial.titleIdeas.length > 0) renderTitleIdeas(partial.titleIdeas);
         if (partial.improved) rewriteOutput.textContent = partial.improved;
+        if (partial.pronunciation) {
+          rewritePronunciationBlock.hidden = false;
+          rewritePronunciation.textContent = partial.pronunciation;
+        }
       }
     );
     if (!result.classification) rewriteClassification.textContent = t("rewriteNoClassification");
     rewriteStatus.textContent = "";
+    lastKiResult = result;
+    return result;
   } catch (err) {
     rewriteResult.hidden = true;
     rewriteStatus.textContent = t("rewriteError", { msg: err && err.message ? err.message : t("unknownError") });
+    return null;
   } finally {
     rewriteBtn.disabled = false;
+    rewriteBtn.hidden = false;
   }
+}
+
+rewriteBtn.addEventListener("click", async () => {
+  const kiResult = await runKiEinschaetzung();
+  await saveCheckResult(kiResult);
 });
+
+// Startet nach der Freischaltung automatisch Transkription + KI-Einschaetzung, ohne dass der
+// Nutzer extra klicken/warten muss. Mit Songtext laufen beide parallel (KI braucht das Transkript
+// nicht). Ohne Songtext wartet die KI-Einschaetzung auf das Transkript und nutzt es als Basis;
+// der Vocals-Vergleich zeigt dann die KI-Rekonstruktion statt eines echten Songtexts als Referenz.
+async function startAutoPremiumFlow(checkId) {
+  currentCheckId = checkId;
+  lastKiResult = null;
+  lastVocalsTranscript = "";
+
+  const lyricsRaw = document.getElementById("track-lyrics").value;
+  const hasLyrics = lyricsRaw.trim().length >= 10;
+
+  let vocalsPromise = null;
+  if (lastAudioBuffer && vocalsBlockEl) {
+    vocalsBlockEl.hidden = false;
+    vocalsPromise = runVocalsCheck();
+  }
+
+  if (hasLyrics) {
+    rewriteBlock.hidden = false;
+    const [kiResult, transcribedText] = await Promise.all([runKiEinschaetzung(), vocalsPromise || Promise.resolve(null)]);
+    if (transcribedText) {
+      showVocalsComparison(lyricsRaw, transcribedText, { estimated: false });
+    }
+    await saveCheckResult(kiResult);
+  } else {
+    const transcribedText = vocalsPromise ? await vocalsPromise : null;
+    let kiResult = null;
+    if (transcribedText) {
+      rewriteBlock.hidden = false;
+      kiResult = await runKiEinschaetzung();
+      if (kiResult && kiResult.reconstruction) {
+        showVocalsComparison(kiResult.reconstruction, transcribedText, { estimated: true });
+      }
+    }
+    await saveCheckResult(kiResult);
+  }
+}
+
+async function saveCheckResult(kiResult) {
+  if (!currentCheckId || !currentAnalysisSnapshot) return;
+  const title = document.getElementById("track-title").value;
+  await apiFetch("save-check-result", {
+    method: "POST",
+    body: JSON.stringify({
+      checkId: currentCheckId,
+      title,
+      genre: currentAnalysisSnapshot.genre || "",
+      overallScore: lastAnalysis ? lastAnalysis.overallScore : null,
+      classification: kiResult ? kiResult.classification : "",
+      titleIdeas: kiResult ? kiResult.titleIdeas : [],
+      improvedLyrics: kiResult ? kiResult.improved : "",
+      tips: lastAnalysis ? lastAnalysis.topIssues : [],
+      fazit: lastFazitText,
+    }),
+  });
+}
 
 unlockBtn.addEventListener("click", async () => {
   if (!currentAnalysisSnapshot) return;
@@ -2218,6 +2488,7 @@ unlockBtn.addEventListener("click", async () => {
     renderAnalysis(currentAnalysisSnapshot, { unlockedPremium: true });
     renderStreakNote(incrementCheckCount());
     premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    startAutoPremiumFlow(data.checkId);
   } else {
     openPricing(t("unlockNoCredits"));
   }
@@ -2278,6 +2549,7 @@ form.addEventListener("submit", async (e) => {
 
 let lastAudioBuffer = null;
 let vocalsWorker = null;
+let vocalsActiveReject = null;
 
 function getVocalsWorker() {
   if (!vocalsWorker) {
@@ -2286,12 +2558,33 @@ function getVocalsWorker() {
   return vocalsWorker;
 }
 
+// Bricht eine laufende Transkription wirklich ab (Worker terminieren), nicht nur die
+// Status-Anzeige ausblenden - sonst laeuft der ~140MB-Download/die Berechnung im Hintergrund
+// weiter, obwohl der Nutzer auf "Abbrechen" (z.B. wegen Datenvolumen auf dem Handy) geklickt hat.
+function cancelTranscription() {
+  if (vocalsWorker) {
+    vocalsWorker.terminate();
+    vocalsWorker = null;
+  }
+  if (vocalsActiveReject) {
+    const reject = vocalsActiveReject;
+    vocalsActiveReject = null;
+    reject(new Error("cancelled"));
+  }
+}
+
 // Transkribiert in einem eigenen Thread (vocals-worker.js) statt im UI-Thread - das Laden und
 // Ausfuehren des Whisper-Modells wuerde sonst die ganze Seite blockieren/haengen lassen, bis es
 // fertig ist (spuerbar vor allem auf dem Handy).
 function transcribeInWorker(audioData, language, onProgress, onTranscribing) {
   return new Promise((resolve, reject) => {
     const worker = getVocalsWorker();
+    vocalsActiveReject = reject;
+    const cleanup = () => {
+      worker.removeEventListener("message", handleMessage);
+      worker.removeEventListener("error", handleError);
+      vocalsActiveReject = null;
+    };
     const handleMessage = (event) => {
       const msg = event.data || {};
       if (msg.type === "progress") {
@@ -2299,12 +2592,10 @@ function transcribeInWorker(audioData, language, onProgress, onTranscribing) {
       } else if (msg.type === "transcribing") {
         if (onTranscribing) onTranscribing();
       } else if (msg.type === "result") {
-        worker.removeEventListener("message", handleMessage);
-        worker.removeEventListener("error", handleError);
+        cleanup();
         resolve(msg.text);
       } else if (msg.type === "error") {
-        worker.removeEventListener("message", handleMessage);
-        worker.removeEventListener("error", handleError);
+        cleanup();
         // Nicht weiterverwenden: der Browser cacht einen fehlgeschlagenen Modell-Import fest an
         // diese Worker-Instanz, ein erneuter Versuch im selben Worker wuerde nie neu laden,
         // egal was im Worker selbst schon zurueckgesetzt wird.
@@ -2314,8 +2605,7 @@ function transcribeInWorker(audioData, language, onProgress, onTranscribing) {
       }
     };
     const handleError = (err) => {
-      worker.removeEventListener("message", handleMessage);
-      worker.removeEventListener("error", handleError);
+      cleanup();
       // Der Worker-Thread selbst ist abgestuerzt (z.B. Out-of-Memory auf dem Handy) - nicht
       // weiterverwenden, sonst laufen alle folgenden Versuche gegen eine tote Instanz.
       worker.terminate();
@@ -2395,72 +2685,98 @@ function renderVocalsComparison(lyricsRaw, transcribedText) {
   return { summary, highlightedHtml: highlighted || t("vocalsNoText") };
 }
 
-const vocalsCheckBtn = document.getElementById("vocals-check-btn");
-const vocalsSkipBtn = document.getElementById("vocals-skip-btn");
-const vocalsChoice = document.getElementById("vocals-choice");
-const vocalsStatus = document.getElementById("vocals-status");
-const vocalsResult = document.getElementById("vocals-result");
-
-if (vocalsSkipBtn) {
-  vocalsSkipBtn.addEventListener("click", () => {
-    vocalsChoice.hidden = true;
-    vocalsStatus.textContent = t("vocalsSkipMsg");
-  });
+function showVocalsComparison(referenceText, transcribedText, { estimated }) {
+  const { summary, highlightedHtml } = renderVocalsComparison(referenceText, transcribedText);
+  document.getElementById("vocals-summary").textContent = summary;
+  document.getElementById("vocals-lyrics-highlighted").innerHTML = highlightedHtml;
+  document.getElementById("vocals-transcript").textContent = transcribedText;
+  if (vocalsEstimatedNote) vocalsEstimatedNote.hidden = !estimated;
+  vocalsResult.hidden = false;
 }
 
-if (vocalsCheckBtn) {
-  vocalsCheckBtn.addEventListener("click", async () => {
-    if (!lastAudioBuffer) {
-      vocalsStatus.textContent = t("vocalsNoAudio");
-      return;
-    }
-    const lyricsRaw = document.getElementById("track-lyrics").value;
-    if (!lyricsRaw.trim()) {
-      vocalsStatus.textContent = t("vocalsNoLyrics");
-      return;
-    }
+let vocalsCancelRequested = false;
 
-    vocalsChoice.hidden = true;
-    vocalsCheckBtn.disabled = true;
-    vocalsResult.hidden = true;
-    vocalsStatus.textContent = t("vocalsLoadingModel");
+// Startet automatisch nach der Freischaltung (kein Klick noetig) - vocalsCheckBtn dient danach
+// nur noch als manueller "Erneut transkribieren"-Retrigger, vocalsCancelBtn bricht waehrend des
+// (automatischen) Ladens ab, z.B. wenn das ~140MB-Modell auf dem Handy zu viel Datenvolumen kostet.
+async function runVocalsCheck() {
+  if (!lastAudioBuffer) {
+    vocalsStatus.textContent = t("vocalsNoAudio");
+    return null;
+  }
 
-    try {
-      vocalsStatus.textContent = t("vocalsPreparingAudio");
-      const audioData = await resampleTo16kMono(lastAudioBuffer);
+  vocalsCancelRequested = false;
+  vocalsCheckBtn.hidden = true;
+  vocalsCheckBtn.disabled = true;
+  vocalsCancelBtn.hidden = false;
+  vocalsResult.hidden = true;
+  vocalsStatus.textContent = t("vocalsLoadingModel");
 
-      const transcribedRaw = await transcribeInWorker(
-        audioData,
-        "german",
-        (progress) => {
-          vocalsStatus.textContent = t("vocalsLoadingModelProgress", { pct: Math.round(progress) });
-        },
-        () => {
-          vocalsStatus.textContent = t("vocalsTranscribing");
-        }
-      );
-      const transcribedText = (transcribedRaw || "").trim();
+  try {
+    vocalsStatus.textContent = t("vocalsPreparingAudio");
+    const audioData = await resampleTo16kMono(lastAudioBuffer);
+    if (vocalsCancelRequested) return null;
 
-      if (!transcribedText) {
-        vocalsStatus.textContent = t("vocalsNoUsableTranscript");
-        vocalsChoice.hidden = false;
-        return;
+    const transcribedRaw = await transcribeInWorker(
+      audioData,
+      "german",
+      (progress) => {
+        if (!vocalsCancelRequested) vocalsStatus.textContent = t("vocalsLoadingModelProgress", { pct: Math.round(progress) });
+      },
+      () => {
+        if (!vocalsCancelRequested) vocalsStatus.textContent = t("vocalsTranscribing");
       }
+    );
+    if (vocalsCancelRequested) return null;
+    const transcribedText = (transcribedRaw || "").trim();
+    lastVocalsTranscript = transcribedText;
 
-      const { summary, highlightedHtml } = renderVocalsComparison(lyricsRaw, transcribedText);
-      document.getElementById("vocals-summary").textContent = summary;
-      document.getElementById("vocals-lyrics-highlighted").innerHTML = highlightedHtml;
-      document.getElementById("vocals-transcript").textContent = transcribedText;
-      vocalsResult.hidden = false;
-      vocalsStatus.textContent = "";
-    } catch (err) {
-      vocalsStatus.textContent = t("vocalsFailed", { msg: err && err.message ? err.message : t("unknownError") });
-      vocalsChoice.hidden = false;
-    } finally {
-      vocalsCheckBtn.disabled = false;
+    if (!transcribedText) {
+      vocalsStatus.textContent = t("vocalsNoUsableTranscript");
+      return null;
     }
-  });
+    vocalsStatus.textContent = "";
+    return transcribedText;
+  } catch (err) {
+    if (!vocalsCancelRequested) {
+      vocalsStatus.textContent = t("vocalsFailed", { msg: err && err.message ? err.message : t("unknownError") });
+    }
+    return null;
+  } finally {
+    vocalsCheckBtn.disabled = false;
+    vocalsCheckBtn.hidden = false;
+    vocalsCancelBtn.hidden = true;
+  }
 }
+
+vocalsCheckBtn.addEventListener("click", async () => {
+  const lyricsRaw = document.getElementById("track-lyrics").value;
+  const hasLyrics = lyricsRaw.trim().length >= 10;
+  const transcribedText = await runVocalsCheck();
+  if (!transcribedText) return;
+  if (hasLyrics) {
+    showVocalsComparison(lyricsRaw, transcribedText, { estimated: false });
+  } else {
+    // Ohne Songtext braucht der Vergleich eine KI-Rekonstruktion als Referenz - die gibt es beim
+    // manuellen Retry evtl. noch nicht (falls die Erst-Transkription fehlschlug, lief die
+    // KI-Einschaetzung nie), deshalb hier mit dem frischen Transkript neu anstossen.
+    rewriteBlock.hidden = false;
+    const kiResult = await runKiEinschaetzung();
+    if (kiResult && kiResult.reconstruction) {
+      showVocalsComparison(kiResult.reconstruction, transcribedText, { estimated: true });
+    }
+  }
+  await saveCheckResult(lastKiResult);
+});
+
+vocalsCancelBtn.addEventListener("click", () => {
+  vocalsCancelRequested = true;
+  cancelTranscription();
+  vocalsStatus.textContent = t("vocalsCancelled");
+  vocalsCancelBtn.hidden = true;
+  vocalsCheckBtn.hidden = false;
+  vocalsCheckBtn.disabled = false;
+});
 
 /* ---------- EQ-Editor: Frequenzen direkt im Browser anpassen (kein Mastering) ----------
    Peaking-Filter (BiquadFilterNode) pro Frequenzband, live vorhoerbar und als WAV exportierbar.
@@ -3256,6 +3572,14 @@ if (albumBtn) {
   if (!snapshotRaw) return;
   const snapshot = JSON.parse(snapshotRaw);
 
+  // Formularfelder aus dem Snapshot wiederherstellen - nach dem Redirect von Stripe ist die Seite
+  // frisch geladen, die Eingaben stehen nur noch im Snapshot, nicht mehr im DOM. Noetig, damit die
+  // automatische KI-Einschaetzung unten (liest Titel/Songtext live aus dem Formular) den echten
+  // Songtext sieht statt leerer Felder.
+  document.getElementById("track-title").value = snapshot.title || "";
+  document.getElementById("track-lyrics").value = snapshot.lyricsRaw || "";
+  if (snapshot.genre) document.getElementById("track-genre").value = snapshot.genre;
+
   if (checkout !== "success") {
     renderAnalysis(snapshot, { unlockedPremium: false });
     return;
@@ -3283,6 +3607,7 @@ if (albumBtn) {
     renderStreakNote(incrementCheckCount());
     statusLine.textContent = "";
     premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    startAutoPremiumFlow(lastData ? lastData.checkId : null);
   } else {
     statusLine.textContent = t("checkoutStillProcessing", {
       err: lastData && lastData.error ? lastData.error : t("checkoutPleaseWait"),

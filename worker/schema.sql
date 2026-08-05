@@ -50,7 +50,27 @@ CREATE INDEX IF NOT EXISTS idx_ratings_user ON ratings(user_id);
 CREATE TABLE IF NOT EXISTS checks (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  title TEXT,
+  genre TEXT,
+  overall_score INTEGER,
+  classification TEXT,
+  title_ideas TEXT, -- JSON-Array als Text
+  improved_lyrics TEXT,
+  tips TEXT, -- JSON-Array als Text
+  fazit TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_checks_user ON checks(user_id);
+
+-- Falls die Tabelle "checks" schon existiert (Datenbank vor dieser Aenderung angelegt), diese
+-- Zeilen EINMALIG zusaetzlich in der D1-Console ausfuehren (fuer den Ergebnis-Verlauf/"Meine
+-- Checks" - speichert das fertige Analyseergebnis kontogebunden, nicht die Audiodatei selbst):
+-- ALTER TABLE checks ADD COLUMN title TEXT;
+-- ALTER TABLE checks ADD COLUMN genre TEXT;
+-- ALTER TABLE checks ADD COLUMN overall_score INTEGER;
+-- ALTER TABLE checks ADD COLUMN classification TEXT;
+-- ALTER TABLE checks ADD COLUMN title_ideas TEXT;
+-- ALTER TABLE checks ADD COLUMN improved_lyrics TEXT;
+-- ALTER TABLE checks ADD COLUMN tips TEXT;
+-- ALTER TABLE checks ADD COLUMN fazit TEXT;

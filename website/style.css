@@ -1042,6 +1042,11 @@ button#rewrite-btn:disabled {
   display: none;
 }
 
+#rewrite-reconstruction-block {
+  border-left: 2px solid var(--accent-2, currentColor);
+  padding-left: 0.7rem;
+}
+
 .rewrite-sub h4 {
   font-family: var(--font-display);
   font-size: 0.98rem;
@@ -1095,18 +1100,9 @@ button#rewrite-btn:disabled {
   margin-bottom: 1.9rem;
 }
 
-.vocals-choice-hint {
-  margin-bottom: 0.9rem;
-}
-
-.vocals-choice-buttons {
-  display: flex;
-  gap: 0.7rem;
-  flex-wrap: wrap;
-}
-
-.vocals-choice-buttons .account-btn {
-  flex: 1 1 160px;
+#vocals-cancel-btn,
+#vocals-check-btn {
+  margin-top: 0.6rem;
 }
 
 button#vocals-check-btn:disabled {
@@ -1116,6 +1112,12 @@ button#vocals-check-btn:disabled {
 
 .vocals-result {
   margin-top: 1.2rem;
+}
+
+.vocals-estimated-note {
+  border-left: 2px solid var(--accent-2, currentColor);
+  padding-left: 0.7rem;
+  margin-bottom: 0.9rem;
 }
 
 .vocals-result h4 {
@@ -1380,11 +1382,67 @@ button#vocals-check-btn:disabled {
   color: var(--text-secondary);
 }
 
-.auth-card h2, .pricing-card h2 {
+.auth-card h2, .pricing-card h2, .history-card h2 {
   font-family: var(--font-display);
   font-size: 1.3rem;
   font-weight: 600;
   margin: 0 0 0.3rem;
+}
+
+.history-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.history-item-btn {
+  width: 100%;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font: inherit;
+  color: inherit;
+}
+
+.history-item-btn:hover {
+  border-color: var(--gold);
+}
+
+.history-item-title {
+  font-weight: 600;
+  color: var(--gold-bright);
+}
+
+.history-item-meta {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.history-detail {
+  margin-top: 1rem;
+}
+
+.history-detail-meta {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0.2rem 0 1rem;
+}
+
+.history-detail-fazit {
+  white-space: pre-line;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 0;
 }
 
 .auth-forms {
