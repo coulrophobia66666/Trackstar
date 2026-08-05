@@ -411,6 +411,26 @@
       <a href="datenschutz.html" data-i18n="footerDatenschutz">Datenschutz</a>
       <span class="footer-legal-note" data-i18n="footerLegalNote">(rechtlich verbindlich nur auf Deutsch)</span>
     </footer>
+
+    <div class="modal-overlay" id="rating-modal-overlay" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="rating-modal-heading">
+        <h2 id="rating-modal-heading" data-i18n="ratingModalHeading">Wie zufrieden bist du mit dem Ergebnis?</h2>
+        <p class="hint" data-i18n="ratingModalHint">Dein Feedback hilft uns, Overhertz zu verbessern.</p>
+        <div class="rating-stars" id="rating-stars" role="radiogroup" aria-label="Bewertung in Sternen">
+          <button type="button" class="rating-star" data-value="1" aria-label="1 Stern">★</button>
+          <button type="button" class="rating-star" data-value="2" aria-label="2 Sterne">★</button>
+          <button type="button" class="rating-star" data-value="3" aria-label="3 Sterne">★</button>
+          <button type="button" class="rating-star" data-value="4" aria-label="4 Sterne">★</button>
+          <button type="button" class="rating-star" data-value="5" aria-label="5 Sterne">★</button>
+        </div>
+        <textarea id="rating-comment" rows="3" data-i18n-placeholder="ratingCommentPlaceholder" placeholder="Optional: was können wir besser machen? (freiwillig)"></textarea>
+        <div class="modal-actions">
+          <button type="button" id="rating-skip-btn" class="link-btn" data-i18n="ratingSkipBtn">Später</button>
+          <button type="button" id="rating-submit-btn" class="account-btn account-btn-primary" data-i18n="ratingSubmitBtn" disabled>Absenden</button>
+        </div>
+        <p class="status-line" id="rating-status" role="status" aria-live="polite"></p>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

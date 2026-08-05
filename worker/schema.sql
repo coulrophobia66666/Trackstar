@@ -37,6 +37,16 @@ CREATE TABLE IF NOT EXISTS password_resets (
 
 CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
 
+CREATE TABLE IF NOT EXISTS ratings (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  stars INTEGER NOT NULL,
+  comment TEXT,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ratings_user ON ratings(user_id);
+
 CREATE TABLE IF NOT EXISTS checks (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,

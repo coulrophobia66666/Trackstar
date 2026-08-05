@@ -18,6 +18,27 @@ unten).
   `STRIPE_PRICE_*`) im Live-Modus neu eingerichtet, mit echtem Testkauf
   (Credits, 7 €) erfolgreich durchgespielt. Der alte `sk_live_...`-Schlüssel
   wurde dabei rotiert (alter Wert ungültig, kein Sicherheitsrisiko mehr).
+- **Bewertungs-Pop-up nach Download**: Nach dem Herunterladen der bearbeiteten
+  Version (EQ-Editor, Pro-Feature) fragt ein Pop-up nach einer 1-5-Sterne-
+  Bewertung + optionalem Kommentar, landet in neuer D1-Tabelle `ratings` –
+  siehe nächster Punkt für den nötigen manuellen Schritt.
+
+## ⚠️ NEU: D1-Tabelle für Bewertungen nachziehen (Finn)
+Wie beim Passwort-Reset legt `CREATE TABLE` in `schema.sql` die Tabelle in
+einer bestehenden Datenbank nicht automatisch an. Ohne diesen Schritt schlägt
+das Absenden einer Bewertung mit einem Datenbank-Fehler fehl: im
+D1-Dashboard → `overhertz-db` → Console →
+```sql
+CREATE TABLE IF NOT EXISTS ratings (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  stars INTEGER NOT NULL,
+  comment TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ratings_user ON ratings(user_id);
+```
+einmalig ausführen.
 
 ## ⚠️ NEU: Passwort-Reset – 2 manuelle Schritte, BEVOR es live nutzbar ist (Finn)
 
