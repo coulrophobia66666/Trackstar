@@ -196,6 +196,7 @@ const I18N = {
     tipBandTooHigh: "{band} (zu viel)",
     tipNoLyricsProblem: "Kein Songtext eingegeben – Hook- und Songtitel-Erkennbarkeit konnten nicht geprüft werden.",
     tipNoLyricsFix: "Songtext ergänzen, dann können Hook & Songtitel mitbewertet werden.",
+    tipNoLyricsInstrumentalNote: "Kein Songtext – bei diesem Genre ist ein rein instrumentaler Track normal, Hook & Songtitel fließen deshalb nicht in die Bewertung ein.",
     tipHookWeakProblem: "Im Text ist keine klar wiederholte Hookline erkennbar.",
     tipHookWeakDetail: "Das erhöht den Wiedererkennungswert.",
     tipHookWeakFix: "Eine Zeile (idealerweise mit dem Songtitel) 2–3x wiederholen, um eine klare Hook zu schaffen.",
@@ -245,6 +246,7 @@ const I18N = {
     meterHook: "Hook",
     meterTitel: "Songtitel erkennbar",
     meterLyricsMissing: "Songtext fehlt",
+    meterInstrumentalGenre: "Instrumental (genretypisch)",
     meterTitleMissing: "Songtitel fehlt",
     badgeSound: "Sound",
     badgeStarPotential: "Star-Potential",
@@ -257,6 +259,8 @@ const I18N = {
 
     rewriteNotConfigured: "Diese Funktion ist noch nicht eingerichtet (Backend fehlt noch).",
     rewriteLoading: "KI erstellt Einordnung, Titel-Ideen und verfeinerten Text…",
+    rewriteWaitingForTranscript: "Noch in Bearbeitung: Kein Songtext eingegeben – wartet auf die automatische Vocals-Transkription. Sobald die fertig ist, folgen Einordnung, Titel-Ideen und ein rekonstruierter Songtext hier automatisch.",
+    rewriteNoTranscriptAvailable: "Die automatische Transkription hat keinen verwertbaren Text geliefert – ohne Songtext oder Transkript kann die KI-Einschätzung hier leider nicht laufen. Songtext nachtragen oder Vocals-Check unten erneut versuchen.",
     rewriteNoClassification: "Keine Einordnung erhalten.",
     rewriteError: "Fehler: {msg}",
     unknownError: "Unbekannter Fehler.",
@@ -542,6 +546,7 @@ const I18N = {
     tipBandTooHigh: "{band} (too much)",
     tipNoLyricsProblem: "No lyrics entered – hook and song-title recognizability couldn't be checked.",
     tipNoLyricsFix: "Add lyrics so the hook and song title can be scored too.",
+    tipNoLyricsInstrumentalNote: "No lyrics – for this genre, a purely instrumental track is normal, so hook & song title aren't factored into the score.",
     tipHookWeakProblem: "No clearly repeated hook line is recognizable in the lyrics.",
     tipHookWeakDetail: "This boosts memorability.",
     tipHookWeakFix: "Repeat one line (ideally containing the song title) 2–3 times to create a clear hook.",
@@ -591,6 +596,7 @@ const I18N = {
     meterHook: "Hook",
     meterTitel: "Song title recognizable",
     meterLyricsMissing: "Lyrics missing",
+    meterInstrumentalGenre: "Instrumental (typical for genre)",
     meterTitleMissing: "Song title missing",
     badgeSound: "Sound",
     badgeStarPotential: "Star potential",
@@ -603,6 +609,8 @@ const I18N = {
 
     rewriteNotConfigured: "This feature isn't set up yet (backend missing).",
     rewriteLoading: "AI is creating an assessment, title ideas, and a refined lyric version…",
+    rewriteWaitingForTranscript: "Still in progress: no lyrics entered – waiting for the automatic vocals transcription. Once that's done, an assessment, title ideas, and a reconstructed lyric will appear here automatically.",
+    rewriteNoTranscriptAvailable: "The automatic transcription didn't produce usable text – without lyrics or a transcript, the AI assessment can't run here. Add lyrics or retry the vocals check below.",
     rewriteNoClassification: "No assessment received.",
     rewriteError: "Error: {msg}",
     unknownError: "Unknown error.",
@@ -997,6 +1005,10 @@ function genreProfile(genreKey) {
   return GENRE_PROFILES[genreKey] || GENRE_PROFILES[""];
 }
 
+// Genres, bei denen ein rein instrumentaler Track die Norm ist (kein Songtext ist hier kein
+// Mangel) - Hook-/Songtitel-Erkennbarkeit sollen dafuer nicht wie ein Fehler behandelt werden.
+const TYPICALLY_INSTRUMENTAL_GENRES = ["techno", "klassik"];
+
 /* ---------- Automatische Genre-Schätzung (Tempo, Klangfarbe, Bassanteil, Dynamik) ----------
    Kein trainiertes ML-Modell, sondern ein grober Signal-Fingerabdruck-Vergleich mit den
    Genre-Referenzwerten oben. Läuft komplett lokal, ohne dass Audio das Gerät verlässt. */
@@ -1307,9 +1319,13 @@ function scoreLautheit(a, loudnessTarget) {
 }
 
 function scoreFrequenz(a, refs) {
-  // Derselbe Fehler wie vorher bei scoreTechnik: eine Nullstrafe ueberall im Referenzbereich
-  // fuehrt dazu, dass viele Tracks eine glatte 100 bekommen. Jetzt kontinuierlich um die Mitte
-  // jedes Bandes bewertet, mit sanfter Abstufung innerhalb des Referenzbereichs statt Nullzone.
+  // Bandpercents aus 7 Baendern summieren sich immer auf 100% - liegt ein Band unter seinem
+  // Referenzbereich, MUESSEN andere Baender rechnerisch darueber liegen. Eine unbegrenzt lineare
+  // Strafe pro Band (frueher: +1.8 je Prozentpunkt Abweichung, ohne Deckel) hat sich dadurch bei
+  // fast jedem echten Track ueber alle 7 Baender aufsummiert und den Score auf 0 gedrueckt - auch
+  // bei Tracks, die nur in 2-3 Baendern spuerbar abweichen. Jetzt pro Band gedeckelt (sanft
+  // abflachend statt hart abgeschnitten), damit ein einzelnes stark abweichendes Band nicht den
+  // gesamten Score allein ruiniert.
   let penalty = 0;
   refs.forEach(([lo, hi], i) => {
     const val = a.bandPercents[i];
@@ -1319,7 +1335,8 @@ function scoreFrequenz(a, refs) {
     if (dist <= halfWidth) {
       penalty += (dist / halfWidth) * 3;
     } else {
-      penalty += 3 + (dist - halfWidth) * 1.8;
+      const over = dist - halfWidth;
+      penalty += 3 + 11 * (1 - Math.exp(-over / (halfWidth * 2)));
     }
   });
   return Math.max(0, Math.min(100, 100 - penalty));
@@ -1413,9 +1430,14 @@ function buildTips(a, lyrics, scores, profile) {
   }
 
   if (!lyrics.hasLyrics) {
-    const problem = t("tipNoLyricsProblem");
-    const fix = t("tipNoLyricsFix");
-    tips.push({ level: "warning", problem, fix, text: tipText(problem, null, fix) });
+    if (TYPICALLY_INSTRUMENTAL_GENRES.includes(profile.key)) {
+      const problem = t("tipNoLyricsInstrumentalNote");
+      tips.push({ level: "good", problem, fix: "", text: tipText(problem, null, "") });
+    } else {
+      const problem = t("tipNoLyricsProblem");
+      const fix = t("tipNoLyricsFix");
+      tips.push({ level: "warning", problem, fix, text: tipText(problem, null, fix) });
+    }
   } else {
     if (scores.hook !== null && scores.hook < 70) {
       const problem = t("tipHookWeakProblem");
@@ -2270,10 +2292,13 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
     fireConfetti(document.getElementById("confetti-layer"));
   }
 
+  const isInstrumentalGenre = TYPICALLY_INSTRUMENTAL_GENRES.includes(profile.key);
+  const lyricsMissingLabel = isInstrumentalGenre && !lyrics.hasLyrics ? t("meterInstrumentalGenre") : t("meterLyricsMissing");
+
   renderBadges(document.getElementById("badges"), [
     { label: t("badgeSound"), score: soundScore },
     { label: t("badgeStarPotential"), score: starPotentialScore },
-    { label: t("badgeHook"), score: hookScore, mutedNote: t("meterLyricsMissing") },
+    { label: t("badgeHook"), score: hookScore, mutedNote: lyricsMissingLabel },
   ]);
 
   const achievements = buildAchievements(audioMetrics, scores, profile.loudnessTarget);
@@ -2309,12 +2334,12 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
   renderMeter(metersEl, {
     name: t("meterHook"),
     score: scores.hook,
-    statusText: scores.hook === null ? t("meterLyricsMissing") : "",
+    statusText: scores.hook === null ? lyricsMissingLabel : "",
   });
   renderMeter(metersEl, {
     name: t("meterTitel"),
     score: scores.titel,
-    statusText: scores.titel === null ? (lyrics.hasLyrics ? t("meterTitleMissing") : t("meterLyricsMissing")) : "",
+    statusText: scores.titel === null ? (lyrics.hasLyrics ? t("meterTitleMissing") : lyricsMissingLabel) : "",
   });
 
   const detectedGenreEl = document.getElementById("detected-genre");
@@ -2467,6 +2492,20 @@ async function startAutoPremiumFlow(checkId) {
     }
     await saveCheckResult(kiResult);
   } else {
+    // Kein Songtext eingegeben - die KI-Einschaetzung braucht erst das Vocals-Transkript als
+    // Basis. Bisher blieb der ganze Block bis dahin unsichtbar, ohne jeden Hinweis, dass da noch
+    // etwas kommt. Jetzt sofort sichtbar mit "wird noch bearbeitet"-Hinweis, wird dann durch
+    // runKiEinschaetzung() bzw. die Fehlermeldung unten ueberschrieben. Ausnahme: bei genretypisch
+    // instrumentalen Tracks (Techno/Klassik) ist "kein Transkript" der Normalfall, nicht wert,
+    // extra angekuendigt/als Fehler gemeldet zu werden - Block bleibt einfach verborgen, ausser es
+    // findet sich doch ein Transkript (z.B. Vocal-Sample/Hook in einem Techno-Track).
+    const genre = currentAnalysisSnapshot ? currentAnalysisSnapshot.genre : "";
+    const isInstrumentalGenre = TYPICALLY_INSTRUMENTAL_GENRES.includes(genre);
+    if (vocalsPromise && !isInstrumentalGenre) {
+      rewriteBlock.hidden = false;
+      rewriteResult.hidden = true;
+      rewriteStatus.textContent = t("rewriteWaitingForTranscript");
+    }
     const transcribedText = vocalsPromise ? await vocalsPromise : null;
     let kiResult = null;
     if (transcribedText) {
@@ -2475,6 +2514,8 @@ async function startAutoPremiumFlow(checkId) {
       if (kiResult && kiResult.reconstruction) {
         showVocalsComparison(kiResult.reconstruction, transcribedText, { estimated: true });
       }
+    } else if (vocalsPromise && !isInstrumentalGenre) {
+      rewriteStatus.textContent = t("rewriteNoTranscriptAvailable");
     }
     await saveCheckResult(kiResult);
   }
