@@ -89,12 +89,15 @@ const I18N = {
     freqBlockHint: "Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).",
     eqHeading: "EQ-Editor",
     eqIntro: "Passe die Frequenzen deines Tracks direkt hier an und hör dir das Ergebnis sofort an. Läuft komplett in deinem Browser, deine Audiodatei verlässt dabei nie dein Gerät.",
-    eqSpectrumHint: "Wellenform deines Tracks – die goldene Markierung zeigt die Abspielposition.",
+    eqSpectrumHint: "Wellenform deines Tracks – die goldene Markierung zeigt die Abspielposition, die goldene Kurve darüber deine aktuelle EQ-Einstellung und reagiert sofort, wenn du an den Reglern unten drehst.",
     eqLockedHint: "Das Beheben (EQ, De-Esser, Lautheit angleichen, Stille kürzen, Fade-out) ist Teil des Pro-Plans. Die Vollanalyse siehst du auch mit Credits – fürs direkte Bearbeiten hier brauchst du Pro.",
     eqUpgradeBtn: "Auf Pro upgraden",
     eqDeesserToggle: "Zischlaute reduzieren (De-Esser)",
+    eqDeesserAutoBtn: "Nach unserer Empfehlung",
+    eqDeesserAutoApplied: "Empfohlene De-Esser-Einstellung für diesen Track übernommen.",
+    eqDeesserAutoNotNeeded: "Kein spürbares Zischeln erkannt – De-Esser ist bei diesem Track nicht nötig.",
     eqDeesserStrength: "Stärke",
-    eqDeesserHint: "Reduziert scharfe Zischlaute (typ. 5–8 kHz) nur dann, wenn sie tatsächlich spitzen – im Gegensatz zu den Reglern oben, die pauschal einen Bereich absenken.",
+    eqDeesserHint: "Reduziert scharfe Zischlaute (typ. 5–8 kHz) nur dann, wenn sie tatsächlich spitzen – im Gegensatz zu den Reglern oben, die pauschal einen Bereich absenken. „Nach unserer Empfehlung“ setzt Stärke automatisch anhand deines Tracks, du kannst danach jederzeit selbst nachjustieren.",
     eqGainLabel: "Lautheit anpassen",
     eqGainMatchBtn: "Auf Zielwert angleichen",
     eqTrimIntro: "Stille am Anfang entfernen",
@@ -239,6 +242,16 @@ const I18N = {
     submitNoteReady: "Der technische und inhaltliche Score ist solide ({score}/100){genreSuffix} – eine Einreichung ist aus heutiger Sicht realistisch.",
     submitNoteMid: "Der Track ist einreichbar ({score}/100){genreSuffix}, hat aber noch Luft nach oben – die Verbesserungsvorschläge oben zuerst umsetzen erhöht die Chancen.",
     submitNoteLow: "Vor einer Einreichung (aktuell {score}/100{genreSuffix}) lohnt es sich, erst die wichtigsten Verbesserungsvorschläge oben umzusetzen.",
+    submitBeatportName: "Beatport",
+    submitBeatportReason: "Die Leitplattform für {genre} – Labels und DJs kaufen und entdecken dort gezielt elektronische Tracks.",
+    submitAudiomackName: "Audiomack",
+    submitAudiomackReason: "In der {genre}-Szene sehr verbreitet für Uploads, Mixtapes und direktes Fan-Feedback, unabhängig vom Score.",
+    submitIdagioName: "IDAGIO",
+    submitIdagioReason: "Streaming-Plattform speziell für {genre} – Hörer:innen suchen dort gezielt nach klassischer Musik statt in einem Pop-Katalog unterzugehen.",
+    submitBandcampName: "Bandcamp",
+    submitBandcampReason: "Starke, zahlungsbereite Fan-Community gerade im {genre}-Bereich – gut geeignet, um Musik direkt zu verkaufen und Fans aufzubauen, unabhängig vom Score.",
+    submitDistroKidName: "DistroKid",
+    submitDistroKidReason: "Kein Kuratoren-Feedback, sondern der Vertrieb selbst: bringt deinen Track unabhängig vom Score auf Spotify, Apple Music & Co. – gegen jährliche Gebühr, dafür planbar und schnell.",
 
     meterTechnik: "Klangqualität / Sauberkeit",
     meterLautheit: "Lautheit / Star-Potential",
@@ -339,6 +352,8 @@ const I18N = {
     vocalsTranscribing: "Transkribiere Vocals (kann bei längeren Tracks etwas dauern)…",
     vocalsNoUsableTranscript: "Keine verwertbare Transkription erhalten (evtl. sehr leiser/instrumentaler Track).",
     vocalsFailed: "Transkription fehlgeschlagen: {msg}",
+    vocalsFailedNetwork: "Transkription fehlgeschlagen – das KI-Modell (ca. 140 MB) konnte nicht geladen werden. Meist liegt's an der Internetverbindung (z. B. Wechsel zwischen WLAN und Mobilfunk mittendrin). Verbindung prüfen und über „Erneut transkribieren“ nochmal versuchen.",
+    vocalsFailedMemory: "Transkription fehlgeschlagen – vermutlich reicht der Arbeitsspeicher gerade nicht (v. a. auf dem Handy bei vielen offenen Tabs/Apps). Andere Tabs schließen und über „Erneut transkribieren“ nochmal versuchen.",
     vocalsNoLyricsForCompare: "Kein Songtext zum Abgleich vorhanden.",
     vocalsSummaryHigh: "{pct}% deines Songtexts finden sich im automatischen Vocal-Transkript wieder – kein Hinweis auf grobe Aussprache-Artefakte.",
     vocalsSummaryMid: "{pct}% deines Songtexts finden sich im Transkript wieder. Die markierten Stellen unten kommen im Gesang anders/unklar rüber – kann an der KI-Aussprache liegen, kann aber auch ein Transkriptionsfehler sein (bei Gesang normal).",
@@ -439,12 +454,15 @@ const I18N = {
     freqBlockHint: "Share of energy per frequency band, compared with a balanced reference range (grey zone).",
     eqHeading: "EQ editor",
     eqIntro: "Adjust your track's frequencies right here and hear the result instantly. Runs entirely in your browser, your audio file never leaves your device.",
-    eqSpectrumHint: "Waveform of your track – the gold marker shows the playback position.",
+    eqSpectrumHint: "Waveform of your track – the gold marker shows the playback position, and the gold curve above it shows your current EQ setting, reacting instantly as you move the sliders below.",
     eqLockedHint: "Fixing things (EQ, de-esser, loudness matching, trimming silence, fade-out) is part of the Pro plan. You can see the full analysis with Credits too – editing directly here needs Pro.",
     eqUpgradeBtn: "Upgrade to Pro",
     eqDeesserToggle: "Reduce sibilance (de-esser)",
+    eqDeesserAutoBtn: "Apply our recommendation",
+    eqDeesserAutoApplied: "Recommended de-esser setting applied for this track.",
+    eqDeesserAutoNotNeeded: "No noticeable sibilance detected – de-esser isn't needed for this track.",
     eqDeesserStrength: "Strength",
-    eqDeesserHint: "Reduces sharp sibilance (typ. 5–8 kHz) only when it actually spikes – unlike the sliders above, which flatly lower a whole range.",
+    eqDeesserHint: "Reduces sharp sibilance (typ. 5–8 kHz) only when it actually spikes – unlike the sliders above, which flatly lower a whole range. \"Apply our recommendation\" sets the strength automatically based on your track, you can still fine-tune it yourself afterwards.",
     eqGainLabel: "Adjust loudness",
     eqGainMatchBtn: "Match to target",
     eqTrimIntro: "Remove silence at the start",
@@ -589,6 +607,16 @@ const I18N = {
     submitNoteReady: "The technical and content score is solid ({score}/100){genreSuffix} – submitting looks realistic at this point.",
     submitNoteMid: "The track is submittable ({score}/100){genreSuffix}, but still has room to grow – applying the improvement tips above first increases your odds.",
     submitNoteLow: "Before submitting (currently {score}/100{genreSuffix}), it's worth applying the most important improvement tips above first.",
+    submitBeatportName: "Beatport",
+    submitBeatportReason: "The go-to platform for {genre} – labels and DJs specifically buy and discover electronic tracks there.",
+    submitAudiomackName: "Audiomack",
+    submitAudiomackReason: "Very common in the {genre} scene for uploads, mixtapes, and direct fan feedback, independent of the score.",
+    submitIdagioName: "IDAGIO",
+    submitIdagioReason: "A streaming platform built specifically for {genre} – listeners actively search for classical music there instead of it getting lost in a pop catalog.",
+    submitBandcampName: "Bandcamp",
+    submitBandcampReason: "A strong, spending-willing fan community especially in {genre} – well suited for selling music directly and building a fanbase, independent of the score.",
+    submitDistroKidName: "DistroKid",
+    submitDistroKidReason: "Not curator feedback, but distribution itself: gets your track onto Spotify, Apple Music & co. regardless of the score – for a yearly fee, but predictable and fast.",
 
     meterTechnik: "Sound quality / cleanliness",
     meterLautheit: "Loudness / star potential",
@@ -689,6 +717,8 @@ const I18N = {
     vocalsTranscribing: "Transcribing vocals (can take a while for longer tracks)…",
     vocalsNoUsableTranscript: "No usable transcription received (maybe a very quiet/instrumental track).",
     vocalsFailed: "Transcription failed: {msg}",
+    vocalsFailedNetwork: "Transcription failed – the AI model (~140 MB) couldn't be loaded. Usually a connection issue (e.g. switching between Wi-Fi and mobile data mid-download). Check your connection and try again via \"Retranscribe\".",
+    vocalsFailedMemory: "Transcription failed – you're probably out of memory right now (especially on mobile with many tabs/apps open). Close other tabs and try again via \"Retranscribe\".",
     vocalsNoLyricsForCompare: "No lyrics available to compare.",
     vocalsSummaryHigh: "{pct}% of your lyrics show up in the automatic vocal transcript – no sign of major pronunciation artifacts.",
     vocalsSummaryMid: "{pct}% of your lyrics show up in the transcript. The highlighted spots below come across differently/unclearly in the vocals – could be the AI pronunciation, but could also just be a transcription error (normal for singing).",
@@ -1089,12 +1119,71 @@ function hann(n) {
   return w;
 }
 
+// K-Gewichtung (Kernstueck der LUFS-Messung nach ITU-R BS.1770): ein Hochregler um ~1.5kHz plus
+// ein Hochpass, die grob nachbilden, wie das menschliche Gehoer/Ohr Lautheit wahrnimmt. Ohne das
+// las eine helle, moderne Abmischung (viel Energie in Hi-Hats/Praesenz/Luft) systematisch LEISER
+// als sie tatsaechlich ist - genau die Tracks, die eigentlich am haeufigsten hochgeladen werden,
+// wurden faelschlich als "zu leise" markiert. RBJ-Cookbook-Biquads, Parameter an den BS.1770-
+// Referenzfilter angelehnt (keine bit-exakte Nachbildung, aber behebt den Haupt-Bias).
+function biquadCoeffsHighShelf(sampleRate, freq, gainDb, q) {
+  const A = Math.pow(10, gainDb / 40);
+  const w0 = (2 * Math.PI * freq) / sampleRate;
+  const cosw0 = Math.cos(w0);
+  const sinw0 = Math.sin(w0);
+  const alpha = sinw0 / (2 * q);
+  const twoSqrtAalpha = 2 * Math.sqrt(A) * alpha;
+  return {
+    b0: A * (A + 1 + (A - 1) * cosw0 + twoSqrtAalpha),
+    b1: -2 * A * (A - 1 + (A + 1) * cosw0),
+    b2: A * (A + 1 + (A - 1) * cosw0 - twoSqrtAalpha),
+    a0: A + 1 - (A - 1) * cosw0 + twoSqrtAalpha,
+    a1: 2 * (A - 1 - (A + 1) * cosw0),
+    a2: A + 1 - (A - 1) * cosw0 - twoSqrtAalpha,
+  };
+}
+
+function biquadCoeffsHighPass(sampleRate, freq, q) {
+  const w0 = (2 * Math.PI * freq) / sampleRate;
+  const cosw0 = Math.cos(w0);
+  const sinw0 = Math.sin(w0);
+  const alpha = sinw0 / (2 * q);
+  return {
+    b0: (1 + cosw0) / 2,
+    b1: -(1 + cosw0),
+    b2: (1 + cosw0) / 2,
+    a0: 1 + alpha,
+    a1: -2 * cosw0,
+    a2: 1 - alpha,
+  };
+}
+
+function applyBiquad(samples, { b0, b1, b2, a0, a1, a2 }) {
+  const out = new Float32Array(samples.length);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const x0 = samples[i];
+    const y0 = (b0 / a0) * x0 + (b1 / a0) * x1 + (b2 / a0) * x2 - (a1 / a0) * y1 - (a2 / a0) * y2;
+    out[i] = y0;
+    x2 = x1;
+    x1 = x0;
+    y2 = y1;
+    y1 = y0;
+  }
+  return out;
+}
+
+function applyKWeighting(mono, sampleRate) {
+  const shelved = applyBiquad(mono, biquadCoeffsHighShelf(sampleRate, 1500, 4, Math.SQRT1_2));
+  return applyBiquad(shelved, biquadCoeffsHighPass(sampleRate, 80, Math.SQRT1_2));
+}
+
 // Ungegatete Ganzsong-RMS zieht den Durchschnitt bei jedem Track mit Intro/Outro/Pausen
 // systematisch nach unten (fast jeder Song hat davon etwas) - das fuehrte dazu, dass praktisch
 // jeder Track als "zu leise" markiert wurde, unabhaengig vom tatsaechlichen Master. Eine grobe
-// Annaeherung an gegatete Lautheit (aehnlich dem Prinzip hinter LUFS-Messung, ohne vollstaendige
-// K-Gewichtung) behebt den systematischen Bias: nur Passagen mit tatsaechlichem Signal zaehlen.
-function computeGatedLoudnessDb(mono, sampleRate) {
+// Annaeherung an gegatete Lautheit (aehnlich dem Prinzip hinter LUFS-Messung, inkl. K-Gewichtung)
+// behebt den systematischen Bias: nur Passagen mit tatsaechlichem Signal zaehlen.
+function computeGatedLoudnessDb(rawMono, sampleRate) {
+  const mono = applyKWeighting(rawMono, sampleRate);
   const blockSamples = Math.max(1, Math.round(sampleRate * 0.4));
   const blocks = [];
   for (let i = 0; i + blockSamples <= mono.length; i += blockSamples) {
@@ -1503,7 +1592,12 @@ function renderFazit(container, fazit) {
 
 function buildAchievements(audioMetrics, scores, loudnessTarget) {
   const list = [];
-  if (audioMetrics.clippingRatio < 0.0005) list.push({ emoji: "🧼", label: t("achClean") });
+  // Reines "keine Vollausschlaege"-Kriterium (clippingRatio < 0.0005) trifft auf fast jeden
+  // Track zu, der nicht absichtlich hart geclippt ist - das Abzeichen erschien dadurch quasi
+  // immer, egal wie der Track eigentlich klingt. scores.technik ist bereits genre-abhaengig
+  // (Idealpunkt statt Fenster, siehe scoreTechnik) und fasst Clipping + Crest-Faktor sauber
+  // zusammen, dadurch wird "Kristallklar" wieder ein echtes, selten erreichtes Abzeichen.
+  if (audioMetrics.clippingRatio < 0.0005 && scores.technik >= 90) list.push({ emoji: "🧼", label: t("achClean") });
   if (Math.abs(audioMetrics.loudnessDb - loudnessTarget) <= 1) list.push({ emoji: "🎯", label: t("achOnTarget") });
   if (scores.hook === 100) list.push({ emoji: "🪝", label: t("achHook") });
   if (scores.frequenz >= 85) list.push({ emoji: "🌈", label: t("achBalanced") });
@@ -1555,6 +1649,21 @@ function renderStreakNote(n) {
   el.textContent = n === 1 ? t("streakFirst") : t("streakN", { n });
 }
 
+// Zusaetzliche, genre-typische Anlaufstellen - nur dort ergaenzt, wo es eine wirklich passende,
+// bekannte Plattform gibt, statt fuer jedes Genre etwas Beliebiges zu erfinden.
+const GENRE_SUBMISSION_EXTRAS = {
+  edm: { nameKey: "submitBeatportName", reasonKey: "submitBeatportReason" },
+  hiphop: { nameKey: "submitAudiomackName", reasonKey: "submitAudiomackReason" },
+  klassik: { nameKey: "submitIdagioName", reasonKey: "submitIdagioReason" },
+  rock: { nameKey: "submitBandcampName", reasonKey: "submitBandcampReason" },
+  metal: { nameKey: "submitBandcampName", reasonKey: "submitBandcampReason" },
+  acoustic: { nameKey: "submitBandcampName", reasonKey: "submitBandcampReason" },
+  jazz: { nameKey: "submitBandcampName", reasonKey: "submitBandcampReason" },
+  reggae: { nameKey: "submitBandcampName", reasonKey: "submitBandcampReason" },
+  latin: { nameKey: "submitBandcampName", reasonKey: "submitBandcampReason" },
+  volksmusik: { nameKey: "submitBandcampName", reasonKey: "submitBandcampReason" },
+};
+
 function buildSubmissions(overallScore, genreKey) {
   const hasGenre = !!genreKey;
   const genre = genreLabel(genreKey);
@@ -1586,6 +1695,16 @@ function buildSubmissions(overallScore, genreKey) {
           : t("submitSpotifyReasonLow", { score: overallScore }),
     },
   ];
+
+  const genreExtra = GENRE_SUBMISSION_EXTRAS[genreKey];
+  if (genreExtra) {
+    items.push({ name: t(genreExtra.nameKey), reason: t(genreExtra.reasonKey, { genre }) });
+  }
+
+  // Vertrieb ist kategorisch etwas anderes als Kuratoren-Einreichung: bringt den Track unabhaengig
+  // vom Score auf die Streaming-Plattformen, statt um redaktionelle Aufmerksamkeit zu werben.
+  // Deshalb eigener Eintrag am Ende, nicht score-abhaengig gefiltert wie die anderen.
+  items.push({ name: t("submitDistroKidName"), reason: t("submitDistroKidReason") });
 
   let note;
   if (ready) {
@@ -2764,6 +2883,24 @@ function showVocalsComparison(referenceText, transcribedText, { estimated }) {
 
 let vocalsCancelRequested = false;
 
+// Die rohe err.message (z.B. "Failed to fetch", ein WASM-Speicherfehler o.ae.) ist fuer
+// Nicht-Techniker kaum verstaendlich und bietet keinen naechsten Schritt. Haeufige, aus der
+// Praxis bekannte Fehlerarten (Modell-Download ueber CDN scheitert am Netzwerk, oder Handy hat
+// gerade zu wenig Arbeitsspeicher fuer das ~140MB-Modell) werden stattdessen in eine
+// verstaendliche, handlungsleitende Meldung uebersetzt - alles andere zeigt weiterhin die
+// technische Meldung, damit bei einem echten Bug trotzdem nachvollziehbar bleibt, was passiert ist.
+function vocalsFailedMessage(err) {
+  const msg = (err && err.message) || "";
+  const lower = msg.toLowerCase();
+  if (lower.includes("fetch") || lower.includes("network") || lower.includes("load failed") || lower.includes("failed to load") || lower.includes("err_")) {
+    return t("vocalsFailedNetwork");
+  }
+  if (lower.includes("memory") || lower.includes("alloc") || lower.includes("out of")) {
+    return t("vocalsFailedMemory");
+  }
+  return t("vocalsFailed", { msg: msg || t("unknownError") });
+}
+
 // Startet automatisch nach der Freischaltung (kein Klick noetig) - vocalsCheckBtn dient danach
 // nur noch als manueller "Erneut transkribieren"-Retrigger, vocalsCancelBtn bricht waehrend des
 // (automatischen) Ladens ab, z.B. wenn das ~140MB-Modell auf dem Handy zu viel Datenvolumen kostet.
@@ -2807,7 +2944,7 @@ async function runVocalsCheck() {
     return transcribedText;
   } catch (err) {
     if (!vocalsCancelRequested) {
-      vocalsStatus.textContent = t("vocalsFailed", { msg: err && err.message ? err.message : t("unknownError") });
+      vocalsStatus.textContent = vocalsFailedMessage(err);
     }
     return null;
   } finally {
@@ -2857,6 +2994,21 @@ function suggestedEqGainDb(val, lo, hi) {
   return 0;
 }
 
+// Schaetzt, ob/wie stark ein De-Esser sinnvoll waere: Praesenz- (4-6 kHz) und Brillanz-Band
+// (6-16 kHz) - dort sitzen Zischlaute - gegen die genre-spezifische Referenz gegengecheckt. Nur
+// echtes Ueberschiessen (nicht jeder Track) fuehrt zu "empfohlen", damit der Button einen echten
+// Unterschied macht statt pauschal immer an/gleich stark zu sein.
+function suggestedDeEsserAmount(metrics, profile) {
+  const presence = metrics.bandPercents[5];
+  const brilliance = metrics.bandPercents[6];
+  const [, presenceHi] = profile.refs[5];
+  const [, brillianceHi] = profile.refs[6];
+  const overshoot = Math.max(0, presence - presenceHi) + Math.max(0, brilliance - brillianceHi) * 0.6;
+  const needed = overshoot > 1;
+  const amount = Math.max(0.2, Math.min(1, 0.25 + overshoot * 0.12));
+  return { needed, amount: Math.round(amount * 20) / 20 };
+}
+
 const EQ_BAND_Q = 1;
 let eqAudioCtx = null;
 let eqSourceNode = null;
@@ -2885,8 +3037,71 @@ let eqPlaybackStartCtxTime = 0;
 let eqPlaybackDuration = 0;
 let eqSeeking = false;
 let eqPendingSeekOffset = 0;
+let eqLastDrawnPositionRatio = 0;
 const EQ_WAVEFORM_BUCKETS = 360;
 const EQ_BAND_BG = "#07080c";
+const EQ_CURVE_MIN_HZ = 20;
+const EQ_CURVE_MAX_HZ = 16000;
+
+// Redraw-Trigger, die selbst nichts ueber die Abspielposition wissen (z.B. ein EQ-Regler wird
+// bewegt, waehrend gerade pausiert ist) - nutzen die zuletzt gezeichnete Position weiter, statt
+// den Playhead ungewollt auf 0 zurueckzusetzen.
+function redrawEqWaveformNow() {
+  drawEqWaveform(eqLastDrawnPositionRatio);
+}
+
+// Duenne Kurve ueber der Wellenform, die die aktuellen EQ-Regler als Frequenzgang zeigt (wie bei
+// einem klassischen Parametrik-EQ) - reagiert sofort auf jede Reglerbewegung, unabhaengig von der
+// Wiedergabe. Beantwortet den Wunsch "nach Anpassung der Frequenz auch optisch anpassen", ohne
+// die gerade erst umgesetzte ruhige Wellenform-Optik wieder durch ein live mitlaufendes
+// Spektrogramm zu ersetzen.
+function drawEqCurveOverlay(ctx, w, h) {
+  const mid = h / 2;
+  const maxDeflect = h * 0.36;
+  const hzToX = (hz) => {
+    const t = (Math.log(hz) - Math.log(EQ_CURVE_MIN_HZ)) / (Math.log(EQ_CURVE_MAX_HZ) - Math.log(EQ_CURVE_MIN_HZ));
+    return Math.min(w, Math.max(0, t * w));
+  };
+  const gainToY = (gain) => mid - (Math.max(-12, Math.min(12, gain)) / 12) * maxDeflect;
+
+  // Dezente 0dB-Referenzlinie, damit erkennbar bleibt, wovon die Kurve abweicht.
+  ctx.save();
+  ctx.strokeStyle = "rgba(238, 238, 236, 0.18)";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath();
+  ctx.moveTo(0, mid);
+  ctx.lineTo(w, mid);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const points = [{ x: 0, y: gainToY(eqGains[0] || 0) }];
+  FREQ_BANDS.forEach((band, i) => points.push({ x: hzToX(bandCenterHz(band)), y: gainToY(eqGains[i] || 0) }));
+  points.push({ x: w, y: gainToY(eqGains[FREQ_BANDS.length - 1] || 0) });
+
+  ctx.strokeStyle = "#f0d19c";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+    const midX = (p0.x + p1.x) / 2;
+    const midY = (p0.y + p1.y) / 2;
+    ctx.quadraticCurveTo(p0.x, p0.y, midX, midY);
+  }
+  const last = points[points.length - 1];
+  ctx.lineTo(last.x, last.y);
+  ctx.stroke();
+
+  ctx.fillStyle = "#f0d19c";
+  for (let i = 1; i < points.length - 1; i++) {
+    ctx.beginPath();
+    ctx.arc(points[i].x, points[i].y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
 
 function ensureEqAudioCtx() {
   const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -2977,8 +3192,8 @@ function scheduleFadeOut(gainNode, startTime, duration, fadeSeconds) {
 
 function updateDeEsserAmount(nodes, amount) {
   if (!nodes) return;
-  nodes.notch.gain.value = -12 * amount;
-  nodes.sidechainGain.gain.value = amount;
+  rampAudioParam(nodes.notch.gain, -12 * amount, eqAudioCtx);
+  rampAudioParam(nodes.sidechainGain.gain, amount, eqAudioCtx);
 }
 
 function formatEqTime(seconds) {
@@ -3044,6 +3259,7 @@ function computeEqWaveformPeaks(buffer) {
 function drawEqWaveform(positionRatio) {
   const ctx = eqBandCanvasCtx;
   if (!ctx) return;
+  if (positionRatio != null) eqLastDrawnPositionRatio = positionRatio;
   const w = eqBandCanvasWidth;
   const h = eqBandCanvasHeight;
   ctx.fillStyle = EQ_BAND_BG;
@@ -3064,6 +3280,8 @@ function drawEqWaveform(positionRatio) {
     ctx.fillStyle = positionRatio != null && i <= playedIndex ? "#f0d19c" : "rgba(238, 238, 236, 0.55)";
     ctx.fillRect(x, mid - topH, barWidth, topH + botH);
   }
+
+  drawEqCurveOverlay(ctx, w, h);
 
   if (positionRatio != null) {
     const px = Math.min(w - 1, Math.max(0, positionRatio * w));
@@ -3120,13 +3338,43 @@ function stopEqPreview() {
     eqPlaybackRafId = null;
   }
   if (eqSourceNode) {
-    eqSourceNode.onended = null;
-    try {
-      eqSourceNode.stop();
-    } catch {
-      /* schon gestoppt */
+    const source = eqSourceNode;
+    const gainNode = eqGainNode;
+    const ctx = eqAudioCtx;
+    source.onended = null;
+    // Sofortiges stop()+disconnect() bricht das Signal exakt an der Stelle hart ab, an der
+    // gerade abgespielt wird - hoerbar als Knacken, z.B. jedes Mal wenn waehrend der Wiedergabe
+    // Trim/Fade-out/De-Esser umgeschaltet oder die Suchleiste losgelassen wird (beides baut die
+    // Kette per startEqPreview() neu auf, was hier zuerst die alte stoppt). Kurzer Fade-out statt
+    // hartem Cut vermeidet den Klick; disconnect() erst nach dem Fade, sonst waere der Fade selbst
+    // durchs sofortige Trennen vom Graph unhoerbar.
+    if (ctx && gainNode) {
+      const fadeSeconds = 0.015;
+      const now = ctx.currentTime;
+      gainNode.gain.cancelScheduledValues(now);
+      gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+      gainNode.gain.linearRampToValueAtTime(0.0001, now + fadeSeconds);
+      try {
+        source.stop(now + fadeSeconds);
+      } catch {
+        /* schon gestoppt */
+      }
+      setTimeout(() => {
+        try {
+          source.disconnect();
+          gainNode.disconnect();
+        } catch {
+          /* schon getrennt */
+        }
+      }, Math.ceil(fadeSeconds * 1000) + 20);
+    } else {
+      try {
+        source.stop();
+      } catch {
+        /* schon gestoppt */
+      }
+      source.disconnect();
     }
-    eqSourceNode.disconnect();
     eqSourceNode = null;
   }
   eqFilters = [];
@@ -3199,9 +3447,22 @@ function startEqPreview(offsetSeconds = 0) {
   eqPlaybackRafId = requestAnimationFrame(tickEqPlayback);
 }
 
+// Direktes ".value ="-Setzen auf einem AudioParam waehrend der Wiedergabe erzeugt an genau der
+// Stelle im Signal einen Sprung - hoerbar als Knacken/Knistern, vor allem wenn beim Ziehen eines
+// Reglers viele "input"-Events kurz hintereinander feuern. setTargetAtTime rampt stattdessen
+// weich zum Zielwert (paar Millisekunden Zeitkonstante), bleibt dabei aber "live" genug, um sich
+// beim Ziehen des Reglers noch unmittelbar anzufuehlen.
+function rampAudioParam(param, target, ctx) {
+  if (ctx) {
+    param.setTargetAtTime(target, ctx.currentTime, 0.012);
+  } else {
+    param.value = target;
+  }
+}
+
 function updateEqFilterGains() {
   eqFilters.forEach((f, i) => {
-    f.gain.value = eqGains[i] || 0;
+    rampAudioParam(f.gain, eqGains[i] || 0, eqAudioCtx);
   });
 }
 
@@ -3331,6 +3592,7 @@ function renderEqSliders() {
       eqGains[i] = Number(input.value);
       document.getElementById(`eq-value-${i}`).textContent = `${eqGains[i].toFixed(1)} dB`;
       if (eqPlaying) updateEqFilterGains();
+      redrawEqWaveformNow();
     });
   });
 }
@@ -3408,6 +3670,23 @@ const eqDeEsserEnabledEl = document.getElementById("eq-deesser-enabled");
 const eqDeEsserStrengthWrap = document.getElementById("eq-deesser-strength-wrap");
 const eqDeEsserStrengthEl = document.getElementById("eq-deesser-strength");
 const eqDeEsserStrengthValueEl = document.getElementById("eq-deesser-strength-value");
+const eqDeEsserAutoBtn = document.getElementById("eq-deesser-auto-btn");
+
+if (eqDeEsserAutoBtn) {
+  eqDeEsserAutoBtn.addEventListener("click", () => {
+    if (!eqLastMetrics || !eqLastProfile) return;
+    const { needed, amount } = suggestedDeEsserAmount(eqLastMetrics, eqLastProfile);
+    eqDeEsserEnabled = needed;
+    eqDeEsserAmount = amount;
+    if (eqDeEsserEnabledEl) eqDeEsserEnabledEl.checked = needed;
+    if (eqDeEsserStrengthWrap) eqDeEsserStrengthWrap.hidden = !needed;
+    const pct = Math.round(amount * 100);
+    if (eqDeEsserStrengthEl) eqDeEsserStrengthEl.value = pct;
+    if (eqDeEsserStrengthValueEl) eqDeEsserStrengthValueEl.textContent = `${pct}%`;
+    if (eqPlaying) startEqPreview(getEqElapsedPosition());
+    if (eqStatus) eqStatus.textContent = needed ? t("eqDeesserAutoApplied") : t("eqDeesserAutoNotNeeded");
+  });
+}
 
 if (eqDeEsserEnabledEl) {
   eqDeEsserEnabledEl.addEventListener("change", () => {
@@ -3435,7 +3714,7 @@ if (eqGainEl) {
   eqGainEl.addEventListener("input", () => {
     eqGainDb = Number(eqGainEl.value);
     if (eqGainValueEl) eqGainValueEl.textContent = `${eqGainDb.toFixed(1)} dB`;
-    if (eqPlaying && eqGainNode) eqGainNode.gain.value = Math.pow(10, eqGainDb / 20);
+    if (eqPlaying && eqGainNode) rampAudioParam(eqGainNode.gain, Math.pow(10, eqGainDb / 20), eqAudioCtx);
   });
 }
 
@@ -3446,7 +3725,7 @@ if (eqGainMatchBtn) {
     eqGainDb = Math.round(suggested * 2) / 2;
     if (eqGainEl) eqGainEl.value = eqGainDb;
     if (eqGainValueEl) eqGainValueEl.textContent = `${eqGainDb.toFixed(1)} dB`;
-    if (eqPlaying && eqGainNode) eqGainNode.gain.value = Math.pow(10, eqGainDb / 20);
+    if (eqPlaying && eqGainNode) rampAudioParam(eqGainNode.gain, Math.pow(10, eqGainDb / 20), eqAudioCtx);
     if (eqStatus) eqStatus.textContent = t("eqGainMatched");
   });
 }
@@ -3475,6 +3754,7 @@ if (eqSuggestBtn) {
     });
     renderEqSliders();
     if (eqPlaying) updateEqFilterGains();
+    redrawEqWaveformNow();
     if (eqStatus) eqStatus.textContent = t("eqSuggestionApplied");
   });
 }
@@ -3494,6 +3774,7 @@ if (eqResetBtn) {
     if (eqTrimIntroEl) eqTrimIntroEl.checked = false;
     if (eqFadeOutEl) eqFadeOutEl.checked = false;
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
+    else redrawEqWaveformNow();
     if (eqStatus) eqStatus.textContent = t("eqResetDone");
   });
 }

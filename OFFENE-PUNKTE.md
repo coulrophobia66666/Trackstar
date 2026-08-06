@@ -4,6 +4,67 @@ Stand: 06.08.2026. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ NEU (06.08., zehnter Durchgang): Lautheit/Zischeln/Knistern/Fehlertexte, EQ-Kurve, Distribution
+- **Bugfix Lautheits-Messung (K-Weighting)**: Die "Tracks werden immer als zu
+  leise angezeigt, immer wird -dB-Mastering empfohlen"-Rückmeldung stimmte –
+  Ursache war eine fehlende Frequenzgewichtung bei der LUFS-ähnlichen
+  Messung. Ohne K-Weighting (Höhen werden bei echter Lautheitswahrnehmung
+  stärker gewichtet, ITU-R BS.1770-Standard) hat die bisherige Messung
+  helle/moderne Mixe systematisch zu leise gemessen – mit einer per ffmpeg
+  auf exakt -14.0 LUFS verifizierten Testdatei (helles Rauschen) lag unsere
+  alte Messung 3.3 dB daneben, nach dem Fix nur noch 0.68 dB (ein
+  Referenz-Testton lag vorher schon nah dran und blieb nach dem Fix
+  genauso nah dran – kein neuer Bias in die andere Richtung).
+- **"Kristallklar"-Abzeichen zeigte fast immer an**: Lag an einer zu
+  großzügigen Bedingung (nur "keine Vollausschläge"), die praktisch jeder
+  nicht absichtlich übersteuerte Track erfüllt – das Abzeichen wirkte
+  dadurch beliebig statt wie eine echte Auszeichnung. Zeigt jetzt nur noch
+  bei wirklich hohem Technik-Score (der bereits genre-abhängig Clipping +
+  Crest-Faktor kombiniert), mit synthetischen Testdateien nachgewiesen
+  differenzierend (zeigt jetzt nicht mehr bei jedem sauberen Track an).
+- **Genre-spezifische Analyse "auf der ganzen Seite" geprüft**: Badges,
+  Abzeichen, Fazit-Teaser und Gesamturteil im kostenlosen Kurzcheck laufen
+  bereits alle über dieselben genre-abhängigen Scores (Technik, Lautheit,
+  Frequenz) – keine zusätzliche Änderung nötig, war schon so verdrahtet.
+- **De-Esser: Empfehlungs-Button ergänzt**: Neben der bestehenden manuellen
+  Regelung (Häkchen + Stärke-Regler) gibt's jetzt "Nach unserer Empfehlung"
+  – schätzt anhand von Präsenz-/Brillanz-Band gegen den genre-typischen
+  Referenzbereich, ob und wie stark Zischeln auffällt, und setzt Häkchen +
+  Stärke automatisch (oder lässt ihn aus, wenn nichts auffällt – kein
+  Pauschal-An).
+- **EQ-Frequenzband reagiert jetzt auf Regler-Änderungen**: Über der
+  Wellenform liegt jetzt eine dünne goldene Kurve, die den aktuellen
+  EQ-Frequenzgang zeigt (wie bei einem klassischen Parametrik-EQ) – reagiert
+  sofort auf jede Reglerbewegung, auch ohne dass gerade abgespielt wird. Die
+  Abspielposition (Balken-Fortschritt + Linie/Punkt) läuft weiterhin von
+  links nach rechts mit der Musik mit. Kein Rückfall auf das alte
+  Live-Spektrogramm nötig – die ruhige Wellenform-Optik bleibt erhalten.
+- **Audio knistert/ruckelt beim Verstellen behoben**: Ursache waren zwei
+  Web-Audio-Klassiker – (1) Regler (EQ-Bänder, Lautheit, De-Esser-Stärke)
+  haben den Ton-Parameter während der Wiedergabe direkt gesprungen statt
+  sanft angepasst, das erzeugt bei jeder Reglerbewegung ein kleines
+  Knacken; (2) Umschalten von Intro-Stille/Fade-out/De-Esser während der
+  Wiedergabe hat die Vorschau hart abgebrochen und neu gestartet, genau an
+  der Stelle im Signal ein hörbarer Klick. Beides jetzt sanft
+  ausgeblendet/übergeblendet statt hart geschnitten.
+- **Transkriptions-Fehlermeldung verständlicher**: "Fehler beim
+  Transkribieren" zeigte bisher die rohe technische Browser-Fehlermeldung
+  an, für Nicht-Techniker kaum verständlich. Häufige Fälle (Netzwerkproblem
+  beim Laden des ca. 140 MB großen KI-Modells, zu wenig Arbeitsspeicher auf
+  dem Handy) werden jetzt in eine klare Meldung mit nächstem Schritt
+  ("Erneut transkribieren") übersetzt. Konnte den ursprünglichen
+  Einzelfall nicht 1:1 nachstellen (kein echtes Netzwerk zum externen
+  Modell-CDN in dieser Umgebung) – die Wiederholung/Fehlerbehandlung war
+  aber schon vorher robust (Worker wird bei Fehler sauber zurückgesetzt,
+  "Erneut transkribieren" funktioniert).
+- **Einreichungs-Datenbank genre-spezifisch erweitert + DistroKid**: Je nach
+  Genre kommt jetzt eine passende Zusatz-Plattform dazu (Beatport bei EDM,
+  Audiomack bei Hip-Hop, IDAGIO bei Klassik, Bandcamp bei Rock/Metal/
+  Akustik/Jazz/Reggae/Latin/Volksmusik). Zusätzlich immer dabei: DistroKid
+  als Vertriebs-Eintrag (kein Kuratoren-Feedback, sondern bringt den Track
+  unabhängig vom Score auf Spotify/Apple Music – klar als andere Kategorie
+  gekennzeichnet).
+
 ## ✅ NEU (06.08., neunter Durchgang): Frequenzbalance-Bug, Instrumental-Genres
 - **Bugfix Frequenzbalance-Score**: Zeigte bei echten Tracks fast immer 0/100
   an. Ursache: Die 7 Frequenzbänder summieren sich immer auf 100 % – liegt
