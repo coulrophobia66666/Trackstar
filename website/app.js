@@ -4089,10 +4089,15 @@ if (eqFadeOutEl) {
 if (eqSuggestBtn) {
   eqSuggestBtn.addEventListener("click", () => {
     if (!eqLastMetrics || !eqLastProfile) return;
+    // Bei mehreren gleichzeitig "zu niedrigen" Nachbarbaendern (z.B. bassbetonte Trap-Tracks mit
+    // wenig Mitten) summieren sich die ueberlappenden Q=1-Peaking-Filter in der Kette - ein
+    // Klemmwert wie beim manuellen Regler (+-12dB pro Band) waere hier schon bei 2-3 gleichzeitig
+    // korrigierten Nachbarbaendern hoerbar unnatuerlich. +-6dB pro Band entspricht eher dem, was
+    // in echter korrektiver Mischung in einem automatischen Vorschlag vertretbar ist.
     eqGains = FREQ_BANDS.map((band, i) => {
       const [lo, hi] = eqLastProfile.refs[i];
       const suggested = suggestedEqGainDb(eqLastMetrics.bandPercents[i], lo, hi);
-      return Math.max(-12, Math.min(12, suggested));
+      return Math.max(-6, Math.min(6, suggested));
     });
     renderEqSliders();
     if (eqPlaying) updateEqFilterGains();
