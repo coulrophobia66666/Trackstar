@@ -4,6 +4,25 @@ Stand: 06.08.2026. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ NEU (06.08., dreizehnter Durchgang): Hip-Hop/Trap-Referenzwerte neu kalibriert
+Nutzer-Feedback anhand vieler echter Trap-/Hip-Hop-Checks: EQ-Vorschlag hat
+systematisch zu viel Bass rausgenommen und die Höhen zu stark hochgedreht.
+Ursache gefunden und mit einem synthetischen bassdominanten Testsignal
+verifiziert: Die alte Subbass-Referenz (4-10%) war für modernes,
+808-lastiges Trap/Hip-Hop zu eng – ein bassdominanter Track hat dadurch
+einen -8.1dB-Cut-Vorschlag bekommen. Da sich alle 7 Frequenzbänder immer
+auf 100% aufsummieren, hat der dadurch künstlich hohe "Bass ist zu laut"-
+Ausschlag automatisch auch die anderen Bänder (inkl. Höhen) nach unten
+verzerrt und Boost-Vorschläge ausgelöst, wo eigentlich keiner nötig war.
+Subbass-/Bass-Obergrenze angehoben, Presence-/Brillanz-Untergrenze gesenkt
+(betrifft EQ-Vorschlag, Frequenzbalance-Score und -Tipps gleichermaßen, da
+alle dieselbe Referenz nutzen). Nach dem Fix beim selben Testsignal nur noch
+-5.1dB Subbass-Cut, Bass-Band nicht mehr angeschlagen. Bewusst nur eine
+grobe Kalibrierung, keine exakte Wissenschaft (kein echtes Trap-Material im
+Sandbox verfügbar) – die im letzten Durchgang gebaute Genre-Statistik-
+Infrastruktur ist genau dafür gedacht, das später mit echten Zahlen aus
+vielen geprüften Tracks nachzuschärfen.
+
 ## ✅ NEU (06.08., zwölfter Durchgang): Genre-Statistik-Seiten (Fundament fertig)
 Kompletter Unterbau für "Was ist bei Trap-Tracks typisch?"-SEO-Seiten – anonym,
 getrennt von der eigentlichen Bewertungslogik, damit sich Referenzwerte nicht

@@ -1025,7 +1025,14 @@ const GENRE_PROFILES = {
   hiphop: {
     key: "hiphop",
     loudnessTarget: -9,
-    refs: [[4, 10], [18, 30], [9, 16], [18, 28], [9, 16], [5, 11], [3, 9]],
+    // Subbass/Bass-Obergrenze angehoben, Presence/Brillanz-Untergrenze gesenkt: moderne
+    // 808-lastige Trap-/Hip-Hop-Produktion konzentriert einen deutlich groesseren Anteil der
+    // rohen Spektralenergie im Bassbereich als die alte Referenz erwartete - das hat systematisch
+    // zu starke Bass-Cut- und Hoehen-Boost-Vorschlaege ausgeloest (Nutzer-Feedback anhand vieler
+    // echter Trap-Checks). Da alle 7 Baender sich immer auf 100% aufsummieren, driften die
+    // uebrigen Baender-Prozentwerte automatisch mit, wenn der Bassanteil realistischer
+    // kalibriert ist - Presence/Brillanz brauchten trotzdem eine eigene Anpassung nach unten.
+    refs: [[5, 20], [16, 32], [9, 16], [18, 28], [9, 16], [4, 10], [2, 8]],
     fingerprint: { bpmRange: [70, 100], brightnessRange: [700, 1800], bassRatioRange: [20, 38], crestRange: [6, 15] },
   },
   pop: {
