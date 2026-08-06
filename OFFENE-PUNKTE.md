@@ -4,6 +4,41 @@ Stand: 06.08.2026. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ NEU (06.08., elfter Durchgang): Songtitel-Score nach Wiederholung, 4 neue Fakten-Kennzahlen
+- **Songtitel-erkennbar-Score neu berechnet**: Bisher ein grobes 3-Stufen-Raster
+  (100/55/15 je nachdem ob der Titel in der Hookzeile, sonst im Text oder gar
+  nicht vorkam). Jetzt zählt, wie oft der Titel tatsächlich im Songtext
+  vorkommt – ab 6 Wiederholungen (z. B. durchgehend im Refrain) gilt er als
+  voll wiedererkennbar (100 %), darunter linear ansteigend (1x ≈ 17 %, 3x =
+  50 % usw.). Passender Tipp-Text zeigt jetzt die aktuelle Wiederholungszahl.
+- **Mono-Kompatibilität (neu)**: Phasenkorrelation zwischen L/R-Kanal, bevor
+  auf Mono heruntergerechnet wird – zeigt objektiv, ob der Track beim
+  Mono-Summieren (Handylautsprecher, viele TikTok-/Reels-Player) Pegel
+  verliert oder sich Elemente wie die Hook teilweise auslöschen. Neue
+  Kennzahl in der Fakten-Box plus Warn-/Kritisch-Tipp bei schlechten Werten.
+  Noch nicht an echten Tracks kalibriert (nur synthetisch getestet).
+- **Dynamikumfang (neu)**: Der bereits vorhandene Crest-Faktor war bisher nur
+  unsichtbar Teil des Technik-Scores – jetzt als eigene, deutlich stärker
+  ausschlagende Kennzahl sichtbar (genre-abhängiger Zielwert), damit
+  überkomprimierte/plattgedrückte Masters klar auffallen statt im
+  kombinierten Technik-Wert unterzugehen.
+- **Formatcheck (neu, eigener Block in der Fakten-Box)**: Kombiniert zwei
+  rein formale, klangunabhängige Prüfungen. Metadaten-Check: ALL CAPS,
+  Emojis, falsch geschriebenes "feat." (korrekt ist "(feat. Name)"),
+  verdächtige Sonderzeichen im Songtitel – die häufigsten
+  Ablehnungsgründe bei Distributoren, die nichts mit der Musik zu tun haben.
+  Distributor-Formatcheck: Tracklänge (unter 30s zählt laut Spotify kein
+  Stream – hartes Kriterium), Samplerate, Bittiefe (nur bei WAV-Uploads aus
+  dem Datei-Header auslesbar, bei MP3/AAC ehrlich als "nicht ermittelbar"
+  markiert statt eine falsche Zahl zu zeigen), Hinweis bei komprimiertem
+  Upload-Format. Regeln unterscheiden sich leicht je Distributor – bewusst
+  als "gängige Praxis" formuliert, nicht als universelles Hardfact.
+- Bewusst nicht umgesetzt (auf Nutzerwunsch zurückgestellt): "Zeit bis zur
+  Hook" – aktuell wird die Hook nur textbasiert erkannt (welche Zeile sich
+  wiederholt), nicht mit einer Zeitposition im Audio verknüpft. Bräuchte
+  entweder eine neue automatische Audio-Struktur-Erkennung oder ein
+  manuelles Zeitstempel-Feld (das war früher bewusst entfernt worden).
+
 ## ✅ NEU (06.08., zehnter Durchgang): Lautheit/Zischeln/Knistern/Fehlertexte, EQ-Kurve, Distribution
 - **Bugfix Lautheits-Messung (K-Weighting)**: Die "Tracks werden immer als zu
   leise angezeigt, immer wird -dB-Mastering empfohlen"-Rückmeldung stimmte –

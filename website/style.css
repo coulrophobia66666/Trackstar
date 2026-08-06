@@ -555,11 +555,13 @@ button#unlock-btn {
 
 .zone .meters,
 .zone .freq-block,
+.zone .format-check-block,
 .zone .tips-block {
   margin-bottom: 0;
 }
 
-.zone .freq-block {
+.zone .freq-block,
+.zone .format-check-block {
   margin-top: 1.6rem;
 }
 
@@ -650,7 +652,7 @@ button#unlock-btn {
 }
 
 /* Frequency chart */
-.freq-block h3, .tips-block h3, .submit-block h3 {
+.freq-block h3, .format-check-block h3, .tips-block h3, .submit-block h3 {
   font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 600;
@@ -1738,6 +1740,11 @@ button#vocals-check-btn:disabled {
 
   .zone:has(.freq-block) .freq-block {
     margin-top: 0;
+  }
+
+  .zone:has(.freq-block) .format-check-block {
+    grid-column: 1 / -1;
+    margin-top: 1.6rem;
   }
 
   .auth-forms {
