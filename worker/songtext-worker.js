@@ -3,12 +3,15 @@
 // nie im Frontend-Code der statischen Website landen.
 //
 // Benoetigte Bindings/Variablen im Worker (Cloudflare-Dashboard -> Settings):
-//   Secrets:  ANTHROPIC_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_API_KEY
+//   Secrets:  ANTHROPIC_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_API_KEY,
+//             ADMIN_SECRET (beliebiger langer Zufallsstring, schuetzt POST /admin/aggregate-genres
+//             vor fremdem Zugriff - Header "x-admin-secret" muss ihn enthalten)
 //   Klartext: STRIPE_PRICE_CREDITS, STRIPE_PRICE_PRO_MONTHLY, STRIPE_PRICE_PRO_ANNUAL
 //             (Stripe Price-IDs, z.B. "price_...", sind nicht geheim), RESEND_FROM_EMAIL
 //             (Absenderadresse fuer Passwort-Reset-Mails, z.B. "Overhertz <noreply@overhertz.app>")
 //   D1-Binding: DB (siehe wrangler.toml + schema.sql)
 //   Rate-Limit-Binding RATE_LIMITER wird beim Deploy automatisch angelegt.
+//   Cron Trigger (siehe wrangler.toml [triggers]): laeuft nachts automatisch, kein Setup noetig.
 
 const ALLOWED_ORIGINS = new Set([
   "https://trackstar-web.coulrophobia66666.workers.dev",
@@ -546,6 +549,287 @@ async function handleTrackMetrics(request, env, cors) {
   return jsonResponse({ ok: true }, 200, cors);
 }
 
+/* ---------- Genre-Kennzahlen-Aggregation ----------
+   Trennt Sammeln von Auswerten: check_results wird nur beschrieben, nie live bei einem
+   Seitenaufruf ausgewertet. Diese Funktion liest die Rohwerte, berechnet Median/Perzentile und
+   einen Anteil "auffälliger" Tracks je Kategorie, und schreibt das Ergebnis in genre_stats -
+   die Genre-Seiten lesen nur von dort. Laeuft nachts per Cron Trigger (siehe scheduled-Handler
+   unten) und laesst sich zusaetzlich manuell ueber POST /admin/aggregate-genres anstossen.
+
+   Die "auffaellig"-Kategorien sind bewusst genre-unabhaengig formuliert (z.B. Crest-Faktor unter
+   6 dB, nicht "unter dem genre-typischen Zielwert") - die genre-spezifischen Zielwerte
+   (GENRE_PROFILES) leben nur im Frontend (website/app.js), der Worker hat keinen Zugriff darauf
+   und soll sie auch nicht duplizieren muessen, wenn sich dort mal was aendert. */
+
+const GENRE_PROBLEM_DEFS = [
+  { key: "overcompressed", check: (r) => r.crest_factor_db != null && r.crest_factor_db < 6, labelDe: "Stark überkomprimiert (Crest-Faktor unter 6 dB)", labelEn: "Heavily over-compressed (crest factor under 6 dB)" },
+  { key: "monoIssue", check: (r) => r.phase_correlation != null && r.phase_correlation < 0.3, labelDe: "Eingeschränkte Mono-Kompatibilität", labelEn: "Limited mono compatibility" },
+  { key: "tooShort", check: (r) => r.duration_s != null && r.duration_s < 30, labelDe: "Unter 30 Sekunden (zählt laut Spotify nicht als Stream)", labelEn: "Under 30 seconds (doesn't count as a Spotify stream)" },
+  { key: "lowBitDepth", check: (r) => r.bit_depth != null && r.bit_depth < 16, labelDe: "Niedrige Bittiefe", labelEn: "Low bit depth" },
+  { key: "metadataIssues", check: (r) => r.metadata_violation_count != null && r.metadata_violation_count > 0, labelDe: "Titel-Metadaten-Auffälligkeiten (ALL CAPS, Emojis, „feat.“-Format)", labelEn: "Title metadata issues (ALL CAPS, emojis, \"feat.\" format)" },
+  { key: "truePeakHigh", check: (r) => r.true_peak_db != null && r.true_peak_db > -1, labelDe: "True Peak über -1 dBTP (Clipping-Risiko bei Lossy-Encoding)", labelEn: "True peak above -1 dBTP (clipping risk on lossy encoding)" },
+];
+
+function percentile(sortedArr, p) {
+  if (sortedArr.length === 0) return null;
+  const idx = (p / 100) * (sortedArr.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sortedArr[lo];
+  return sortedArr[lo] + (sortedArr[hi] - sortedArr[lo]) * (idx - lo);
+}
+
+function statFor(rows, field) {
+  const vals = rows.map((r) => r[field]).filter((v) => v !== null && v !== undefined).sort((a, b) => a - b);
+  return { median: percentile(vals, 50), p25: percentile(vals, 25), p75: percentile(vals, 75) };
+}
+
+async function aggregateGenreStats(env) {
+  const { results: genreRows } = await env.DB.prepare("SELECT DISTINCT genre_slug FROM check_results").all();
+  const now = Date.now();
+  const summary = [];
+
+  for (const { genre_slug } of genreRows) {
+    const { results: rows } = await env.DB.prepare("SELECT * FROM check_results WHERE genre_slug = ?").bind(genre_slug).all();
+    const trackCount = rows.length;
+
+    const problems = GENRE_PROBLEM_DEFS.map((def) => {
+      const count = rows.filter(def.check).length;
+      return { key: def.key, labelDe: def.labelDe, labelEn: def.labelEn, pct: trackCount ? Math.round((count / trackCount) * 100) : 0 };
+    }).sort((a, b) => b.pct - a.pct);
+
+    const statsJson = {
+      bands: {
+        subbass: statFor(rows, "band_subbass"),
+        bass: statFor(rows, "band_bass"),
+        lowmid: statFor(rows, "band_lowmid"),
+        mid: statFor(rows, "band_mid"),
+        highmid: statFor(rows, "band_highmid"),
+        presence: statFor(rows, "band_presence"),
+        brilliance: statFor(rows, "band_brilliance"),
+      },
+      loudnessDb: statFor(rows, "loudness_db"),
+      truePeakDb: statFor(rows, "true_peak_db"),
+      crestFactorDb: statFor(rows, "crest_factor_db"),
+      phaseCorrelation: statFor(rows, "phase_correlation"),
+      durationS: statFor(rows, "duration_s"),
+      problems,
+      topProblem: problems.length ? problems[0] : null,
+    };
+
+    await env.DB.prepare(
+      `INSERT INTO genre_stats (genre_slug, updated_at, track_count, stats_json) VALUES (?, ?, ?, ?)
+       ON CONFLICT(genre_slug) DO UPDATE SET updated_at = excluded.updated_at, track_count = excluded.track_count, stats_json = excluded.stats_json`
+    )
+      .bind(genre_slug, now, trackCount, JSON.stringify(statsJson))
+      .run();
+
+    summary.push({ genreSlug: genre_slug, trackCount });
+  }
+
+  return { genres: summary };
+}
+
+async function handleAggregateGenres(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+  if (!env.ADMIN_SECRET || request.headers.get("x-admin-secret") !== env.ADMIN_SECRET) {
+    return jsonResponse({ error: "Nicht autorisiert." }, 401, cors);
+  }
+  const result = await aggregateGenreStats(env);
+  return jsonResponse({ ok: true, ...result }, 200, cors);
+}
+
+/* ---------- Genre-Statistik-Seiten (/check/:slug) ----------
+   Server-seitig gerendert direkt aus genre_stats - kein Build-Step noetig, passt zur bestehenden
+   "Website ist statisches HTML ohne Build-Pipeline"-Architektur. Neues Genre = neuer Eintrag in
+   GENRE_PAGE_DEFS, sonst nichts. Erscheint erst ab MIN_TRACKS_FOR_PAGE Tracks (siehe
+   aggregateGenreStats) - darunter bewusst 404 statt einer duennen/leeren Seite. */
+
+const MIN_TRACKS_FOR_PAGE = 30;
+
+const GENRE_PAGE_DEFS = {
+  deutschrap: { labelDe: "Deutschrap", labelEn: "German Rap", related: ["hiphop", "trap", "rnb"] },
+  hiphop: { labelDe: "Hip-Hop", labelEn: "Hip-Hop", related: ["deutschrap", "trap", "rnb"] },
+  trap: { labelDe: "Trap", labelEn: "Trap", related: ["hiphop", "drill", "phonk"] },
+  drill: { labelDe: "Drill", labelEn: "Drill", related: ["trap", "hiphop", "deutschrap"] },
+  rnb: { labelDe: "R&B", labelEn: "R&B", related: ["hiphop", "pop", "deutschrap"] },
+  techno: { labelDe: "Techno", labelEn: "Techno", related: ["house", "phonk", "pop"] },
+  house: { labelDe: "House", labelEn: "House", related: ["techno", "phonk", "pop"] },
+  phonk: { labelDe: "Phonk", labelEn: "Phonk", related: ["trap", "house", "techno"] },
+  country: { labelDe: "Country", labelEn: "Country", related: ["rock", "pop", "rnb"] },
+  pop: { labelDe: "Pop", labelEn: "Pop", related: ["rnb", "rock", "country"] },
+  rock: { labelDe: "Rock", labelEn: "Rock", related: ["country", "pop", "rnb"] },
+};
+
+const BAND_LABELS = {
+  subbass: { de: "Sub-Bass", en: "Sub-bass" },
+  bass: { de: "Bass", en: "Bass" },
+  lowmid: { de: "Low-Mid", en: "Low-mid" },
+  mid: { de: "Mid", en: "Mid" },
+  highmid: { de: "High-Mid", en: "High-mid" },
+  presence: { de: "Presence", en: "Presence" },
+  brilliance: { de: "Brillanz", en: "Air" },
+};
+
+function escapeHtmlWorker(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function fmt1(v) {
+  return v === null || v === undefined ? "–" : v.toFixed(1);
+}
+
+function genrePageHtml(slug, def, stats, trackCount, lang) {
+  const isDe = lang !== "en";
+  const label = isDe ? def.labelDe : def.labelEn;
+  const s = stats;
+
+  let dominantBand = null;
+  for (const [key, val] of Object.entries(s.bands)) {
+    if (val.median !== null && (!dominantBand || val.median > dominantBand[1].median)) dominantBand = [key, val];
+  }
+  const dominantBandLabel = dominantBand ? (isDe ? BAND_LABELS[dominantBand[0]].de : BAND_LABELS[dominantBand[0]].en) : "";
+
+  const intro = isDe
+    ? `Bei den bisher ${trackCount} auf Overhertz geprüften ${label}-Tracks zeigt sich ein klares Muster.`
+    : `Across the ${trackCount} ${label} tracks checked on Overhertz so far, a clear pattern emerges.`;
+
+  const loudnessText = isDe
+    ? `Die gemessene Lautheit liegt im Median bei ${fmt1(s.loudnessDb.median)} dB, die mittleren 50% der Tracks bewegen sich zwischen ${fmt1(s.loudnessDb.p25)} und ${fmt1(s.loudnessDb.p75)} dB.`
+    : `Measured loudness sits at a median of ${fmt1(s.loudnessDb.median)} dB, with the middle 50% of tracks falling between ${fmt1(s.loudnessDb.p25)} and ${fmt1(s.loudnessDb.p75)} dB.`;
+
+  const dynamicsText = isDe
+    ? `Der Dynamikumfang (Crest-Faktor) liegt im Median bei ${fmt1(s.crestFactorDb.median)} dB.`
+    : `Dynamic range (crest factor) has a median of ${fmt1(s.crestFactorDb.median)} dB.`;
+
+  const bandText = dominantBand
+    ? isDe
+      ? `Frequenzmäßig dominiert im Schnitt der ${dominantBandLabel}-Bereich mit ${fmt1(dominantBand[1].median)}% Energieanteil.`
+      : `In terms of frequency balance, the ${dominantBandLabel} range dominates on average with ${fmt1(dominantBand[1].median)}% of the energy.`
+    : "";
+
+  const monoText = isDe
+    ? `Die Phasenkorrelation (Mono-Kompatibilität) liegt im Median bei ${fmt1(s.phaseCorrelation.median)} – Werte nahe +1 bedeuten, der Track bleibt auch auf Handylautsprechern/in Mono-Playern voll hörbar.`
+    : `Phase correlation (mono compatibility) has a median of ${fmt1(s.phaseCorrelation.median)} – values near +1 mean the track stays fully audible on phone speakers/mono players.`;
+
+  const problemsHtml = s.problems
+    .filter((p) => p.pct > 0)
+    .slice(0, 5)
+    .map((p) => `<li><strong>${p.pct}%</strong> ${escapeHtmlWorker(isDe ? p.labelDe : p.labelEn)}</li>`)
+    .join("");
+
+  const relatedHtml = def.related
+    .map((relSlug) => {
+      const relDef = GENRE_PAGE_DEFS[relSlug];
+      if (!relDef) return "";
+      const relLabel = isDe ? relDef.labelDe : relDef.labelEn;
+      return `<a href="/check/${relSlug}${isDe ? "" : "?lang=en"}">${escapeHtmlWorker(relLabel)}</a>`;
+    })
+    .filter(Boolean)
+    .join(" · ");
+
+  const pageTitle = isDe
+    ? `${label}-Frequenzcheck: Typische Werte & Probleme | Overhertz`
+    : `${label} Frequency Check: Typical Values & Issues | Overhertz`;
+  const metaDescription = isDe
+    ? `Was ${trackCount} geprüfte ${label}-Tracks über Lautheit, Frequenzbalance und typische Probleme verraten – kostenloser KI-Songcheck bei Overhertz.`
+    : `What ${trackCount} checked ${label} tracks reveal about loudness, frequency balance, and common issues – free AI song check by Overhertz.`;
+  const canonical = `https://overhertz.app/check/${slug}${isDe ? "" : "?lang=en"}`;
+  const ctaHtml = isDe
+    ? `<a href="/index.html" class="cta-btn">Kostenlosen Check für deinen Track starten</a>`
+    : `<a href="/index.html?lang=en" class="cta-btn">Start a free check for your track</a>`;
+
+  return `<!doctype html>
+<html lang="${isDe ? "de" : "en"}">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>${escapeHtmlWorker(pageTitle)}</title>
+<meta name="description" content="${escapeHtmlWorker(metaDescription)}" />
+<link rel="canonical" href="${canonical}" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="${canonical}" />
+<meta property="og:site_name" content="Overhertz" />
+<meta property="og:title" content="${escapeHtmlWorker(pageTitle)}" />
+<meta property="og:description" content="${escapeHtmlWorker(metaDescription)}" />
+<meta property="og:image" content="https://overhertz.app/og-image.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="stylesheet" href="https://overhertz.app/style.css" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  body { max-width: 720px; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+  .genre-page h1 { font-family: var(--font-display); font-size: 2rem; margin-bottom: 0.4rem; }
+  .genre-page .lede { color: var(--text-secondary); margin-bottom: 2rem; }
+  .genre-page h2 { font-family: var(--font-display); font-size: 1.3rem; margin-top: 2.2rem; }
+  .genre-page ul { padding-left: 1.2rem; }
+  .genre-page .related a { color: var(--gold); text-decoration: none; }
+  .genre-page .cta-btn { display: inline-block; margin-top: 1.5rem; padding: 0.9rem 1.75rem; border-radius: 999px; background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: #241d10; font-weight: 700; text-decoration: none; }
+</style>
+</head>
+<body class="genre-page">
+  <p><a href="/index.html${isDe ? "" : "?lang=en"}">← Overhertz</a></p>
+  <h1>${escapeHtmlWorker(isDe ? `${label}: Typische Werte & Probleme` : `${label}: Typical Values & Issues`)}</h1>
+  <p class="lede">${escapeHtmlWorker(intro)}</p>
+
+  <h2>${isDe ? "Die Zahlen" : "The numbers"}</h2>
+  <p>${escapeHtmlWorker(loudnessText)} ${escapeHtmlWorker(dynamicsText)} ${escapeHtmlWorker(bandText)} ${escapeHtmlWorker(monoText)}</p>
+
+  <h2>${isDe ? "Häufigste Probleme in diesem Genre" : "Most common issues in this genre"}</h2>
+  <ul>${problemsHtml || `<li>${isDe ? "Keine auffälligen Muster gefunden." : "No notable patterns found."}</li>`}</ul>
+
+  <h2>${isDe ? "Wie steht dein Track da?" : "How does your track compare?"}</h2>
+  <p>${isDe ? "Overhertz prüft Lautheit, Frequenzbalance, Mono-Kompatibilität und mehr in Sekunden – kostenlos, ohne Konto." : "Overhertz checks loudness, frequency balance, mono compatibility and more in seconds – free, no account needed."}</p>
+  ${ctaHtml}
+
+  <h2>${isDe ? "Verwandte Genres" : "Related genres"}</h2>
+  <p class="related">${relatedHtml}</p>
+</body>
+</html>`;
+}
+
+async function handleGenrePage(request, env, slug) {
+  const url = new URL(request.url);
+  const lang = url.searchParams.get("lang") === "en" ? "en" : "de";
+  const def = GENRE_PAGE_DEFS[slug];
+  if (!def) return new Response("Not found", { status: 404 });
+  if (!env.DB) return new Response("Service unavailable", { status: 503 });
+
+  const row = await env.DB.prepare("SELECT track_count, stats_json FROM genre_stats WHERE genre_slug = ?").bind(slug).first();
+  if (!row || row.track_count < MIN_TRACKS_FOR_PAGE) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  const stats = JSON.parse(row.stats_json);
+  const html = genrePageHtml(slug, def, stats, row.track_count, lang);
+  return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
+}
+
+// Nur Genres, die die 30-Tracks-Schwelle bereits erreicht haben, bekommen einen Sitemap-Eintrag -
+// kein Eintrag fuer eine Seite, die (noch) 404 zurueckgibt. Referenziert von sitemap.xml (siehe
+// website/sitemap.xml, jetzt ein Sitemap-Index statt einer einzelnen urlset-Datei).
+async function handleSitemapGenres(env) {
+  if (!env.DB) {
+    return new Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>', {
+      status: 200,
+      headers: { "content-type": "application/xml; charset=utf-8" },
+    });
+  }
+  const { results } = await env.DB.prepare("SELECT genre_slug, updated_at FROM genre_stats WHERE track_count >= ?").bind(MIN_TRACKS_FOR_PAGE).all();
+  const urls = results
+    .filter((r) => GENRE_PAGE_DEFS[r.genre_slug])
+    .flatMap((r) => {
+      const lastmod = new Date(r.updated_at).toISOString().slice(0, 10);
+      return [
+        `  <url><loc>https://overhertz.app/check/${r.genre_slug}</loc><lastmod>${lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>`,
+        `  <url><loc>https://overhertz.app/check/${r.genre_slug}?lang=en</loc><lastmod>${lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>`,
+      ];
+    })
+    .join("\n");
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+  return new Response(xml, { status: 200, headers: { "content-type": "application/xml; charset=utf-8" } });
+}
+
 /* ---------- Stripe: Checkout & Webhook ---------- */
 
 function flattenParams(obj, body, prefix = "") {
@@ -978,6 +1262,16 @@ export default {
     if (url.pathname === "/track-metrics" && request.method === "POST") {
       return withRateLimit(env, "trackmetrics:" + clientIp, cors, () => handleTrackMetrics(request, env, cors));
     }
+    if (url.pathname === "/admin/aggregate-genres" && request.method === "POST") {
+      return handleAggregateGenres(request, env, cors);
+    }
+    if (url.pathname.startsWith("/check/") && request.method === "GET") {
+      const slug = url.pathname.slice("/check/".length).replace(/\/+$/, "");
+      return handleGenrePage(request, env, slug);
+    }
+    if (url.pathname === "/sitemap-genres.xml" && request.method === "GET") {
+      return handleSitemapGenres(env);
+    }
 
     if (request.method !== "POST") {
       return jsonResponse({ error: "Method not allowed" }, 405, cors);
@@ -991,5 +1285,12 @@ export default {
       }
     }
     return handleKiEinschaetzung(request, env, cors);
+  },
+
+  // Cloudflare Cron Trigger (siehe wrangler.toml [triggers] crons) - laeuft nachts automatisch,
+  // berechnet die Genre-Kennzahlen neu. Kein Rueckgabewert noetig, Fehler landen im Worker-Log.
+  async scheduled(event, env) {
+    if (!env.DB) return;
+    await aggregateGenreStats(env);
   },
 };
