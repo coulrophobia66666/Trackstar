@@ -1,8 +1,34 @@
 # Offene Punkte
 
-Stand: 2026-08-05. Code für alle Features unten ist geschrieben, committed
+Stand: 06.08.2026. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
+
+## ✅ NEU (06.08., neunter Durchgang): Frequenzbalance-Bug, Instrumental-Genres
+- **Bugfix Frequenzbalance-Score**: Zeigte bei echten Tracks fast immer 0/100
+  an. Ursache: Die 7 Frequenzbänder summieren sich immer auf 100 % – liegt
+  eines unter seinem Referenzbereich, müssen andere zwangsläufig darüber
+  liegen. Die bisherige unbegrenzt lineare Strafe pro Band hat sich dadurch
+  bei so gut wie jedem Track über alle Bänder aufsummiert und den Score auf
+  0 gedrückt, auch wenn nur 2-3 Bänder spürbar abwichen. Jetzt pro Band
+  gedeckelt (sanft abflachend statt hart abgeschnitten) – ein einzelnes
+  Band kann den Gesamtscore nicht mehr allein ruinieren. Mit synthetischen
+  Testsignalen nachgemessen (keine echte Musik verfügbar) – bitte an ein
+  paar echten Tracks gegenchecken, ob sich das jetzt plausibel anfühlt.
+- **Hinweis "noch in Bearbeitung" ohne Songtext**: Wenn kein Songtext
+  eingegeben wurde, wartet die KI-Einschätzung automatisch auf das
+  Vocals-Transkript – bisher blieb der Bereich bis dahin einfach leer/
+  unsichtbar, ohne jeden Hinweis. Jetzt steht dort sofort "noch in
+  Bearbeitung, wartet auf Transkription", aktualisiert sich automatisch
+  sobald die Transkription fertig ist (oder zeigt eine klare Meldung, falls
+  keine Transkription zustande kam).
+- **Genre-spezifische Behandlung instrumentaler Musik**: Bei Genres, wo ein
+  rein instrumentaler Track die Norm ist (aktuell: Techno, Klassik), wird
+  "kein Songtext" nicht mehr wie ein Mangel behandelt – kein "Songtext
+  fehlt"-Warnhinweis, sondern ein neutraler Hinweis, dass Hook/Songtitel
+  bei diesem Genre normal nicht bewertet werden. Die automatische
+  Warte-/Fehlermeldung zur KI-Einschätzung (siehe oben) bleibt für diese
+  Genres ebenfalls aus, da dort ohnehin kein Transkript zu erwarten ist.
 
 ## ✅ NEU (05.08., achter Durchgang): Konto-Leiste aufgeräumt, Passwort anzeigen
 - **Konto-Leiste umsortiert**: "Meine Checks", "Abo verwalten/kündigen" und
