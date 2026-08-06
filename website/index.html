@@ -323,7 +323,7 @@
               <input type="range" id="eq-seek" class="eq-seek" min="0" max="0" step="0.1" value="0" aria-label="Abspielposition" />
               <span class="eq-time" id="eq-time-total">0:00</span>
             </div>
-            <p class="hint eq-spectrum-hint" data-i18n="eqSpectrumHint">Wellenform deines Tracks – die goldene Markierung zeigt die Abspielposition.</p>
+            <p class="hint eq-spectrum-hint" data-i18n="eqSpectrumHint">Wellenform deines Tracks – die goldene Markierung zeigt die Abspielposition, die goldene Kurve darüber deine aktuelle EQ-Einstellung und reagiert sofort, wenn du an den Reglern unten drehst.</p>
           </div>
 
           <div class="eq-editor-controls eq-editor-controls-top">
@@ -335,10 +335,13 @@
           <div class="eq-sliders" id="eq-sliders"></div>
 
           <div class="eq-deesser">
-            <label class="eq-deesser-toggle">
-              <input type="checkbox" id="eq-deesser-enabled" />
-              <span data-i18n="eqDeesserToggle">Zischlaute reduzieren (De-Esser)</span>
-            </label>
+            <div class="eq-deesser-head">
+              <label class="eq-deesser-toggle">
+                <input type="checkbox" id="eq-deesser-enabled" />
+                <span data-i18n="eqDeesserToggle">Zischlaute reduzieren (De-Esser)</span>
+              </label>
+              <button type="button" id="eq-deesser-auto-btn" class="account-btn" data-i18n="eqDeesserAutoBtn">Nach unserer Empfehlung</button>
+            </div>
             <div class="eq-deesser-strength" id="eq-deesser-strength-wrap" hidden>
               <label for="eq-deesser-strength" data-i18n="eqDeesserStrength">Stärke</label>
               <input type="range" id="eq-deesser-strength" min="0" max="100" step="5" value="50" />

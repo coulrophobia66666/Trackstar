@@ -839,6 +839,14 @@ button#unlock-btn {
   margin-bottom: 1.2rem;
 }
 
+.eq-deesser-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
 .eq-deesser-toggle {
   display: flex;
   align-items: center;
