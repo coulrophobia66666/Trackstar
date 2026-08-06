@@ -1025,7 +1025,14 @@ const GENRE_PROFILES = {
   hiphop: {
     key: "hiphop",
     loudnessTarget: -9,
-    refs: [[4, 10], [18, 30], [9, 16], [18, 28], [9, 16], [5, 11], [3, 9]],
+    // Subbass/Bass-Obergrenze angehoben, Presence/Brillanz-Untergrenze gesenkt: moderne
+    // 808-lastige Trap-/Hip-Hop-Produktion konzentriert einen deutlich groesseren Anteil der
+    // rohen Spektralenergie im Bassbereich als die alte Referenz erwartete - das hat systematisch
+    // zu starke Bass-Cut- und Hoehen-Boost-Vorschlaege ausgeloest (Nutzer-Feedback anhand vieler
+    // echter Trap-Checks). Da alle 7 Baender sich immer auf 100% aufsummieren, driften die
+    // uebrigen Baender-Prozentwerte automatisch mit, wenn der Bassanteil realistischer
+    // kalibriert ist - Presence/Brillanz brauchten trotzdem eine eigene Anpassung nach unten.
+    refs: [[5, 20], [16, 32], [9, 16], [18, 28], [9, 16], [4, 10], [2, 8]],
     fingerprint: { bpmRange: [70, 100], brightnessRange: [700, 1800], bassRatioRange: [20, 38], crestRange: [6, 15] },
   },
   pop: {
@@ -4082,10 +4089,15 @@ if (eqFadeOutEl) {
 if (eqSuggestBtn) {
   eqSuggestBtn.addEventListener("click", () => {
     if (!eqLastMetrics || !eqLastProfile) return;
+    // Bei mehreren gleichzeitig "zu niedrigen" Nachbarbaendern (z.B. bassbetonte Trap-Tracks mit
+    // wenig Mitten) summieren sich die ueberlappenden Q=1-Peaking-Filter in der Kette - ein
+    // Klemmwert wie beim manuellen Regler (+-12dB pro Band) waere hier schon bei 2-3 gleichzeitig
+    // korrigierten Nachbarbaendern hoerbar unnatuerlich. +-6dB pro Band entspricht eher dem, was
+    // in echter korrektiver Mischung in einem automatischen Vorschlag vertretbar ist.
     eqGains = FREQ_BANDS.map((band, i) => {
       const [lo, hi] = eqLastProfile.refs[i];
       const suggested = suggestedEqGainDb(eqLastMetrics.bandPercents[i], lo, hi);
-      return Math.max(-12, Math.min(12, suggested));
+      return Math.max(-6, Math.min(6, suggested));
     });
     renderEqSliders();
     if (eqPlaying) updateEqFilterGains();

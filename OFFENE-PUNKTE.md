@@ -4,6 +4,77 @@ Stand: 06.08.2026. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ NEU (06.08., dreizehnter Durchgang): Hip-Hop/Trap-Referenzwerte neu kalibriert
+Nutzer-Feedback anhand vieler echter Trap-/Hip-Hop-Checks: EQ-Vorschlag hat
+systematisch zu viel Bass rausgenommen und die Höhen zu stark hochgedreht.
+Ursache gefunden und mit einem synthetischen bassdominanten Testsignal
+verifiziert: Die alte Subbass-Referenz (4-10%) war für modernes,
+808-lastiges Trap/Hip-Hop zu eng – ein bassdominanter Track hat dadurch
+einen -8.1dB-Cut-Vorschlag bekommen. Da sich alle 7 Frequenzbänder immer
+auf 100% aufsummieren, hat der dadurch künstlich hohe "Bass ist zu laut"-
+Ausschlag automatisch auch die anderen Bänder (inkl. Höhen) nach unten
+verzerrt und Boost-Vorschläge ausgelöst, wo eigentlich keiner nötig war.
+Subbass-/Bass-Obergrenze angehoben, Presence-/Brillanz-Untergrenze gesenkt
+(betrifft EQ-Vorschlag, Frequenzbalance-Score und -Tipps gleichermaßen, da
+alle dieselbe Referenz nutzen). Nach dem Fix beim selben Testsignal nur noch
+-5.1dB Subbass-Cut, Bass-Band nicht mehr angeschlagen. Bewusst nur eine
+grobe Kalibrierung, keine exakte Wissenschaft (kein echtes Trap-Material im
+Sandbox verfügbar) – die im letzten Durchgang gebaute Genre-Statistik-
+Infrastruktur ist genau dafür gedacht, das später mit echten Zahlen aus
+vielen geprüften Tracks nachzuschärfen.
+
+## ✅ NEU (06.08., zwölfter Durchgang): Genre-Statistik-Seiten (Fundament fertig)
+Kompletter Unterbau für "Was ist bei Trap-Tracks typisch?"-SEO-Seiten – anonym,
+getrennt von der eigentlichen Bewertungslogik, damit sich Referenzwerte nicht
+selbstreferenziell an unfertigen Nutzer-Uploads kalibrieren.
+
+- **Aggregation**: `aggregateGenreStats` im Worker berechnet je Genre Median/
+  Perzentile aller Messwerte plus Anteil "auffälliger" Tracks in 6 genre-
+  unabhängigen Kategorien (Überkomprimierung, Mono-Probleme, zu kurz, niedrige
+  Bittiefe, Metadaten-Auffälligkeiten, True-Peak-Clipping-Risiko), schreibt
+  das Ergebnis in `genre_stats`. Läuft nachts per Cloudflare Cron Trigger
+  (`0 3 * * *`) automatisch, zusätzlich manuell über
+  `POST /admin/aggregate-genres` (braucht Header `x-admin-secret` mit dem
+  Secret `ADMIN_SECRET`, einmalig im Dashboard setzen).
+- **Genre-Seiten** `/check/:slug`: serverseitig direkt aus `genre_stats`
+  gerendert (kein Build-Step, passt zur bestehenden Architektur). Eigener
+  Title/Meta-Description/OG-Tags/Canonical pro Seite, DE/EN über
+  `?lang=en`. Erscheinen erst ab 30 Tracks im Genre – darunter 404 statt
+  einer dünnen Seite. Neues Genre = neuer Eintrag in `GENRE_PAGE_DEFS`,
+  sonst nichts.
+- **Sitemap**: `sitemap.xml` ist jetzt ein Sitemap-Index; `sitemap-pages.xml`
+  (statisch, wie bisher) + `sitemap-genres.xml` (vom Worker dynamisch erzeugt,
+  nur Genres über der 30er-Schwelle).
+- **CLI-Backfill** (`scripts/backfill-cli.js`): nimmt Ordner + Genre-Slug
+  entgegen, steuert einen echten (unsichtbaren) Browser gegen die Website
+  und nutzt exakt dieselbe Analyse wie ein normaler Upload – keine zweite
+  Implementierung. Meldet die Rohwerte mit `isSeed:true`, zeigt nichts an,
+  verbraucht keine Credits. End-to-end gegen einen lokalen Mock-Server
+  getestet.
+- **Datenschutzerklärung** um die neue anonyme Datenverarbeitung ergänzt.
+- Bewusst nicht gemacht: die Analyse-Kernfunktionen in ein eigenes,
+  gemeinsam genutztes Modul auslagern (ursprünglich geplant, damit auch das
+  CLI-Skript sie direkt importieren könnte) – die Funktionen sind stärker
+  mit dem Rest von `app.js` verflochten als gedacht, ein manueller
+  Extraktions-Schnitt hätte ein echtes Risiko für die produktive
+  Analyse-Pipeline. Stattdessen steuert das CLI-Skript einen echten Browser
+  gegen die unveränderte Website (siehe oben) – erreicht dieselbe
+  "keine zweite Wahrheit"-Garantie ohne das Risiko, nur etwas langsamer
+  pro Datei.
+- **Manueller Einrichtungsschritt (einmalig, noch offen)**: Die neuen
+  Worker-Routen (`/check/*`, `/sitemap-genres.xml`, `/track-metrics`,
+  `/admin/aggregate-genres`) sind aktuell nur auf der Worker-eigenen Domain
+  erreichbar. Damit `overhertz.app/check/trap` funktioniert, braucht es eine
+  Cloudflare-Route, die diese Pfade vom Pages-Projekt zum Worker
+  durchreicht – noch nicht eingerichtet. Zusätzlich: `check_results` und
+  `genre_stats` einmalig per `schema.sql` in der D1-Console anlegen (wie
+  bei jeder bisherigen Schema-Änderung), sowie den Cron Trigger und das
+  Secret `ADMIN_SECRET` im Worker-Dashboard setzen.
+- Genre-Dropdown zusätzlich um Trap/Drill/Deutschrap/R&B/House/Phonk/
+  Country erweitert (aus dem elften Durchgang, siehe unten) – damit auch
+  organische Kunden-Checks in diese feineren Kategorien einzahlen, nicht
+  nur der Backfill.
+
 ## ✅ NEU (06.08., elfter Durchgang): Songtitel-Score nach Wiederholung, 4 neue Fakten-Kennzahlen
 - **Songtitel-erkennbar-Score neu berechnet**: Bisher ein grobes 3-Stufen-Raster
   (100/55/15 je nachdem ob der Titel in der Hookzeile, sonst im Text oder gar

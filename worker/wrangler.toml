@@ -15,3 +15,9 @@ period = 60
 binding = "DB"
 database_name = "overhertz-db"
 database_id = "9b018ec9-57cc-4410-a69d-492bfd160611"
+
+# Nachts um 3 Uhr UTC: Genre-Kennzahlen aus check_results neu berechnen (siehe scheduled-Handler
+# in songtext-worker.js). Manuell zusaetzlich ueber POST /admin/aggregate-genres anstossbar
+# (braucht den Secret ADMIN_SECRET, einmalig im Cloudflare-Dashboard unter Settings setzen).
+[triggers]
+crons = ["0 3 * * *"]
