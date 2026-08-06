@@ -228,8 +228,8 @@ const I18N = {
     tipNoLyricsFix: "Songtext ergänzen, dann können Hook & Songtitel mitbewertet werden.",
     tipNoLyricsInstrumentalNote: "Kein Songtext – bei diesem Genre ist ein rein instrumentaler Track normal, Hook & Songtitel fließen deshalb nicht in die Bewertung ein.",
     tipHookWeakProblem: "Im Text ist keine klar wiederholte Hookline erkennbar.",
-    tipHookWeakDetail: "Das erhöht den Wiedererkennungswert.",
-    tipHookWeakFix: "Eine Zeile (idealerweise mit dem Songtitel) 2–3x wiederholen, um eine klare Hook zu schaffen.",
+    tipHookWeakDetail: "Erhöht meist den Wiedererkennungswert – bei bewusst storytelling-lastigen Texten (Spoken-Word, erzählende Strophen ohne Refrain) ist das Fehlen einer Hook aber stilistisch normal, kein Fehler.",
+    tipHookWeakFix: "Falls gewollt: eine Zeile (idealerweise mit dem Songtitel) 2–3x wiederholen, um eine klare Hook zu schaffen.",
     tipTitleMissingProblem: "Der Songtitel taucht im Text gar nicht auf.",
     tipTitleMissingDetail: "Hörer erinnern sich deutlich leichter, wenn der Titel tatsächlich gesungen wird.",
     tipTitleMissingFix: "Den Songtitel tatsächlich im Text singen/erwähnen.",
@@ -622,8 +622,8 @@ const I18N = {
     tipNoLyricsFix: "Add lyrics so the hook and song title can be scored too.",
     tipNoLyricsInstrumentalNote: "No lyrics – for this genre, a purely instrumental track is normal, so hook & song title aren't factored into the score.",
     tipHookWeakProblem: "No clearly repeated hook line is recognizable in the lyrics.",
-    tipHookWeakDetail: "This boosts memorability.",
-    tipHookWeakFix: "Repeat one line (ideally containing the song title) 2–3 times to create a clear hook.",
+    tipHookWeakDetail: "Usually boosts memorability – but for deliberately storytelling-driven lyrics (spoken word, narrative verses without a chorus), not having a hook is stylistically normal, not a flaw.",
+    tipHookWeakFix: "If that's what you want: repeat one line (ideally containing the song title) 2–3 times to create a clear hook.",
     tipTitleMissingProblem: "The song title doesn't appear in the lyrics at all.",
     tipTitleMissingDetail: "Listeners remember much more easily when the title is actually sung.",
     tipTitleMissingFix: "Actually sing/mention the song title in the lyrics.",
@@ -1112,12 +1112,18 @@ const GENRE_SLUG_TO_PROFILE = {
 
 function genreProfile(genreKey) {
   const profileKey = GENRE_SLUG_TO_PROFILE[genreKey] || genreKey;
-  return GENRE_PROFILES[profileKey] || GENRE_PROFILES[""];
+  const base = GENRE_PROFILES[profileKey] || GENRE_PROFILES[""];
+  // rawKey haelt die tatsaechlich gewaehlte (evtl. feinere) Genre-Angabe fest, z.B. "house" auch
+  // wenn intern das breitere "edm"-Profil fuer die Zielwerte genutzt wird - manche Eigenschaften
+  // (z.B. "hier ist instrumental normal") haengen am spezifischen Subgenre, nicht am Elternprofil.
+  return Object.assign({}, base, { rawKey: genreKey || base.key });
 }
 
 // Genres, bei denen ein rein instrumentaler Track die Norm ist (kein Songtext ist hier kein
 // Mangel) - Hook-/Songtitel-Erkennbarkeit sollen dafuer nicht wie ein Fehler behandelt werden.
-const TYPICALLY_INSTRUMENTAL_GENRES = ["techno", "klassik"];
+// Bewusst die feineren Subgenre-Slugs (nicht das Elternprofil) - "edm" pauschal wuerde z.B. auch
+// vokallastige Festival-EDM mit einschliessen, wo fehlender Text durchaus ein echtes Manko waere.
+const TYPICALLY_INSTRUMENTAL_GENRES = ["techno", "klassik", "house", "phonk"];
 
 /* ---------- Automatische Genre-Schätzung (Tempo, Klangfarbe, Bassanteil, Dynamik) ----------
    Kein trainiertes ML-Modell, sondern ein grober Signal-Fingerabdruck-Vergleich mit den
@@ -1695,7 +1701,7 @@ function buildTips(a, lyrics, scores, profile) {
   }
 
   if (!lyrics.hasLyrics) {
-    if (TYPICALLY_INSTRUMENTAL_GENRES.includes(profile.key)) {
+    if (TYPICALLY_INSTRUMENTAL_GENRES.includes(profile.rawKey)) {
       const problem = t("tipNoLyricsInstrumentalNote");
       tips.push({ level: "good", problem, fix: "", text: tipText(problem, null, "") });
     } else {
@@ -2621,7 +2627,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { u
     fireConfetti(document.getElementById("confetti-layer"));
   }
 
-  const isInstrumentalGenre = TYPICALLY_INSTRUMENTAL_GENRES.includes(profile.key);
+  const isInstrumentalGenre = TYPICALLY_INSTRUMENTAL_GENRES.includes(profile.rawKey);
   const lyricsMissingLabel = isInstrumentalGenre && !lyrics.hasLyrics ? t("meterInstrumentalGenre") : t("meterLyricsMissing");
 
   renderBadges(document.getElementById("badges"), [
