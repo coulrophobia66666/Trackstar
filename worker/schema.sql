@@ -74,3 +74,52 @@ CREATE INDEX IF NOT EXISTS idx_checks_user ON checks(user_id);
 -- ALTER TABLE checks ADD COLUMN improved_lyrics TEXT;
 -- ALTER TABLE checks ADD COLUMN tips TEXT;
 -- ALTER TABLE checks ADD COLUMN fazit TEXT;
+
+-- Anonyme Rohmesswerte je Check, bewusst getrennt von der user-gebundenen "checks"-Tabelle:
+-- kein user_id, kein Songtitel, keine Audiodatei - nur Zahlen + Genre-Slug. Grundlage fuer die
+-- Genre-Statistik-Seiten (siehe genre_stats). Speichert die Messwerte, nicht das Urteil (kein
+-- Score/keine Ampel) - Perzentile lassen sich nur aus den Rohzahlen berechnen. Komplett getrennt
+-- von der eigentlichen Bewertungslogik (GENRE_PROFILES) gehalten, damit sich Referenzwerte nicht
+-- selbstreferenziell an den eigenen (teils unfertigen) Nutzer-Uploads "kalibrieren".
+CREATE TABLE IF NOT EXISTS check_results (
+  id TEXT PRIMARY KEY,
+  genre_slug TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  is_seed INTEGER NOT NULL DEFAULT 0, -- 1 = manuell per Backfill-Skript eingespielt, nicht organisch von einem Kunden
+
+  -- Frequenzbaender, Energieanteil in % (7 Baender, siehe FREQ_BANDS in website/app.js)
+  band_subbass REAL,
+  band_bass REAL,
+  band_lowmid REAL,
+  band_mid REAL,
+  band_highmid REAL,
+  band_presence REAL,
+  band_brilliance REAL,
+
+  loudness_db REAL,
+  true_peak_db REAL,
+  crest_factor_db REAL,
+  phase_correlation REAL,
+
+  intro_silence_ms REAL,
+  outro_ends_abruptly INTEGER, -- 0/1
+
+  duration_s REAL,
+  sample_rate INTEGER,
+  bit_depth INTEGER, -- NULL bei komprimierten Formaten (nur aus WAV-Header auslesbar)
+
+  metadata_violation_count INTEGER, -- Anzahl Formatcheck-Auffaelligkeiten am Titel (ALL CAPS, Emoji, feat.-Format, Sonderzeichen)
+  title_occurrences INTEGER -- wie oft der Songtitel im Songtext vorkommt
+);
+
+CREATE INDEX IF NOT EXISTS idx_check_results_genre ON check_results(genre_slug);
+
+-- Vorberechnete Kennzahlen je Genre, nachts per Cron Trigger aus check_results aggregiert (siehe
+-- worker/songtext-worker.js, scheduled-Handler). Die Genre-Seiten lesen nur aus dieser Tabelle -
+-- keine Live-Berechnung bei jedem Seitenaufruf, trennt Sammeln von Auswerten.
+CREATE TABLE IF NOT EXISTS genre_stats (
+  genre_slug TEXT PRIMARY KEY,
+  updated_at INTEGER NOT NULL,
+  track_count INTEGER NOT NULL,
+  stats_json TEXT NOT NULL -- JSON: Median/Perzentile je Messwert, Anteil auffaelliger Tracks je Kategorie, haeufigstes Problem
+);

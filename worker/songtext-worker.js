@@ -475,6 +475,77 @@ async function handleCheckDetail(request, env, cors, checkId) {
   );
 }
 
+/* ---------- Anonyme Rohmesswerte fuer Genre-Statistik-Seiten ----------
+   Oeffentlicher, nicht authentifizierter Endpunkt (bewusst anonym: keine user_id, kein
+   Songtitel, keine Audiodatei) - nimmt nach jedem Check die reinen Messwerte entgegen und
+   schreibt sie in check_results. Wird sowohl vom Frontend (nach jeder Analyse, best-effort,
+   blockiert die UI nicht) als auch vom CLI-Backfill-Skript (mit isSeed=true) aufgerufen - beide
+   nutzen denselben Endpunkt, damit es nur einen Schreibpfad/eine Wahrheit gibt. */
+
+function numOrNull(v, min, max) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  if (min !== undefined && n < min) return null;
+  if (max !== undefined && n > max) return null;
+  return n;
+}
+
+function isValidGenreSlug(slug) {
+  return typeof slug === "string" && /^[a-z0-9-]{1,40}$/.test(slug);
+}
+
+async function handleTrackMetrics(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const body = await safeJson(request);
+  const genreSlug = typeof body.genreSlug === "string" ? body.genreSlug.trim().toLowerCase() : "";
+  if (!isValidGenreSlug(genreSlug)) {
+    return jsonResponse({ error: "Ungueltiger genreSlug." }, 400, cors);
+  }
+
+  const m = body.metrics && typeof body.metrics === "object" ? body.metrics : {};
+  const bands = Array.isArray(m.bandPercents) ? m.bandPercents : [];
+
+  await env.DB.prepare(
+    `INSERT INTO check_results (
+      id, genre_slug, created_at, is_seed,
+      band_subbass, band_bass, band_lowmid, band_mid, band_highmid, band_presence, band_brilliance,
+      loudness_db, true_peak_db, crest_factor_db, phase_correlation,
+      intro_silence_ms, outro_ends_abruptly,
+      duration_s, sample_rate, bit_depth,
+      metadata_violation_count, title_occurrences
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(
+      crypto.randomUUID(),
+      genreSlug,
+      Date.now(),
+      body.isSeed === true ? 1 : 0,
+      numOrNull(bands[0], 0, 100),
+      numOrNull(bands[1], 0, 100),
+      numOrNull(bands[2], 0, 100),
+      numOrNull(bands[3], 0, 100),
+      numOrNull(bands[4], 0, 100),
+      numOrNull(bands[5], 0, 100),
+      numOrNull(bands[6], 0, 100),
+      numOrNull(m.loudnessDb, -80, 20),
+      numOrNull(m.truePeakDb, -80, 20),
+      numOrNull(m.crestFactorDb, 0, 60),
+      numOrNull(m.phaseCorrelation, -1, 1),
+      numOrNull(m.introSilenceMs, 0, 600000),
+      m.outroEndsAbruptly === true ? 1 : 0,
+      numOrNull(m.duration, 0, 36000),
+      numOrNull(m.sampleRate, 1000, 400000),
+      Number.isInteger(m.bitDepth) ? m.bitDepth : null,
+      numOrNull(m.metadataViolationCount, 0, 50),
+      numOrNull(m.titleOccurrences, 0, 1000)
+    )
+    .run();
+
+  return jsonResponse({ ok: true }, 200, cors);
+}
+
 /* ---------- Stripe: Checkout & Webhook ---------- */
 
 function flattenParams(obj, body, prefix = "") {
@@ -903,6 +974,9 @@ export default {
     }
     if (url.pathname === "/check-detail" && request.method === "GET") {
       return handleCheckDetail(request, env, cors, url.searchParams.get("id") || "");
+    }
+    if (url.pathname === "/track-metrics" && request.method === "POST") {
+      return withRateLimit(env, "trackmetrics:" + clientIp, cors, () => handleTrackMetrics(request, env, cors));
     }
 
     if (request.method !== "POST") {
