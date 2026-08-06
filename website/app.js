@@ -70,6 +70,13 @@ const I18N = {
     genreJazz: "Jazz",
     genreKlassik: "Klassik",
     genreVolksmusik: "Volksmusik",
+    genreDeutschrap: "Deutschrap",
+    genreTrap: "Trap",
+    genreDrill: "Drill",
+    genreRnb: "R&B",
+    genreHouse: "House",
+    genrePhonk: "Phonk",
+    genreCountry: "Country",
     analyzeBtn: "Analyse starten",
     albumHeading: "Album-Check",
     albumHint: "Mehrere Tracks auf einmal prüfen (Kurz-Check: Klangqualität, Lautheit, Frequenzbalance). Teil des Pro-Plans – jeder Track zählt als ein Check von deinem Monats-Kontingent.",
@@ -221,8 +228,8 @@ const I18N = {
     tipNoLyricsFix: "Songtext ergänzen, dann können Hook & Songtitel mitbewertet werden.",
     tipNoLyricsInstrumentalNote: "Kein Songtext – bei diesem Genre ist ein rein instrumentaler Track normal, Hook & Songtitel fließen deshalb nicht in die Bewertung ein.",
     tipHookWeakProblem: "Im Text ist keine klar wiederholte Hookline erkennbar.",
-    tipHookWeakDetail: "Das erhöht den Wiedererkennungswert.",
-    tipHookWeakFix: "Eine Zeile (idealerweise mit dem Songtitel) 2–3x wiederholen, um eine klare Hook zu schaffen.",
+    tipHookWeakDetail: "Erhöht meist den Wiedererkennungswert – bei bewusst storytelling-lastigen Texten (Spoken-Word, erzählende Strophen ohne Refrain) ist das Fehlen einer Hook aber stilistisch normal, kein Fehler.",
+    tipHookWeakFix: "Falls gewollt: eine Zeile (idealerweise mit dem Songtitel) 2–3x wiederholen, um eine klare Hook zu schaffen.",
     tipTitleMissingProblem: "Der Songtitel taucht im Text gar nicht auf.",
     tipTitleMissingDetail: "Hörer erinnern sich deutlich leichter, wenn der Titel tatsächlich gesungen wird.",
     tipTitleMissingFix: "Den Songtitel tatsächlich im Text singen/erwähnen.",
@@ -457,6 +464,13 @@ const I18N = {
     genreJazz: "Jazz",
     genreKlassik: "Classical",
     genreVolksmusik: "Folk / Traditional",
+    genreDeutschrap: "German rap",
+    genreTrap: "Trap",
+    genreDrill: "Drill",
+    genreRnb: "R&B",
+    genreHouse: "House",
+    genrePhonk: "Phonk",
+    genreCountry: "Country",
     analyzeBtn: "Start analysis",
     albumHeading: "Album check",
     albumHint: "Check multiple tracks at once (quick check: sound quality, loudness, frequency balance). Part of the Pro plan – each track counts as one check from your monthly quota.",
@@ -608,8 +622,8 @@ const I18N = {
     tipNoLyricsFix: "Add lyrics so the hook and song title can be scored too.",
     tipNoLyricsInstrumentalNote: "No lyrics – for this genre, a purely instrumental track is normal, so hook & song title aren't factored into the score.",
     tipHookWeakProblem: "No clearly repeated hook line is recognizable in the lyrics.",
-    tipHookWeakDetail: "This boosts memorability.",
-    tipHookWeakFix: "Repeat one line (ideally containing the song title) 2–3 times to create a clear hook.",
+    tipHookWeakDetail: "Usually boosts memorability – but for deliberately storytelling-driven lyrics (spoken word, narrative verses without a chorus), not having a hook is stylistically normal, not a flaw.",
+    tipHookWeakFix: "If that's what you want: repeat one line (ideally containing the song title) 2–3 times to create a clear hook.",
     tipTitleMissingProblem: "The song title doesn't appear in the lyrics at all.",
     tipTitleMissingDetail: "Listeners remember much more easily when the title is actually sung.",
     tipTitleMissingFix: "Actually sing/mention the song title in the lyrics.",
@@ -990,6 +1004,13 @@ const GENRE_LABEL_KEYS = {
   jazz: "genreJazz",
   klassik: "genreKlassik",
   volksmusik: "genreVolksmusik",
+  deutschrap: "genreDeutschrap",
+  trap: "genreTrap",
+  drill: "genreDrill",
+  rnb: "genreRnb",
+  house: "genreHouse",
+  phonk: "genrePhonk",
+  country: "genreCountry",
 };
 
 function genreLabel(genreKey) {
@@ -1075,13 +1096,34 @@ const GENRE_PROFILES = {
   },
 };
 
+// Feinere Genre-Auswahl (fuer Nutzer praeziser, fuer SEO-Tracking als eigene Kategorie zaehlbar),
+// die aber noch keine eigenen recherchierten Zielwerte hat - nutzt stattdessen die Referenzwerte
+// des musikalisch naechstliegenden Hauptgenres. Kein separater Eintrag in GENRE_PROFILES noetig,
+// bis dafuer mal eigene Werte recherchiert werden.
+const GENRE_SLUG_TO_PROFILE = {
+  deutschrap: "hiphop",
+  trap: "hiphop",
+  drill: "hiphop",
+  rnb: "pop",
+  house: "edm",
+  phonk: "edm",
+  country: "acoustic",
+};
+
 function genreProfile(genreKey) {
-  return GENRE_PROFILES[genreKey] || GENRE_PROFILES[""];
+  const profileKey = GENRE_SLUG_TO_PROFILE[genreKey] || genreKey;
+  const base = GENRE_PROFILES[profileKey] || GENRE_PROFILES[""];
+  // rawKey haelt die tatsaechlich gewaehlte (evtl. feinere) Genre-Angabe fest, z.B. "house" auch
+  // wenn intern das breitere "edm"-Profil fuer die Zielwerte genutzt wird - manche Eigenschaften
+  // (z.B. "hier ist instrumental normal") haengen am spezifischen Subgenre, nicht am Elternprofil.
+  return Object.assign({}, base, { rawKey: genreKey || base.key });
 }
 
 // Genres, bei denen ein rein instrumentaler Track die Norm ist (kein Songtext ist hier kein
 // Mangel) - Hook-/Songtitel-Erkennbarkeit sollen dafuer nicht wie ein Fehler behandelt werden.
-const TYPICALLY_INSTRUMENTAL_GENRES = ["techno", "klassik"];
+// Bewusst die feineren Subgenre-Slugs (nicht das Elternprofil) - "edm" pauschal wuerde z.B. auch
+// vokallastige Festival-EDM mit einschliessen, wo fehlender Text durchaus ein echtes Manko waere.
+const TYPICALLY_INSTRUMENTAL_GENRES = ["techno", "klassik", "house", "phonk"];
 
 /* ---------- Automatische Genre-Schätzung (Tempo, Klangfarbe, Bassanteil, Dynamik) ----------
    Kein trainiertes ML-Modell, sondern ein grober Signal-Fingerabdruck-Vergleich mit den
@@ -1281,6 +1323,32 @@ function computePhaseCorrelation(buffer) {
   return Math.max(-1, Math.min(1, sumLR / denom));
 }
 
+// Naeherung an True Peak (ITU-R BS.1770): Sample-Peak (einfach das lauteste Sample) uebersieht
+// Ueberschreitungen, die erst zwischen zwei Samples bei der D/A-Wandlung entstehen (Inter-Sample-
+// Peaks) - kommt bei stark limitierten/lauten Masters vor. 4x-Oversampling per linearer
+// Interpolation findet die meisten davon; kein vollwertiger bandbegrenzter Oversampler wie in
+// professionellen Metering-Tools, aber reicht, um sie von echten Vollausschlaegen zu unterscheiden.
+function computeTruePeakDb(mono) {
+  const OVERSAMPLE = 4;
+  const length = mono.length;
+  let truePeak = 0;
+  for (let i = 0; i < length - 1; i++) {
+    const a = mono[i];
+    const b = mono[i + 1];
+    const absA = Math.abs(a);
+    if (absA > truePeak) truePeak = absA;
+    for (let k = 1; k < OVERSAMPLE; k++) {
+      const absInterp = Math.abs(a + ((b - a) * k) / OVERSAMPLE);
+      if (absInterp > truePeak) truePeak = absInterp;
+    }
+  }
+  if (length > 0) {
+    const last = Math.abs(mono[length - 1]);
+    if (last > truePeak) truePeak = last;
+  }
+  return 20 * Math.log10(truePeak || 1e-9);
+}
+
 function analyzeAudioBuffer(buffer) {
   const sampleRate = buffer.sampleRate;
   const numChannels = buffer.numberOfChannels;
@@ -1306,6 +1374,7 @@ function analyzeAudioBuffer(buffer) {
   const clippingRatio = clippedSamples / length;
   const loudnessDb = computeGatedLoudnessDb(mono, sampleRate);
   const crestFactorDb = 20 * Math.log10((peak || 1e-9) / (rms || 1e-9));
+  const truePeakDb = computeTruePeakDb(mono);
 
   const window = hann(FFT_SIZE);
   const bandEnergy = new Array(FREQ_BANDS.length).fill(0);
@@ -1364,6 +1433,7 @@ function analyzeAudioBuffer(buffer) {
     clippingRatio,
     loudnessDb,
     crestFactorDb,
+    truePeakDb,
     phaseCorrelation,
     bandPercents,
     framesUsed,
@@ -1631,7 +1701,7 @@ function buildTips(a, lyrics, scores, profile) {
   }
 
   if (!lyrics.hasLyrics) {
-    if (TYPICALLY_INSTRUMENTAL_GENRES.includes(profile.key)) {
+    if (TYPICALLY_INSTRUMENTAL_GENRES.includes(profile.rawKey)) {
       const problem = t("tipNoLyricsInstrumentalNote");
       tips.push({ level: "good", problem, fix: "", text: tipText(problem, null, "") });
     } else {
@@ -2087,6 +2157,35 @@ async function apiFetch(path, options = {}) {
   return { ok: res.ok, status: res.status, data };
 }
 
+// Meldet anonyme Rohmesswerte fuer die Genre-Statistik-Seiten - bewusst OHNE Auth-Header (kein
+// Nutzerbezug), best effort (kein await im Aufrufer noetig, Fehler werden verschluckt), blockiert
+// die eigentliche Analyse nie. Keine Audiodatei/Songtitel/Nutzerdaten, nur Zahlen + Genre-Slug.
+function reportAnonymousMetrics(genreSlug, audioMetrics, fileInfo, metadataViolationCount, titleOccurrences) {
+  if (!genreSlug) return;
+  const payload = {
+    genreSlug,
+    metrics: {
+      bandPercents: audioMetrics.bandPercents,
+      loudnessDb: audioMetrics.loudnessDb,
+      truePeakDb: audioMetrics.truePeakDb,
+      crestFactorDb: audioMetrics.crestFactorDb,
+      phaseCorrelation: audioMetrics.phaseCorrelation,
+      introSilenceMs: audioMetrics.introSilenceMs,
+      outroEndsAbruptly: audioMetrics.outroEndsAbruptly,
+      duration: audioMetrics.duration,
+      sampleRate: audioMetrics.sampleRate,
+      bitDepth: fileInfo && Number.isInteger(fileInfo.bitDepth) ? fileInfo.bitDepth : null,
+      metadataViolationCount: metadataViolationCount || 0,
+      titleOccurrences: titleOccurrences || 0,
+    },
+  };
+  fetch(WORKER_BASE + "track-metrics", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+}
+
 const accountBar = document.getElementById("account-bar");
 const authCard = document.getElementById("auth-card");
 const authStatus = document.getElementById("auth-status");
@@ -2528,7 +2627,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { u
     fireConfetti(document.getElementById("confetti-layer"));
   }
 
-  const isInstrumentalGenre = TYPICALLY_INSTRUMENTAL_GENRES.includes(profile.key);
+  const isInstrumentalGenre = TYPICALLY_INSTRUMENTAL_GENRES.includes(profile.rawKey);
   const lyricsMissingLabel = isInstrumentalGenre && !lyrics.hasLyrics ? t("meterInstrumentalGenre") : t("meterLyricsMissing");
 
   renderBadges(document.getElementById("badges"), [
@@ -2866,44 +2965,44 @@ function buildFormatCheck({ title, audioMetrics, fileInfo }) {
     const forbiddenChars = titleTrimmed.match(/[<>|\\^~*$%#{}[\]]/g);
 
     if (hasEmoji) {
-      items.push({ level: "warning", text: t("formatTitleEmoji") });
+      items.push({ level: "warning", category: "metadata", text: t("formatTitleEmoji") });
     }
     if (isAllCaps) {
-      items.push({ level: "warning", text: t("formatTitleAllCaps") });
+      items.push({ level: "warning", category: "metadata", text: t("formatTitleAllCaps") });
     }
     if (badFeat) {
-      items.push({ level: "warning", text: t("formatTitleFeat") });
+      items.push({ level: "warning", category: "metadata", text: t("formatTitleFeat") });
     }
     if (forbiddenChars && forbiddenChars.length > 0) {
-      items.push({ level: "warning", text: t("formatTitleChars", { chars: [...new Set(forbiddenChars)].join(" ") }) });
+      items.push({ level: "warning", category: "metadata", text: t("formatTitleChars", { chars: [...new Set(forbiddenChars)].join(" ") }) });
     }
     if (!hasEmoji && !isAllCaps && !badFeat && !forbiddenChars) {
-      items.push({ level: "good", text: t("formatTitleOk") });
+      items.push({ level: "good", category: "metadata", text: t("formatTitleOk") });
     }
   }
 
   if (audioMetrics.duration < 30) {
-    items.push({ level: "critical", text: t("formatDurationTooShort", { s: audioMetrics.duration.toFixed(1) }) });
+    items.push({ level: "critical", category: "distributor", text: t("formatDurationTooShort", { s: audioMetrics.duration.toFixed(1) }) });
   } else {
-    items.push({ level: "good", text: t("formatDurationOk", { time: formatEqTime(audioMetrics.duration) }) });
+    items.push({ level: "good", category: "distributor", text: t("formatDurationOk", { time: formatEqTime(audioMetrics.duration) }) });
   }
 
   if (audioMetrics.sampleRate < 44100) {
-    items.push({ level: "warning", text: t("formatSampleRateLow", { hz: audioMetrics.sampleRate }) });
+    items.push({ level: "warning", category: "distributor", text: t("formatSampleRateLow", { hz: audioMetrics.sampleRate }) });
   } else {
-    items.push({ level: "good", text: t("formatSampleRateOk", { hz: audioMetrics.sampleRate }) });
+    items.push({ level: "good", category: "distributor", text: t("formatSampleRateOk", { hz: audioMetrics.sampleRate }) });
   }
 
   if (fileInfo.ext === "wav") {
     if (fileInfo.bitDepth) {
       if (fileInfo.bitDepth < 16) {
-        items.push({ level: "warning", text: t("formatBitDepthLow", { bits: fileInfo.bitDepth }) });
+        items.push({ level: "warning", category: "distributor", text: t("formatBitDepthLow", { bits: fileInfo.bitDepth }) });
       } else {
-        items.push({ level: "good", text: t("formatBitDepthOk", { bits: fileInfo.bitDepth }) });
+        items.push({ level: "good", category: "distributor", text: t("formatBitDepthOk", { bits: fileInfo.bitDepth }) });
       }
     }
   } else {
-    items.push({ level: "warning", text: t("formatLossyUpload", { ext: fileInfo.ext.toUpperCase() }) });
+    items.push({ level: "warning", category: "distributor", text: t("formatLossyUpload", { ext: fileInfo.ext.toUpperCase() }) });
   }
 
   return items;
@@ -2942,6 +3041,13 @@ form.addEventListener("submit", async (e) => {
 
     const genre = genreManuallySet ? genreSelectEl.value : audioMetrics.estimatedGenre || "";
     genreSelectEl.value = genre;
+
+    if (genre) {
+      const lyricsForMetrics = analyzeLyrics(lyricsRaw, title);
+      const formatCheckForMetrics = buildFormatCheck({ title, audioMetrics, fileInfo });
+      const violationCount = formatCheckForMetrics.filter((item) => item.category === "metadata" && item.level !== "good").length;
+      reportAnonymousMetrics(genre, audioMetrics, fileInfo, violationCount, lyricsForMetrics.titleOccurrences || 0);
+    }
 
     renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { unlockedPremium: false });
     freeResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
