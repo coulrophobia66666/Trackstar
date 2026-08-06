@@ -206,9 +206,9 @@ const I18N = {
     tipTitleMissingProblem: "Der Songtitel taucht im Text gar nicht auf.",
     tipTitleMissingDetail: "Hörer erinnern sich deutlich leichter, wenn der Titel tatsächlich gesungen wird.",
     tipTitleMissingFix: "Den Songtitel tatsächlich im Text singen/erwähnen.",
-    tipTitleNotInHookProblem: "Der Songtitel kommt zwar im Text vor, aber nicht in der Hook.",
-    tipTitleNotInHookDetail: "Das stärkt den Wiedererkennungswert.",
-    tipTitleNotInHookFix: "Den Titel in die am häufigsten wiederholte Zeile (Hook) holen.",
+    tipTitleRepeatProblem: "Der Songtitel kommt im Text vor, aber bisher nur {count}x.",
+    tipTitleRepeatDetail: "Ab {count}x Wiederholung (z. B. durchgehend im Refrain) gilt der Titel als richtig wiedererkennbar.",
+    tipTitleRepeatFix: "Den Titel öfter singen/erwähnen, am besten in der am häufigsten wiederholten Zeile (Hook).",
     tipAllGood: "Keine größeren technischen oder inhaltlichen Auffälligkeiten gefunden – solide Basis.",
 
     fazitIntroGood: "Dein Track steht technisch und inhaltlich solide da (Score {score}/100).",
@@ -571,9 +571,9 @@ const I18N = {
     tipTitleMissingProblem: "The song title doesn't appear in the lyrics at all.",
     tipTitleMissingDetail: "Listeners remember much more easily when the title is actually sung.",
     tipTitleMissingFix: "Actually sing/mention the song title in the lyrics.",
-    tipTitleNotInHookProblem: "The song title appears in the lyrics, but not in the hook.",
-    tipTitleNotInHookDetail: "This strengthens memorability.",
-    tipTitleNotInHookFix: "Move the title into the most frequently repeated line (the hook).",
+    tipTitleRepeatProblem: "The song title appears in the lyrics, but only {count}x so far.",
+    tipTitleRepeatDetail: "From {count}x repetition onward (e.g. throughout the chorus), the title counts as properly recognizable.",
+    tipTitleRepeatFix: "Sing/mention the title more often, ideally in the most frequently repeated line (the hook).",
     tipAllGood: "No major technical or content issues found – solid foundation.",
 
     fazitIntroGood: "Your track is technically and content-wise solid (score {score}/100).",
@@ -1370,7 +1370,9 @@ function analyzeLyrics(lyricsRaw, titleRaw) {
   const normTitle = hasTitle ? normalizeText(titleRaw) : "";
 
   const titleInLyrics = hasTitle && normTitle.length > 0 && normLyrics.includes(normTitle);
-  const titleInHook = hasTitle && normTitle.length > 0 && hookLine.includes(normTitle);
+  // Wie oft der Titel tatsaechlich im Song vorkommt, nicht nur ob - Wiedererkennbarkeit haengt
+  // an der Wiederholung, nicht nur an einer einzigen Erwaehnung irgendwo im Text.
+  const titleOccurrences = titleInLyrics ? normLyrics.split(normTitle).length - 1 : 0;
 
   return {
     hasLyrics: true,
@@ -1378,7 +1380,7 @@ function analyzeLyrics(lyricsRaw, titleRaw) {
     hookLine,
     hookRepeatCount,
     titleInLyrics,
-    titleInHook,
+    titleOccurrences,
   };
 }
 
@@ -1438,11 +1440,12 @@ function scoreHook(lyrics) {
   return 30;
 }
 
+const TITLE_OCCURRENCES_FOR_FULL_SCORE = 6;
+
 function scoreTitel(lyrics) {
   if (!lyrics.hasLyrics || !lyrics.hasTitle) return null;
-  if (lyrics.titleInHook) return 100;
-  if (lyrics.titleInLyrics) return 55;
-  return 15;
+  if (!lyrics.titleInLyrics) return 15;
+  return Math.round(Math.min(100, (lyrics.titleOccurrences / TITLE_OCCURRENCES_FOR_FULL_SCORE) * 100));
 }
 
 /* ---------- Tips ---------- */
@@ -1541,9 +1544,9 @@ function buildTips(a, lyrics, scores, profile) {
         const fix = t("tipTitleMissingFix");
         tips.push({ level: "critical", problem, fix, text: tipText(problem, detail, fix) });
       } else {
-        const problem = t("tipTitleNotInHookProblem");
-        const detail = t("tipTitleNotInHookDetail");
-        const fix = t("tipTitleNotInHookFix");
+        const problem = t("tipTitleRepeatProblem", { count: lyrics.titleOccurrences });
+        const detail = t("tipTitleRepeatDetail", { count: TITLE_OCCURRENCES_FOR_FULL_SCORE });
+        const fix = t("tipTitleRepeatFix");
         tips.push({ level: "warning", problem, fix, text: tipText(problem, detail, fix) });
       }
     }
