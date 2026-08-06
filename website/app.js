@@ -87,6 +87,20 @@ const I18N = {
     zoneFacts: "Die Fakten — objektiv gemessen",
     freqBlockHeading: "Frequenzbalance",
     freqBlockHint: "Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).",
+    formatCheckHeading: "Formatcheck",
+    formatCheckHint: "Technische Anforderungen und Titel-Metadaten, wie sie Distributoren prüfen – unabhängig vom Klang.",
+    formatTitleEmoji: "Titel enthält Emojis – bei den meisten Distributoren nicht erlaubt.",
+    formatTitleAllCaps: "Titel steht komplett in Großbuchstaben – viele Distributoren normalisieren oder lehnen das ab.",
+    formatTitleFeat: "„feat.“ ist nicht im üblichen Format – gängig ist „Songtitel (feat. Name)“.",
+    formatTitleChars: "Titel enthält Sonderzeichen, die bei manchen Distributoren Probleme machen: {chars}",
+    formatTitleOk: "Titel-Format sieht sauber aus.",
+    formatDurationTooShort: "Track ist nur {s}s lang – unter 30 Sekunden zählt laut Spotify kein Stream.",
+    formatDurationOk: "Länge ({time}) ist für die Einreichung unproblematisch.",
+    formatSampleRateLow: "Samplerate ({hz} Hz) liegt unter dem Distributor-Standard von 44.1 kHz.",
+    formatSampleRateOk: "Samplerate ({hz} Hz) erfüllt den Standard.",
+    formatBitDepthLow: "Bittiefe ({bits} Bit) liegt unter dem Distributor-Standard von 16 Bit.",
+    formatBitDepthOk: "Bittiefe ({bits} Bit) erfüllt den Standard.",
+    formatLossyUpload: "Hochgeladen als komprimiertes {ext}-Format – zum Prüfen hier okay, für die tatsächliche Einreichung bei Distributoren meist eine unkomprimierte WAV-Datei nötig.",
     eqHeading: "EQ-Editor",
     eqIntro: "Passe die Frequenzen deines Tracks direkt hier an und hör dir das Ergebnis sofort an. Läuft komplett in deinem Browser, deine Audiodatei verlässt dabei nie dein Gerät.",
     eqSpectrumHint: "Wellenform deines Tracks – die goldene Markierung zeigt die Abspielposition, die goldene Kurve darüber deine aktuelle EQ-Einstellung und reagiert sofort, wenn du an den Reglern unten drehst.",
@@ -179,6 +193,12 @@ const I18N = {
     tipCrestLowFix: "Etwas lockerer limitieren, damit mehr Dynamik erhalten bleibt.",
     tipCrestHighProblem: "Der Track ist sehr dynamisch (Crest Factor {db} dB).",
     tipCrestHighFix: "Ggf. etwas mehr komprimieren, damit leise Parts auf kleinen Boxen nicht untergehen.",
+    tipMonoCancelProblem: "Phasenauslöschung erkannt (Korrelation {corr}).",
+    tipMonoCancelDetail: "Auf Handylautsprechern und in vielen TikTok-/Reels-Playern läuft der Ton mono – Teile deines Tracks (im schlimmsten Fall die Hook) können sich dabei ganz oder teilweise auslöschen.",
+    tipMonoCancelFix: "Stereo-Verbreiterung/Panning der betroffenen Elemente reduzieren und in Mono gegenhören.",
+    tipMonoWeakProblem: "Eingeschränkte Mono-Kompatibilität (Korrelation {corr}).",
+    tipMonoWeakDetail: "Kein akuter Fehler, aber auf mono wiedergebenden Geräten (Handylautsprecher, viele TikTok-/Reels-Player) kann der Track dadurch spürbar dünner wirken.",
+    tipMonoWeakFix: "Wichtige Elemente (v. a. die Hook) etwas mittiger/weniger breit mischen.",
     tipLoudnessLowProblem: "Der Track ist recht leise (~{db} dB).",
     tipLoudnessLowDetail: "Spotify, Apple Music & Co. normalisieren zwar automatisch auf ein Zielniveau, aber wenn dein Master schon sehr leise angeliefert wird, verlierst du dabei Punch im Vergleich zu lauter gemasterten Tracks in derselben Playlist.",
     tipLoudnessLowFix: "Auf ca. {target} dB zumastern.",
@@ -258,6 +278,8 @@ const I18N = {
     meterFrequenz: "Frequenzbalance",
     meterHook: "Hook",
     meterTitel: "Songtitel erkennbar",
+    meterDynamik: "Dynamikumfang ({db} dB)",
+    meterMonoCompat: "Mono-Kompatibilität (Korrelation {corr})",
     meterLyricsMissing: "Songtext fehlt",
     meterInstrumentalGenre: "Instrumental (genretypisch)",
     meterTitleMissing: "Songtitel fehlt",
@@ -452,6 +474,20 @@ const I18N = {
     zoneFacts: "The facts — objectively measured",
     freqBlockHeading: "Frequency balance",
     freqBlockHint: "Share of energy per frequency band, compared with a balanced reference range (grey zone).",
+    formatCheckHeading: "Format check",
+    formatCheckHint: "Technical requirements and title metadata, as checked by distributors – independent of the sound.",
+    formatTitleEmoji: "Title contains emojis – not allowed by most distributors.",
+    formatTitleAllCaps: "Title is written entirely in capital letters – many distributors normalize or reject this.",
+    formatTitleFeat: "\"feat.\" isn't in the usual format – common practice is \"Song Title (feat. Name)\".",
+    formatTitleChars: "Title contains special characters that cause problems with some distributors: {chars}",
+    formatTitleOk: "Title format looks clean.",
+    formatDurationTooShort: "Track is only {s}s long – under 30 seconds doesn't count as a stream on Spotify.",
+    formatDurationOk: "Length ({time}) is fine for submission.",
+    formatSampleRateLow: "Sample rate ({hz} Hz) is below the distributor standard of 44.1 kHz.",
+    formatSampleRateOk: "Sample rate ({hz} Hz) meets the standard.",
+    formatBitDepthLow: "Bit depth ({bits}-bit) is below the distributor standard of 16-bit.",
+    formatBitDepthOk: "Bit depth ({bits}-bit) meets the standard.",
+    formatLossyUpload: "Uploaded as compressed {ext} format – fine for checking here, but actual distributor submission usually needs an uncompressed WAV file.",
     eqHeading: "EQ editor",
     eqIntro: "Adjust your track's frequencies right here and hear the result instantly. Runs entirely in your browser, your audio file never leaves your device.",
     eqSpectrumHint: "Waveform of your track – the gold marker shows the playback position, and the gold curve above it shows your current EQ setting, reacting instantly as you move the sliders below.",
@@ -544,6 +580,12 @@ const I18N = {
     tipCrestLowFix: "Limit a bit more loosely so more dynamics survive.",
     tipCrestHighProblem: "The track is very dynamic (crest factor {db} dB).",
     tipCrestHighFix: "Consider compressing a bit more so quiet parts don't disappear on small speakers.",
+    tipMonoCancelProblem: "Phase cancellation detected (correlation {corr}).",
+    tipMonoCancelDetail: "Phone speakers and many TikTok/Reels players play audio in mono – parts of your track (in the worst case the hook) can partially or fully cancel out.",
+    tipMonoCancelFix: "Reduce stereo widening/panning on the affected elements and check in mono.",
+    tipMonoWeakProblem: "Limited mono compatibility (correlation {corr}).",
+    tipMonoWeakDetail: "Not a hard error, but on mono-playing devices (phone speakers, many TikTok/Reels players) the track can end up sounding noticeably thinner.",
+    tipMonoWeakFix: "Mix key elements (especially the hook) a bit more centered/less wide.",
     tipLoudnessLowProblem: "The track is quite quiet (~{db} dB).",
     tipLoudnessLowDetail: "Spotify, Apple Music & co. do normalize automatically to a target level, but if your master arrives very quiet to begin with, you lose punch compared to louder-mastered tracks in the same playlist.",
     tipLoudnessLowFix: "Master up to about {target} dB.",
@@ -623,6 +665,8 @@ const I18N = {
     meterFrequenz: "Frequency balance",
     meterHook: "Hook",
     meterTitel: "Song title recognizable",
+    meterDynamik: "Dynamic range ({db} dB)",
+    meterMonoCompat: "Mono compatibility (correlation {corr})",
     meterLyricsMissing: "Lyrics missing",
     meterInstrumentalGenre: "Instrumental (typical for genre)",
     meterTitleMissing: "Song title missing",
@@ -1210,10 +1254,38 @@ function computeGatedLoudnessDb(rawMono, sampleRate) {
   return 10 * Math.log10(finalMeanMS || 1e-18);
 }
 
+// Phasenkorrelation zwischen L/R: +1 = voll in Phase (perfekt mono-kompatibel), 0 = unkorreliert
+// (nennenswerter Pegelverlust beim Mono-Summieren moeglich), -1 = gegenphasig (loescht sich beim
+// Mono-Summieren teilweise/ganz aus). Genau das passiert auf Handylautsprechern/in vielen
+// TikTok-Playern, die tatsaechlich mono wiedergeben - dort kann eine zu breit gezogene Hook
+// dadurch schlicht verschwinden. Muss VOR dem Runterrechnen auf Mono berechnet werden, deshalb
+// separat uebergeben statt aus dem bereits gemischten Signal.
+function computePhaseCorrelation(buffer) {
+  if (buffer.numberOfChannels < 2) return 1;
+  const left = buffer.getChannelData(0);
+  const right = buffer.getChannelData(1);
+  const length = left.length;
+  const stride = Math.max(1, Math.floor(length / 200000));
+  let sumLR = 0;
+  let sumLL = 0;
+  let sumRR = 0;
+  for (let i = 0; i < length; i += stride) {
+    const l = left[i];
+    const r = right[i];
+    sumLR += l * r;
+    sumLL += l * l;
+    sumRR += r * r;
+  }
+  const denom = Math.sqrt(sumLL * sumRR);
+  if (denom < 1e-9) return 1;
+  return Math.max(-1, Math.min(1, sumLR / denom));
+}
+
 function analyzeAudioBuffer(buffer) {
   const sampleRate = buffer.sampleRate;
   const numChannels = buffer.numberOfChannels;
   const length = buffer.length;
+  const phaseCorrelation = computePhaseCorrelation(buffer);
 
   const mono = new Float32Array(length);
   for (let ch = 0; ch < numChannels; ch++) {
@@ -1286,11 +1358,13 @@ function analyzeAudioBuffer(buffer) {
 
   return {
     duration: buffer.duration,
+    sampleRate,
     peak,
     rms,
     clippingRatio,
     loudnessDb,
     crestFactorDb,
+    phaseCorrelation,
     bandPercents,
     framesUsed,
     introSilenceMs: edgeSilence.introSilenceMs,
@@ -1386,21 +1460,44 @@ function analyzeLyrics(lyricsRaw, titleRaw) {
 
 /* ---------- Scoring ---------- */
 
+// Genre-abhaengiger Idealwert statt einem starren 12.5 dB fuer alle: Hip-Hop/EDM-Masters liegen
+// genretypisch im niedrigeren Crest-Factor-Bereich, ohne dass das technisch schlechter waere -
+// ein fixer Wert wuerde das systematisch abstrafen. Von scoreTechnik und scoreDynamikumfang
+// gemeinsam genutzt, damit beide vom selben genre-typischen Zielwert ausgehen.
+function idealCrestForProfile(profile) {
+  const fp = profile && profile.fingerprint;
+  return fp ? (fp.crestRange[0] + fp.crestRange[1]) / 2 : 12.5;
+}
+
 function scoreTechnik(a, profile) {
   // Bewertung um einen Idealpunkt statt einem "Idealfenster" - ein flacher Bereich, in dem
   // jeder Wert 100% gibt, wirkt schnell unglaubwuerdig grob (fast jeder saubere Track landet
   // sonst exakt bei 100%). So gibt's fast nie eine glatte Bestnote, sondern einen nuancierten Wert.
   const clipPenalty = Math.min(60, a.clippingRatio * 2800);
 
-  // Genre-abhaengiger Idealwert statt einem starren 12.5 dB fuer alle: Hip-Hop/EDM-Masters
-  // liegen genretypisch im niedrigeren Crest-Factor-Bereich, ohne dass das technisch schlechter
-  // waere - ein fixer Wert wuerde das systematisch abstrafen.
-  const fp = profile && profile.fingerprint;
-  const idealCrest = fp ? (fp.crestRange[0] + fp.crestRange[1]) / 2 : 12.5;
+  const idealCrest = idealCrestForProfile(profile);
   const crestDeviation = Math.abs(a.crestFactorDb - idealCrest);
   const crestPenalty = crestDeviation * crestDeviation * 0.22;
 
   return Math.max(0, Math.min(100, 100 - clipPenalty - crestPenalty));
+}
+
+// Eigene, staerker ausschlagende Kennzahl fuer den Dynamikumfang (nicht nur ein unsichtbarer
+// Bestandteil des Technik-Scores) - genau dafuer gedacht, ueberkomprimierte/plattgedrueckte
+// KI-Master klar erkennbar zu machen, statt im kombinierten Technik-Wert unterzugehen.
+function scoreDynamikumfang(a, profile) {
+  const idealCrest = idealCrestForProfile(profile);
+  const deviation = Math.abs(a.crestFactorDb - idealCrest);
+  return Math.max(0, Math.min(100, 100 - deviation * deviation * 0.6));
+}
+
+// Phasenkorrelation (-1..+1) auf einen 0-100-Score gemappt: +1 (voll in Phase) -> 100,
+// 0 (unkorreliert) -> 50, -1 (gegenphasig) -> 0. Bewusst eine einfache lineare Zuordnung statt
+// einer kurvigen Gewichtung - es gibt noch keine kalibrierten Referenzwerte aus echten Tracks
+// fuer diese neue Kennzahl.
+function scoreMonoCompat(correlation) {
+  if (correlation == null) return null;
+  return Math.round(Math.max(0, Math.min(100, ((correlation + 1) / 2) * 100)));
 }
 
 function scoreLautheit(a, loudnessTarget) {
@@ -1477,6 +1574,18 @@ function buildTips(a, lyrics, scores, profile) {
     const problem = t("tipCrestHighProblem", { db: a.crestFactorDb.toFixed(1) });
     const fix = t("tipCrestHighFix");
     tips.push({ level: "warning", problem, fix, text: tipText(problem, null, fix) });
+  }
+
+  if (a.phaseCorrelation != null && a.phaseCorrelation < 0) {
+    const problem = t("tipMonoCancelProblem", { corr: a.phaseCorrelation.toFixed(2) });
+    const detail = t("tipMonoCancelDetail");
+    const fix = t("tipMonoCancelFix");
+    tips.push({ level: "critical", problem, fix, text: tipText(problem, detail, fix) });
+  } else if (a.phaseCorrelation != null && a.phaseCorrelation < 0.3) {
+    const problem = t("tipMonoWeakProblem", { corr: a.phaseCorrelation.toFixed(2) });
+    const detail = t("tipMonoWeakDetail");
+    const fix = t("tipMonoWeakFix");
+    tips.push({ level: "warning", problem, fix, text: tipText(problem, detail, fix) });
   }
 
   if (a.loudnessDb < loudnessTarget - 4) {
@@ -2371,7 +2480,7 @@ trackGenreSelect.addEventListener("change", () => {
   }
 });
 
-function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPremium }) {
+function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { unlockedPremium }) {
   const lyrics = analyzeLyrics(lyricsRaw, title);
   const profile = genreProfile(genre);
 
@@ -2381,6 +2490,11 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
     frequenz: scoreFrequenz(audioMetrics, profile.refs),
     hook: scoreHook(lyrics),
     titel: scoreTitel(lyrics),
+    // Fliessen bewusst NICHT in den Gesamtscore/die Kurzcheck-Badges ein - neue, noch unkalibrierte
+    // Kennzahlen, die als zusaetzliche Fakten in der Tiefenanalyse stehen, nicht die bereits
+    // eingespielte Gesamtgewichtung verschieben sollen.
+    monoCompat: scoreMonoCompat(audioMetrics.phaseCorrelation),
+    dynamikumfang: scoreDynamikumfang(audioMetrics, profile),
   };
 
   // Hook & Songtitel sind die wichtigsten Wiedererkennungs-Hebel, deshalb zusammen die Haelfte
@@ -2444,7 +2558,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
     topIssues: tips.filter((tip) => tip.level !== "good").map((tip) => tip.text),
   };
 
-  currentAnalysisSnapshot = { title, lyricsRaw, audioMetrics, genre };
+  currentAnalysisSnapshot = { title, lyricsRaw, audioMetrics, genre, fileInfo };
 
   premiumResultsEl.hidden = !unlockedPremium;
 
@@ -2463,6 +2577,14 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
     score: scores.titel,
     statusText: scores.titel === null ? (lyrics.hasLyrics ? t("meterTitleMissing") : lyricsMissingLabel) : "",
   });
+  renderMeter(metersEl, {
+    name: t("meterDynamik", { db: audioMetrics.crestFactorDb.toFixed(1) }),
+    score: scores.dynamikumfang,
+  });
+  renderMeter(metersEl, {
+    name: t("meterMonoCompat", { corr: audioMetrics.phaseCorrelation.toFixed(2) }),
+    score: scores.monoCompat,
+  });
 
   const detectedGenreEl = document.getElementById("detected-genre");
   if (audioMetrics.estimatedGenre && !audioMetrics.estimatedGenreLowConfidence) {
@@ -2476,6 +2598,12 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPre
 
   renderFreqChart(document.getElementById("freq-chart"), audioMetrics.bandPercents, profile.refs);
   renderTips(document.getElementById("tips-list"), tips);
+
+  const formatCheckListEl = document.getElementById("format-check-list");
+  if (formatCheckListEl) {
+    const formatCheckItems = buildFormatCheck({ title, audioMetrics, fileInfo: fileInfo || { ext: "", isLossless: false, bitDepth: null } });
+    renderTips(formatCheckListEl, formatCheckItems);
+  }
 
   const fazit = buildFazit(overallScore, tips);
   renderFazit(document.getElementById("fazit-block"), fazit);
@@ -2684,6 +2812,103 @@ unlockBtn.addEventListener("click", async () => {
   }
 });
 
+/* ---------- Formatcheck: Distributor-Anforderungen + Titel-Metadaten -----------------------
+   Rein technische/textuelle Pruefungen, unabhaengig vom eigentlichen Klang - die haeufigsten
+   Ablehnungsgruende bei Distributoren haben oft nichts mit der Musik selbst zu tun. */
+
+const LOSSLESS_EXTENSIONS = ["wav", "flac", "aiff", "aif"];
+
+// Bittiefe steckt nur bei unkomprimierten WAV-Dateien im fmt-Chunk - bei MP3/AAC/etc. gibt es
+// keine "Bittiefe" im selben Sinn (nur eine Bitrate), deshalb hier bewusst kein Rateversuch.
+function parseWavBitDepth(arrayBuffer) {
+  try {
+    const view = new DataView(arrayBuffer);
+    if (view.byteLength < 12 || view.getUint32(0, false) !== 0x52494646 || view.getUint32(8, false) !== 0x57415645) {
+      return null;
+    }
+    let offset = 12;
+    while (offset + 8 <= view.byteLength) {
+      const chunkId = view.getUint32(offset, false);
+      const chunkSize = view.getUint32(offset + 4, true);
+      if (chunkId === 0x666d7420 && offset + 8 + 16 <= view.byteLength) {
+        return view.getUint16(offset + 8 + 14, true);
+      }
+      offset += 8 + chunkSize + (chunkSize % 2);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function buildFileInfo(file, arrayBuffer) {
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  const isLossless = LOSSLESS_EXTENSIONS.includes(ext);
+  const bitDepth = ext === "wav" ? parseWavBitDepth(arrayBuffer) : null;
+  return { ext, isLossless, bitDepth };
+}
+
+// Erkennt die haeufigsten formalen Ablehnungsgruende bei Distributoren, die nichts mit dem Klang
+// zu tun haben (ALL CAPS, Emojis, kaputte "feat."-Schreibweise, verbotene Sonderzeichen) sowie
+// harte technische Anforderungen (Mindestlaenge fuer Spotify-Streams, Samplerate, Bittiefe bei
+// WAV). Regeln unterscheiden sich leicht je Distributor - hier bewusst als "gaengige Praxis"
+// formuliert, nicht als universelles Hardfact.
+function buildFormatCheck({ title, audioMetrics, fileInfo }) {
+  const items = [];
+  const titleTrimmed = (title || "").trim();
+
+  if (titleTrimmed) {
+    const hasEmoji = /\p{Extended_Pictographic}/u.test(titleTrimmed);
+    const isAllCaps = titleTrimmed.length >= 4 && titleTrimmed === titleTrimmed.toUpperCase() && titleTrimmed !== titleTrimmed.toLowerCase();
+    const hasFeatMention = /\b(ft\.?|feat\.?|featuring)\b/i.test(titleTrimmed);
+    const hasCanonicalFeat = /\(feat\. [^)]+\)/i.test(titleTrimmed);
+    const badFeat = hasFeatMention && !hasCanonicalFeat;
+    const forbiddenChars = titleTrimmed.match(/[<>|\\^~*$%#{}[\]]/g);
+
+    if (hasEmoji) {
+      items.push({ level: "warning", text: t("formatTitleEmoji") });
+    }
+    if (isAllCaps) {
+      items.push({ level: "warning", text: t("formatTitleAllCaps") });
+    }
+    if (badFeat) {
+      items.push({ level: "warning", text: t("formatTitleFeat") });
+    }
+    if (forbiddenChars && forbiddenChars.length > 0) {
+      items.push({ level: "warning", text: t("formatTitleChars", { chars: [...new Set(forbiddenChars)].join(" ") }) });
+    }
+    if (!hasEmoji && !isAllCaps && !badFeat && !forbiddenChars) {
+      items.push({ level: "good", text: t("formatTitleOk") });
+    }
+  }
+
+  if (audioMetrics.duration < 30) {
+    items.push({ level: "critical", text: t("formatDurationTooShort", { s: audioMetrics.duration.toFixed(1) }) });
+  } else {
+    items.push({ level: "good", text: t("formatDurationOk", { time: formatEqTime(audioMetrics.duration) }) });
+  }
+
+  if (audioMetrics.sampleRate < 44100) {
+    items.push({ level: "warning", text: t("formatSampleRateLow", { hz: audioMetrics.sampleRate }) });
+  } else {
+    items.push({ level: "good", text: t("formatSampleRateOk", { hz: audioMetrics.sampleRate }) });
+  }
+
+  if (fileInfo.ext === "wav") {
+    if (fileInfo.bitDepth) {
+      if (fileInfo.bitDepth < 16) {
+        items.push({ level: "warning", text: t("formatBitDepthLow", { bits: fileInfo.bitDepth }) });
+      } else {
+        items.push({ level: "good", text: t("formatBitDepthOk", { bits: fileInfo.bitDepth }) });
+      }
+    }
+  } else {
+    items.push({ level: "warning", text: t("formatLossyUpload", { ext: fileInfo.ext.toUpperCase() }) });
+  }
+
+  return items;
+}
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const fileInput = document.getElementById("audio-file");
@@ -2709,6 +2934,7 @@ form.addEventListener("submit", async (e) => {
     const ctx = new AudioCtx();
     const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
     lastAudioBuffer = audioBuffer;
+    const fileInfo = buildFileInfo(file, arrayBuffer);
 
     statusLine.textContent = t("statusAnalyzing");
     await new Promise((r) => setTimeout(r, 10));
@@ -2717,7 +2943,7 @@ form.addEventListener("submit", async (e) => {
     const genre = genreManuallySet ? genreSelectEl.value : audioMetrics.estimatedGenre || "";
     genreSelectEl.value = genre;
 
-    renderAnalysis({ title, lyricsRaw, audioMetrics, genre }, { unlockedPremium: false });
+    renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { unlockedPremium: false });
     freeResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
     statusLine.textContent = "";
     ctx.close();
