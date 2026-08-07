@@ -1,0 +1,9 @@
+{
+  "name": "overhertz-video-pipeline",
+  "private": true,
+  "type": "module",
+  "description": "Eigenes Werkzeug (kein Teil des Overhertz-Produkts): nimmt einen gefuehrten Rundgang durch die Website als Bildschirmvideo auf.",
+  "dependencies": {
+    "playwright": "^1.62.1"
+  }
+}

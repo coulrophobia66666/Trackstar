@@ -1,0 +1,7 @@
+node_modules/
+.venv/
+voices/
+out/
+*.wav
+*.mp4
+*.webm

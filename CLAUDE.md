@@ -115,6 +115,14 @@ Browser (website/)                         Cloudflare Worker (worker/)
   playwright install chromium` (einmalig, lokal – keine Repo-Abhängigkeit).
   Aufruf: `node scripts/backfill-cli.js <Ordner> <Genre-Slug>`. Gültige
   Genre-Slugs stehen in `GENRE_PAGE_DEFS` in `worker/songtext-worker.js`.
+- **`tools/video-pipeline/`** – eigenständiges Werkzeug (kein Teil des
+  Produkts/Deploys) für Produktpräsentationsvideos: nimmt den
+  Website-Flow per Playwright als Bildschirmvideo auf, schneidet Leerlauf
+  automatisch raus, vertont per TTS (Piper offline, Fallback `espeak-ng`)
+  und brennt Untertitel ein (`voiceover.py --from-manifest` oder
+  `caption.py --from-audio` per faster-whisper für bereits hochgeladene
+  Videos mit echter Sprachspur). Details/Setup in
+  `tools/video-pipeline/README.md`.
 
 ## Entwicklung
 
