@@ -3351,6 +3351,13 @@ function suggestedDeEsserAmount(metrics, profile) {
   return { needed, amount: Math.round(amount * 20) / 20 };
 }
 
+// Pausiert die seitenweite Hintergrund-Wellenanimation (initBgWaves, weiter unten) waehrend der
+// EQ-Vorschau spielt - zwei parallele requestAnimationFrame-Canvas-Loops (Hintergrund + EQ-
+// Wellenform) gleichzeitig auf dem Hauptthread sind auf schwaecheren Geraeten/Handys ein
+// wahrscheinlicher Grund fuer hoerbares Ruckeln genau dann, wenn es am meisten stoert: beim
+// Zuhoeren. Die dekorative Wellenanimation kann fuer die paar Sekunden pausieren, ohne dass es auffaellt.
+let bgWavesPaused = false;
+
 const EQ_BAND_Q = 1;
 let eqAudioCtx = null;
 let eqSourceNode = null;
@@ -3724,6 +3731,7 @@ function stopEqPreview() {
   eqGainNode = null;
   eqPlaying = false;
   eqSeeking = false;
+  bgWavesPaused = false;
   const btn = document.getElementById("eq-play-btn");
   if (btn) btn.textContent = t("eqPlayBtn");
   drawEqWaveform(0);
@@ -3735,6 +3743,7 @@ function stopEqPreview() {
 function startEqPreview(offsetSeconds = 0) {
   if (!lastAudioBuffer) return;
   stopEqPreview();
+  bgWavesPaused = true;
   const ctx = ensureEqAudioCtx();
   const sourceBuffer = getEqSourceBuffer(ctx);
   const duration = sourceBuffer.duration;
@@ -4622,8 +4631,23 @@ if (albumBtn) {
   ];
 
   let t = 0;
+  let skipFrame = false;
 
+  // Rein dekorative Animation lief bisher jeden Frame (60fps) durchgehend auf dem Hauptthread -
+  // zusammen mit dem ebenfalls RAF-getriebenen EQ-Wellenform-Redraw waehrend der Vorschau (siehe
+  // bgWavesPaused) auf schwaecheren Geraeten ein wahrscheinlicher Ruckel-Grund. Jeden zweiten
+  // Frame zeichnen (~30fps) faellt bei dieser Art sanfter Wellenbewegung nicht auf, halbiert aber
+  // die Hauptthread-Last dauerhaft, nicht nur waehrend der EQ-Vorschau.
   function draw() {
+    if (bgWavesPaused) {
+      if (!reduceMotion) requestAnimationFrame(draw);
+      return;
+    }
+    skipFrame = !skipFrame;
+    if (skipFrame) {
+      if (!reduceMotion) requestAnimationFrame(draw);
+      return;
+    }
     ctx.clearRect(0, 0, width, height);
     const step = width > 900 ? 5 : 8;
     for (const w of waves) {
@@ -4638,7 +4662,7 @@ if (albumBtn) {
       ctx.lineWidth = w.widthPx;
       ctx.stroke();
     }
-    t += 0.016;
+    t += 0.032;
     if (!reduceMotion) requestAnimationFrame(draw);
   }
   draw();
