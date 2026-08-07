@@ -59,10 +59,20 @@ record.mjs  --------->  cut.py  --------->  assemble.py  --------->  final.mp4
    eigenes, bereits vorhandenes Video direkt bei Schritt 2 einsteigen.
 2. **`cut.py`** – kürzt Leerlauf raus. `--mode steps` nutzt die von `record.mjs` geloggten
    Zeitstempel (präzise, für eigene Aufnahmen). `--mode silence` erkennt Stille generisch per
-   ffmpeg (für fremde/hochgeladene Videos mit Sprachspur).
+   ffmpeg (für fremde/hochgeladene Videos mit Sprachspur). Schreibt bei `--mode steps` zusätzlich
+   eine `*.steps-timing.json` neben die Ausgabedatei: darin steht, wo jeder mit `"voiceover"`
+   markierte Storyboard-Schritt im geschnittenen Video jetzt tatsächlich liegt (Schnitte
+   verschieben ja die Position gegenüber dem Rohvideo). Diese Datei per `--step-timing` an
+   `caption.py --from-manifest` und `assemble.py` weiterreichen, sonst laufen Vertonung/Untertitel
+   und Bild bei mehreren kurzen Momenten kurz hintereinander (z. B. Listicle-Videos) auseinander –
+   die Storyboard- und Voiceover-Timings sind sonst zwei unabhängige Zeitleisten, die nur zufällig
+   ungefähr synchron sind.
 3. **`voiceover.py`** – vertont ein Sprecherscript (`script.example.json`: Liste von
    `{id, text}`) als Voiceover-Schnipsel + `manifest.json` mit exakten Zeiten. Drei Engines,
-   automatisch die beste verfügbare (siehe unten).
+   automatisch die beste verfügbare (siehe unten). Bei mehreren kurz getakteten Momenten
+   (Listicle-Storyboards) die `waitMs`-Haltezeiten im Storyboard an die tatsächliche Sprechdauer
+   je Segment anlehnen (aus dem Voiceover-Manifest ablesen) – sonst überlappen sich die Sätze
+   beim Zusammenmischen in `assemble.py`.
 4. **`caption.py`** – Untertitel als `.srt`. Entweder exakt aus dem Voiceover-Manifest
    (`--from-manifest`) oder per Spracherkennung aus einer echten Tonspur (`--from-audio`, für
    hochgeladene Videos mit eigener Stimme statt TTS).

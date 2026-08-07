@@ -74,19 +74,35 @@ function serveWebsite(port) {
 // im Rohmaterial sichtbar zu markieren, worauf die Voiceover-Zeile im naechsten Schnitt zeigt.
 async function highlight(page, selector) {
   await page.evaluate((sel) => {
+    // Vorherige Hervorhebung(en) zuerst wieder entfernen - sonst bleiben bei mehreren
+    // highlight-Schritten hintereinander (z.B. Badge 1 dann Badge 2) beide gleichzeitig
+    // markiert, weil das Outline nie zurueckgesetzt wurde.
+    document.querySelectorAll("[data-overhertz-highlighted]").forEach((prevEl) => {
+      prevEl.style.outline = prevEl.dataset._prevOutline || "";
+      prevEl.style.outlineOffset = "";
+      delete prevEl.dataset.overhertzHighlighted;
+      delete prevEl.dataset._prevOutline;
+    });
     const el = document.querySelector(sel);
     if (!el) return;
-    const prev = el.style.outline;
+    el.dataset._prevOutline = el.style.outline;
     el.style.outline = "4px solid #ff5a36";
     el.style.outlineOffset = "3px";
-    el.dataset._prevOutline = prev;
+    el.dataset.overhertzHighlighted = "1";
   }, selector);
 }
 
 async function runStep(page, step) {
   switch (step.action) {
     case "goto":
-      await page.goto(step.url, { waitUntil: "networkidle" });
+      // "networkidle" statt "domcontentloaded" wartet auf echte Ruhe im Netzwerk - auf dieser
+      // Seite (Tracking-/CDN-Aufrufe, Service-Worker-Registrierung) nie zuverlaessig der Fall,
+      // das erzeugte hier konstant ~13s Totzeit direkt nach dem Laden. Das brachte nicht nur die
+      // Aufnahme unnoetig in die Laenge, sondern hat mehrfach Playwrights interne
+      // Video-Zeitstempel durcheinandergebracht (aufgezeichnetes Video z.T. nur noch halb so
+      // lang wie die echte Sitzung, siehe cut.py-Fix). Einzelne Elemente warten ohnehin explizit
+      // per waitFor, das reicht.
+      await page.goto(step.url, { waitUntil: "domcontentloaded" });
       break;
     case "click":
       if (step.highlight !== false) await highlight(page, step.selector);

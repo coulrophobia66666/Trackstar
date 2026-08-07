@@ -23,17 +23,30 @@ def ffprobe_duration(path: Path) -> float:
     return float(out.stdout.strip())
 
 
-def build_voiceover_track(manifest_path: Path, tmp_dir: Path) -> Path:
-    """Mischt die einzelnen Voiceover-Schnipsel anhand ihrer start_s-Zeiten zu einer einzigen
-    Tonspur - amix statt simples Concat, weil das Manifest bereits absolute Startzeiten enthaelt
-    (adelay pro Clip), so bleibt die Vertonung synchron zum Video, auch wenn sich Segmentlaengen
-    seit der Aufnahme leicht geaendert haben."""
+def effective_start_times(manifest, step_timing=None):
+    """start_s je Segment - per Default die Reihenfolge aus dem Voiceover-Manifest (sequenziell
+    hintereinander). Liegt eine step-timing-Zuordnung von cut.py vor (Segment-Id == Storyboard-
+    Schritt-Id), hat die Vorrang: cut.py und voiceover.py sind sonst zwei unabhaengige
+    Zeitleisten, die nur zufaellig grob synchron laufen - bei mehreren kurzen Momenten kurz
+    hintereinander (Listicle-Videos) faellt das sichtbar auseinander (falsches Badge markiert,
+    waehrend der dazugehoerige Satz schon laeuft)."""
+    times = {}
+    for seg in manifest:
+        times[seg["id"]] = (step_timing or {}).get(seg["id"], seg["start_s"])
+    return times
+
+
+def build_voiceover_track(manifest_path: Path, tmp_dir: Path, step_timing=None) -> Path:
+    """Mischt die einzelnen Voiceover-Schnipsel zu einer einzigen Tonspur - amix statt simples
+    Concat, weil jedes Segment eine absolute Startzeit hat (adelay pro Clip), so bleibt die
+    Vertonung synchron zum Video."""
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    start_times = effective_start_times(manifest, step_timing)
     inputs = []
     filter_parts = []
     for i, seg in enumerate(manifest):
         inputs += ["-i", seg["file"]]
-        delay_ms = round(seg["start_s"] * 1000)
+        delay_ms = round(start_times[seg["id"]] * 1000)
         filter_parts.append(f"[{i}:a]adelay={delay_ms}|{delay_ms}[a{i}]")
     mix_inputs = "".join(f"[a{i}]" for i in range(len(manifest)))
     filter_complex = ";".join(filter_parts) + f";{mix_inputs}amix=inputs={len(manifest)}:normalize=0[aout]"
@@ -51,9 +64,12 @@ def main():
     parser.add_argument("--video", required=True, help="geschnittenes Video (aus cut.py)")
     parser.add_argument("--voiceover-dir", help="Ordner mit manifest.json (aus voiceover.py)")
     parser.add_argument("--captions", help=".srt-Datei (aus caption.py)")
+    parser.add_argument("--step-timing", help="*.steps-timing.json von cut.py - synct Voiceover-Segmente auf echte Bildmomente statt Reihenfolge zu schaetzen")
     parser.add_argument("--title", help="Titeltext, kurz auf schwarzem Grund vor dem eigentlichen Video")
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
+
+    step_timing = json.loads(Path(args.step_timing).read_text(encoding="utf-8")) if args.step_timing else None
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -65,7 +81,7 @@ def main():
         #    abzuwuergen - Standardtrick bei erzaehlten Screen-Recordings.
         if args.voiceover_dir:
             manifest_path = Path(args.voiceover_dir) / "manifest.json"
-            voiceover_wav = build_voiceover_track(manifest_path, tmp)
+            voiceover_wav = build_voiceover_track(manifest_path, tmp, step_timing)
 
             video_duration = ffprobe_duration(video_path)
             voiceover_duration = ffprobe_duration(voiceover_wav)

@@ -1,0 +1,19 @@
+{
+  "_hinweis": "Rohmaterial fuer Idea 4 (3 Zeichen-Listicle). Punkt 1 (Lautheit) und Punkt 2 (Hook) haben ein direktes Gegenstueck in den kostenlosen Badges (Star Potential = Lautheit-Score, Hook = Hook-Score). Punkt 3 (Intro/Outro abrupt) ist eine Rohmesswert-Kennzahl ohne eigenes Badge im kostenlosen Ergebnis - dafuer bleibt die Kamera auf der Gesamtkarte, kein 1:1-Bildbeleg. Fuer eine praezisere Version braeuchte es die freigeschaltete Tiefenanalyse. WICHTIG: die waitMs-Werte zwischen den highlight-Schritten sind bewusst an die Sprechdauer der jeweiligen voiceover.py-Segmente angelehnt (aus out/.../manifest.json ablesen) - sonst ueberlappen sich die Voiceover-Saetze beim Zusammensetzen (siehe cut.py --steps-timing / assemble.py --step-timing).",
+  "steps": [
+    { "id": "landing", "action": "goto", "url": "/index.html", "label": "Startseite laedt" },
+    { "id": "scroll-upload", "action": "scrollTo", "selector": "#upload-card", "label": "zur Upload-Karte scrollen" },
+    { "id": "upload", "action": "upload", "selector": "#audio-file", "files": ["./sample/test-audio.wav"], "label": "Track hochladen" },
+    { "id": "title", "action": "fill", "selector": "#track-title", "value": "Track 7", "label": "Songtitel eintragen" },
+    { "id": "submit", "action": "click", "selector": "#analyze-btn", "label": "Analyse starten", "voiceover": "hook" },
+    { "id": "wait-result", "action": "waitFor", "selector": "#free-results", "state": "visible", "timeout": 20000, "label": "auf Ergebnis warten" },
+    { "id": "scroll-badges", "action": "scrollTo", "selector": "#badges", "label": "zu den Badges scrollen" },
+    { "id": "highlight-loudness", "action": "highlight", "selector": "#badges .badge:nth-child(2)", "label": "Star-Potential-Badge (Lautheit) hervorheben", "voiceover": "point1" },
+    { "id": "wait1", "action": "waitMs", "ms": 7200, "label": "Punkt 1 stehen lassen - Dauer richtet sich nach der Sprechzeit von point1 in content/idea4-drei-zeichen.json (per voiceover.py-Manifest pruefen, hier ca. 7s)" },
+    { "id": "highlight-hook", "action": "highlight", "selector": "#badges .badge:nth-child(3)", "label": "Hook-Badge hervorheben", "voiceover": "point2" },
+    { "id": "wait2", "action": "waitMs", "ms": 5400, "label": "Punkt 2 stehen lassen (~point2-Sprechzeit)" },
+    { "id": "scroll-full", "action": "scrollTo", "selector": "#free-results", "label": "Gesamtkarte zeigen (Punkt 3, kein eigenes Badge)", "voiceover": "point3" },
+    { "id": "wait3", "action": "waitMs", "ms": 5600, "label": "Punkt 3 stehen lassen (~point3-Sprechzeit)" },
+    { "id": "wait-end", "action": "waitMs", "ms": 7000, "label": "Karte stehen lassen fuer CTA (~cta-Sprechzeit + Puffer)", "voiceover": "cta" }
+  ]
+}

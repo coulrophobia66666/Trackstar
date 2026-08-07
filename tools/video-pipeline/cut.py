@@ -56,6 +56,41 @@ def segments_from_steps(steps_path: Path, total_duration: float, max_gap: float,
     return segments
 
 
+def map_step_timings(data, segments):
+    """Fuer jeden Schritt mit einem 'voiceover'-Feld die Position im geschnittenen
+    (konkatenierten) Video berechnen. cut.py und voiceover.py laufen sonst als zwei komplett
+    unabhaengige Zeitleisten - ohne diese Zuordnung landet die Vertonung an der falschen Stelle,
+    sobald mehrere kurze Momente schnell aufeinander folgen (z.B. Listicle-Videos mit mehreren
+    Badges nacheinander) - fiel beim Testen konkret auf: falsches Badge war hervorgehoben,
+    waehrend der dazu gehoerige Text schon lief."""
+    cumulative = []
+    acc = 0.0
+    for start, end in segments:
+        cumulative.append(acc)
+        acc += end - start
+
+    timings = {}
+    for step in data["steps"]:
+        voiceover_id = step.get("voiceover")
+        if not voiceover_id:
+            continue
+        t = step["atMs"] / 1000
+        mapped = None
+        for i, (start, end) in enumerate(segments):
+            if start <= t <= end:
+                mapped = cumulative[i] + (t - start)
+                break
+            if t < start:
+                # t liegt in einer weggeschnittenen Luecke vor diesem Segment - auf den
+                # Segmentanfang mappen (den naechsten sichtbaren Moment).
+                mapped = cumulative[i]
+                break
+        if mapped is None:
+            mapped = cumulative[-1] + (segments[-1][1] - segments[-1][0])
+        timings[voiceover_id] = round(mapped, 3)
+    return timings
+
+
 def segments_from_silence(input_path: Path, silence_db: float, min_silence: float, keep_padding: float, total_duration: float):
     proc = subprocess.run(
         [FFMPEG, "-i", str(input_path), "-af", f"silencedetect=noise={silence_db}dB:d={min_silence}", "-f", "null", "-"],
@@ -118,9 +153,11 @@ def main():
     input_path = Path(args.input)
     total_duration = ffprobe_duration(input_path)
 
+    step_data = None
     if args.mode == "steps":
         if not args.steps:
             raise SystemExit("--mode steps braucht --steps steps.json")
+        step_data = json.loads(Path(args.steps).read_text(encoding="utf-8"))
         segments = segments_from_steps(Path(args.steps), total_duration, args.max_gap)
     else:
         segments = segments_from_silence(input_path, args.silence_db, args.min_silence, args.keep_padding, total_duration)
@@ -132,6 +169,13 @@ def main():
     print(f"[cut] {len(segments)} Segmente, {kept:.1f}s von {total_duration:.1f}s behalten")
     cut_and_concat(input_path, segments, Path(args.out))
     print(f"[cut] -> {args.out}")
+
+    if step_data is not None:
+        timings = map_step_timings(step_data, segments)
+        if timings:
+            timing_path = Path(args.out).with_suffix(".steps-timing.json")
+            timing_path.write_text(json.dumps(timings, indent=2), encoding="utf-8")
+            print(f"[cut] Schritt-Zeiten im geschnittenen Video: {timing_path}")
 
 
 if __name__ == "__main__":

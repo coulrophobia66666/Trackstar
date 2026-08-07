@@ -38,11 +38,14 @@ def write_srt(cues, out_path: Path):
     out_path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def from_manifest(manifest_path: Path):
+def from_manifest(manifest_path: Path, step_timing=None):
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     cues = []
     for seg in manifest:
-        start = seg["start_s"]
+        # step_timing (von cut.py, --mode steps) hat Vorrang vor der sequenziellen Reihenfolge im
+        # Manifest - sonst laufen Untertitel und die per step_timing synchronisierte Vertonung
+        # (siehe assemble.py) auseinander.
+        start = (step_timing or {}).get(seg["id"], seg["start_s"])
         end = start + seg["duration_s"]
         cues.append((start, end, seg["text"]))
     return cues
@@ -64,12 +67,14 @@ def main():
     group.add_argument("--from-manifest", help="voiceover/manifest.json (exakter Text+Timing)")
     group.add_argument("--from-audio", help="Video/Audio-Datei mit echter Sprachspur")
     parser.add_argument("--out", required=True, help="Ziel-.srt-Datei")
+    parser.add_argument("--step-timing", help="*.steps-timing.json von cut.py (nur --from-manifest) - synct Untertitel auf echte Bildmomente")
     parser.add_argument("--language", default="de", help="nur fuer --from-audio")
     parser.add_argument("--model-size", default="small", help="Whisper-Modellgroesse (tiny/base/small/medium)")
     args = parser.parse_args()
 
     if args.from_manifest:
-        cues = from_manifest(Path(args.from_manifest))
+        step_timing = json.loads(Path(args.step_timing).read_text(encoding="utf-8")) if args.step_timing else None
+        cues = from_manifest(Path(args.from_manifest), step_timing)
     else:
         cues = from_audio(Path(args.from_audio), args.language, args.model_size)
 

@@ -1,0 +1,16 @@
+{
+  "_hinweis": "Rohmaterial fuer Idea 2 (haeufigster Fehler / over-kompression). Zeigt gezielt die 'Groesstes Problem'-Zeile (#teaser-tip), auf die die Vertonung sich bezieht.",
+  "steps": [
+    { "id": "landing", "action": "goto", "url": "/index.html", "label": "Startseite laedt" },
+    { "id": "scroll-upload", "action": "scrollTo", "selector": "#upload-card", "label": "zur Upload-Karte scrollen" },
+    { "id": "upload", "action": "upload", "selector": "#audio-file", "files": ["./sample/test-audio.wav"], "label": "Track hochladen", "voiceover": "hook" },
+    { "id": "title", "action": "fill", "selector": "#track-title", "value": "Track 7", "label": "Songtitel eintragen" },
+    { "id": "submit", "action": "click", "selector": "#analyze-btn", "label": "Analyse starten", "voiceover": "gap" },
+    { "id": "wait-result", "action": "waitFor", "selector": "#free-results", "state": "visible", "timeout": 20000, "label": "auf Ergebnis warten" },
+    { "id": "scroll-badges", "action": "scrollTo", "selector": "#badges", "label": "zu den Badges scrollen" },
+    { "id": "wait-badges", "action": "waitMs", "ms": 1200, "label": "Badges zeigen" },
+    { "id": "scroll-problem", "action": "scrollTo", "selector": "#teaser-tip", "label": "zum groessten Problem scrollen", "voiceover": "reveal" },
+    { "id": "highlight-problem", "action": "highlight", "selector": "#teaser-tip", "label": "groesstes Problem hervorheben", "voiceover": "tie-in" },
+    { "id": "wait-end", "action": "waitMs", "ms": 3000, "label": "Problem-Box stehen lassen fuer CTA", "voiceover": "cta" }
+  ]
+}
