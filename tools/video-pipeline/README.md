@@ -33,6 +33,12 @@ cd tools/video-pipeline
 npm run dashboard        # http://127.0.0.1:5177 öffnen
 ```
 
+Ganz oben im Dashboard steht der **Medien-Trimmer**: Datei laden, im eingebauten Player
+abspielen/spulen, an der gewünschten Stelle "Start hier setzen"/"Ende hier setzen" klicken (wie
+Ein-/Auspunkte in einem Schnittprogramm) – dann per Klick direkt in die Shorts-, Musik-Short-
+oder Schneiden-Sektion übernehmen, statt Sekundenzahlen zu schätzen und von Hand einzutippen.
+Das ist bewusst manuell/visuell gehalten, als Ergänzung zu den automatischen Schritten.
+
 Eine Seite mit einem Formular pro Pipeline-Schritt (Aufnahme, Schnitt, Voiceover, Untertitel,
 Zusammensetzen, Shorts, Thumbnail), Job-Log live im Browser, Dateiliste mit Downloads. Läuft nur
 lokal (127.0.0.1), kein Deploy. Alle Skripte sind trotzdem einzeln über die Kommandozeile nutzbar

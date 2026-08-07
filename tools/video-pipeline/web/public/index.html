@@ -33,6 +33,32 @@
 <p class="sub">Eigenes Werkzeug, kein Teil des Produkts. Läuft nur lokal auf diesem Rechner.</p>
 
 <section>
+  <h2>Medien-Trimmer (Start/Ende selbst abspielen &amp; markieren)</h2>
+  <p class="hint">Datei laden, abspielen/vor- und zurückspulen, an der gewünschten Stelle
+    "Start hier setzen" bzw. "Ende hier setzen" klicken – wie Ein-/Auspunkte in einem
+    Schnittprogramm. Danach direkt in eine der Sektionen unten übernehmen, statt Sekundenzahlen
+    zu raten.</p>
+  <input type="file" id="trim-file" accept="video/*,audio/*" />
+  <video id="trim-player" controls style="width:100%;max-height:360px;margin-top:8px;background:#000;border-radius:6px;" hidden></video>
+  <audio id="trim-audio-player" controls style="width:100%;margin-top:8px;" hidden></audio>
+  <div class="row">
+    <div><label>Start (s)</label><input type="number" id="trim-start" value="0" step="0.01" /></div>
+    <div><label>Ende (s)</label><input type="number" id="trim-end" value="0" step="0.01" /></div>
+  </div>
+  <div class="row">
+    <button type="button" onclick="markTrimStart()">Start hier setzen</button>
+    <button type="button" onclick="markTrimEnd()">Ende hier setzen</button>
+  </div>
+  <div class="hint" id="trim-path-hint"></div>
+  <div class="row">
+    <button type="button" onclick="applyTrimTo('shorts')">→ In "Shorts" übernehmen</button>
+    <button type="button" onclick="applyTrimTo('music-short')">→ In "Musik-Short" übernehmen</button>
+    <button type="button" onclick="applyTrimTo('cut')">→ Datei für "Schneiden" übernehmen</button>
+  </div>
+  <div class="hint" id="trim-apply-result"></div>
+</section>
+
+<section>
   <h2>Musik-Short (der einfache Weg: nur Bild + Musik + Part)</h2>
   <div class="row">
     <div><label>Musik (Pflicht)</label><input type="file" id="ms-audio-file" accept="audio/*" /></div>
@@ -221,6 +247,65 @@ async function uploadFile(file) {
   form.append("file", file);
   const res = await fetch("/api/upload", { method: "POST", body: form });
   return res.json();
+}
+
+// --- Medien-Trimmer ---
+let trimUploadedPath = null;
+const trimFileInput = document.getElementById("trim-file");
+const trimVideoEl = document.getElementById("trim-player");
+const trimAudioEl = document.getElementById("trim-audio-player");
+
+trimFileInput.addEventListener("change", async () => {
+  const file = trimFileInput.files[0];
+  if (!file) return;
+  const isVideo = file.type.startsWith("video/");
+  const url = URL.createObjectURL(file);
+  if (isVideo) {
+    trimVideoEl.src = url; trimVideoEl.hidden = false;
+    trimAudioEl.hidden = true; trimAudioEl.removeAttribute("src");
+  } else {
+    trimAudioEl.src = url; trimAudioEl.hidden = false;
+    trimVideoEl.hidden = true; trimVideoEl.removeAttribute("src");
+  }
+  document.getElementById("trim-path-hint").textContent = "Lade hoch...";
+  const data = await uploadFile(file);
+  trimUploadedPath = data.path;
+  document.getElementById("trim-path-hint").textContent = "Hochgeladen als: " + data.path;
+});
+
+function activeTrimPlayer() {
+  return trimVideoEl.hidden ? trimAudioEl : trimVideoEl;
+}
+
+function markTrimStart() {
+  document.getElementById("trim-start").value = activeTrimPlayer().currentTime.toFixed(2);
+}
+function markTrimEnd() {
+  document.getElementById("trim-end").value = activeTrimPlayer().currentTime.toFixed(2);
+}
+
+function applyTrimTo(target) {
+  const start = val("trim-start");
+  const end = val("trim-end");
+  const resultEl = document.getElementById("trim-apply-result");
+  if (!trimUploadedPath) {
+    resultEl.textContent = "Erst eine Datei laden (wird automatisch hochgeladen).";
+    return;
+  }
+  if (target === "shorts") {
+    document.getElementById("sh-in").value = trimUploadedPath;
+    document.getElementById("sh-start").value = start;
+    document.getElementById("sh-end").value = end;
+  } else if (target === "music-short") {
+    msAudioPath = trimUploadedPath;
+    document.getElementById("ms-upload-result").textContent = "Musik (vom Trimmer übernommen): " + trimUploadedPath;
+    document.getElementById("ms-start").value = start;
+    document.getElementById("ms-end").value = end;
+  } else if (target === "cut") {
+    document.getElementById("cut-in").value = trimUploadedPath;
+  }
+  resultEl.textContent = `Übernommen (${target}): Start ${start}s, Ende ${end}s`;
+  document.querySelector(target === "cut" ? "#cut-in" : target === "music-short" ? "#ms-start" : "#sh-start").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 async function runUpload() {
