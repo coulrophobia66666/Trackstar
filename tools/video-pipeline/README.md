@@ -10,6 +10,22 @@ Aufnahme. Ein lokales Web-Dashboard (`web/`) steuert alle Schritte über eine Ob
 Kein Teil des Produkts/Repos-Deploys, deshalb eigenständig hier unter `tools/` und ohne Einfluss
 auf `website/`/`worker/`.
 
+## Der einfachste Weg: nur Bild + Musik + Part
+
+Zielbild dieses Werkzeugs: **Bild hochladen (optional), Musik hochladen, gewünschten Ausschnitt
+angeben – fertig.** Das übernimmt `music-short.py` (bzw. der erste Abschnitt im Dashboard):
+
+```bash
+python3 music-short.py --audio track.mp3 --start 32 --end 47 --out out/shorts/hook.mp4
+# mit Cover-Bild (sanfter Ken-Burns-Zoom) statt automatisch generierter Wellenform:
+python3 music-short.py --audio track.mp3 --start 32 --end 47 --image cover.jpg --title "Songtitel" --out out/shorts/hook.mp4
+```
+
+Kein Bild nötig – ohne `--image` erzeugt das Skript eine animierte Wellenform direkt aus der
+Musik als Hintergrund, sodass ein Short immer entsteht, auch ganz ohne Artwork. Alles andere in
+diesem Werkzeug (Screen-Aufnahme, Schnitt per Zeitstempel, Untertitel aus einer echten Sprachspur
+usw.) bleibt für die aufwendigeren Produktpräsentationsvideos bestehen.
+
 ## Dashboard (empfohlener Einstieg)
 
 ```bash
@@ -52,6 +68,8 @@ record.mjs  --------->  cut.py  --------->  assemble.py  --------->  final.mp4
    zerlegt (`--auto-split`) als schnelle erste Auswahl an Short-Kandidaten.
 7. **`thumbnail.py`** – greift einen Frame aus einem Video und legt fetten Titeltext mit
    lesbarem Verlaufsbalken drüber, in 16:9 (YouTube) und optional 9:16 (Shorts-Cover).
+8. **`music-short.py`** – eigener, kürzerer Pfad ohne Video als Ausgangspunkt: nur Musik (+
+   optionales Bild) + gewählter Ausschnitt → fertiger Hochkant-Short. Siehe Abschnitt oben.
 
 `demo.sh` führt Schritte 1–5 einmal am Beispiel-Rundgang aus (guter erster Test).
 
@@ -156,8 +174,15 @@ Kompletter Durchlauf (`demo.sh`, Schritte 1–5) in dieser Sandbox gegen den ech
 `/index.html`-Kurzcheck-Flow verifiziert (Upload, Analyse, Ergebnis) – 18,9s Rohmaterial auf 5,8s
 relevante Ausschnitte geschnitten, `espeak-ng`-Voiceover, eingebrannte Untertitel, Titelkarte.
 `shorts.py` (Hochkant-Format mit weichgezeichnetem Hintergrund) und `thumbnail.py` (16:9 + 9:16,
-Verlaufsbalken + Titeltext) einzeln gegen echtes Ausgabematerial getestet. Das Dashboard
-(`web/server.mjs`) wurde per API-Aufruf (Thumbnail-Job) end-to-end verifiziert.
+Verlaufsbalken + Titeltext) einzeln gegen echtes Ausgabematerial getestet. `music-short.py`
+gegen synthetische Testmusik in beiden Varianten getestet (mit Cover-Bild/Ken-Burns-Zoom und ohne
+Bild/generierte Wellenform) – dabei einen echten Bug gefunden und gefixt: `ffmpeg`s
+`showwaves`-Filter liefert in dieser Umgebung (ffmpeg 6.1.1) bei Hex-Farben und manchen benannten
+Farben (u.a. die ursprünglich geplante Markenfarbe) einen falschen, grünstichigen Ton statt der
+angegebenen Farbe – verifiziert per Pixelwert-Messung, nicht nur nach Augenmaß. Funktionierender
+Fallback: `colors=white` (auch `yellow`/`red` bestätigt korrekt). Das Dashboard (`web/server.mjs`)
+wurde für Thumbnail- und Musik-Short-Jobs per echtem HTTP-Aufruf inkl. Datei-Upload end-to-end
+verifiziert.
 
 Nicht getestet, weil in dieser Sandbox nicht verfügbar: ElevenLabs (`--engine cloud`, kein Key
 vorhanden) und Piper mit echtem Stimmmodell (Download von huggingface.co dort blockiert) – beide

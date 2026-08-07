@@ -124,9 +124,13 @@ Browser (website/)                         Cloudflare Worker (worker/)
   --from-manifest` oder `caption.py --from-audio` per faster-whisper für
   bereits hochgeladene Videos mit echter Sprachspur), schneidet daraus
   Hochkant-Shorts (`shorts.py`) und erzeugt Thumbnails (`thumbnail.py`).
-  Lokales Web-Dashboard unter `web/` (`npm run dashboard`) steuert alle
-  Schritte über eine Oberfläche statt einzelner CLI-Aufrufe. Details/Setup
-  in `tools/video-pipeline/README.md`.
+  Einfachster Weg für reine Musik-Shorts (Zielbild des Werkzeugs):
+  `music-short.py` – nur Musik (+ optionales Cover-Bild, sonst
+  automatisch generierte Wellenform) + gewählter Ausschnitt ergibt direkt
+  einen fertigen Short, ohne Umweg über ein Video. Lokales Web-Dashboard
+  unter `web/` (`npm run dashboard`) steuert alle Schritte über eine
+  Oberfläche statt einzelner CLI-Aufrufe. Details/Setup in
+  `tools/video-pipeline/README.md`.
 
 ## Entwicklung
 

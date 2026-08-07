@@ -138,6 +138,15 @@ app.post("/api/shorts", (req, res) => {
   res.json({ jobId: runJob(VENV_PYTHON, args) });
 });
 
+app.post("/api/music-short", (req, res) => {
+  const { audio, start, end, image, title, captions, out } = req.body;
+  const args = [path.join(ROOT, "music-short.py"), "--audio", audio, "--start", String(start), "--end", String(end), "--out", out];
+  if (image) args.push("--image", image);
+  if (title) args.push("--title", title);
+  if (captions) args.push("--captions", captions);
+  res.json({ jobId: runJob(VENV_PYTHON, args) });
+});
+
 app.post("/api/thumbnail", (req, res) => {
   const { input, time, title, subtitle, out, verticalOut } = req.body;
   const args = [path.join(ROOT, "thumbnail.py"), "--in", input, "--title", title, "--out", out];

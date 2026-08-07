@@ -33,6 +33,26 @@
 <p class="sub">Eigenes Werkzeug, kein Teil des Produkts. Läuft nur lokal auf diesem Rechner.</p>
 
 <section>
+  <h2>Musik-Short (der einfache Weg: nur Bild + Musik + Part)</h2>
+  <div class="row">
+    <div><label>Musik (Pflicht)</label><input type="file" id="ms-audio-file" accept="audio/*" /></div>
+    <div><label>Bild (optional – ohne wird eine Wellenform generiert)</label><input type="file" id="ms-image-file" accept="image/*" /></div>
+  </div>
+  <button onclick="runMusicShortUpload()">Hochladen</button>
+  <div class="hint" id="ms-upload-result"></div>
+  <div class="row">
+    <div><label>Start des gewünschten Parts (s)</label><input type="number" id="ms-start" value="0" /></div>
+    <div><label>Ende des gewünschten Parts (s)</label><input type="number" id="ms-end" value="15" /></div>
+  </div>
+  <label>Titeltext (optional)</label>
+  <input type="text" id="ms-title" placeholder="z. B. Songtitel" />
+  <label>Ausgabedatei</label>
+  <input type="text" id="ms-out" value="out/shorts/music-short.mp4" />
+  <button onclick="runMusicShort()">Short erzeugen</button>
+  <pre class="log" id="ms-log" hidden></pre>
+</section>
+
+<section>
   <h2>1. Aufnahme (Playwright)</h2>
   <label>Storyboard-JSON</label>
   <input type="text" id="rec-storyboard" value="storyboard.example.json" />
@@ -196,14 +216,41 @@ async function runRecord() {
   pollJob(jobId, document.getElementById("rec-log"), btn);
 }
 
+async function uploadFile(file) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch("/api/upload", { method: "POST", body: form });
+  return res.json();
+}
+
 async function runUpload() {
   const fileInput = document.getElementById("upload-file");
   if (!fileInput.files[0]) return;
-  const form = new FormData();
-  form.append("file", fileInput.files[0]);
-  const res = await fetch("/api/upload", { method: "POST", body: form });
-  const data = await res.json();
+  const data = await uploadFile(fileInput.files[0]);
   document.getElementById("upload-result").textContent = "Hochgeladen als: " + data.path;
+}
+
+let msAudioPath = null;
+let msImagePath = null;
+
+async function runMusicShortUpload() {
+  const audioInput = document.getElementById("ms-audio-file");
+  const imageInput = document.getElementById("ms-image-file");
+  const parts = [];
+  if (audioInput.files[0]) { msAudioPath = (await uploadFile(audioInput.files[0])).path; parts.push("Musik: " + msAudioPath); }
+  if (imageInput.files[0]) { msImagePath = (await uploadFile(imageInput.files[0])).path; parts.push("Bild: " + msImagePath); }
+  document.getElementById("ms-upload-result").textContent = parts.join(" | ") || "nichts ausgewählt";
+}
+
+async function runMusicShort() {
+  const btn = event.target;
+  if (!msAudioPath) { alert("Erst Musik hochladen."); return; }
+  const { jobId } = await postJson("/api/music-short", {
+    audio: msAudioPath, image: msImagePath || undefined,
+    start: num("ms-start"), end: num("ms-end"),
+    title: val("ms-title") || undefined, out: val("ms-out"),
+  });
+  pollJob(jobId, document.getElementById("ms-log"), btn);
 }
 
 async function runCut() {
