@@ -2,6 +2,10 @@ node_modules/
 .venv/
 voices/
 out/
+uploads/
+__pycache__/
 *.wav
 *.mp4
 *.webm
+*.png
+*.jpg

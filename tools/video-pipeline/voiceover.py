@@ -37,14 +37,46 @@ def synth_espeak(text, out_wav: Path, lang="de"):
     )
 
 
+DEFAULT_ELEVENLABS_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # "Rachel" - Startvoreinstellung, per --voice-id/ELEVENLABS_VOICE_ID ersetzbar
+
+
 def synth_cloud(text, out_wav: Path):
-    # Hier eine Cloud-TTS anbinden (z.B. ElevenLabs/OpenAI). Der Key kommt zur Laufzeit aus einer
-    # Umgebungsvariable (z.B. OVERHERTZ_TTS_API_KEY), nie fest im Code oder Chat - siehe
-    # Hausregel "Keine Secrets im Code oder Chat" in der Projekt-CLAUDE.md.
-    raise NotImplementedError(
-        "Keine Cloud-TTS angebunden. API-Key als Umgebungsvariable setzen und hier den "
-        "HTTP-Call zum gewaehlten Dienst ergaenzen (z.B. ElevenLabs/OpenAI TTS)."
+    # ElevenLabs Text-to-Speech. Key kommt ausschliesslich aus der Umgebungsvariable
+    # ELEVENLABS_API_KEY - nie fest im Code, nie im Chat eingefuegt (siehe Hausregel "Keine
+    # Secrets im Code oder Chat" in der Projekt-CLAUDE.md). Liefert MP3 zurueck, wird fuer
+    # den Rest der Pipeline (erwartet WAV fuer Laengenmessung/Mischen) direkt umgewandelt.
+    import os
+    import requests
+
+    api_key = os.environ.get("ELEVENLABS_API_KEY")
+    if not api_key:
+        raise SystemExit(
+            "ELEVENLABS_API_KEY ist nicht gesetzt. Vor dem Aufruf z.B.:\n"
+            "  export ELEVENLABS_API_KEY=dein-key\n"
+            "(nie in eine Datei oder den Chat schreiben - nur als lokale Umgebungsvariable)."
+        )
+    voice_id = os.environ.get("ELEVENLABS_VOICE_ID", DEFAULT_ELEVENLABS_VOICE_ID)
+
+    resp = requests.post(
+        f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+        headers={"xi-api-key": api_key, "content-type": "application/json"},
+        json={
+            "text": text,
+            "model_id": "eleven_multilingual_v2",
+            "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
+        },
+        timeout=60,
     )
+    if resp.status_code != 200:
+        raise RuntimeError(f"ElevenLabs-Fehler {resp.status_code}: {resp.text[:300]}")
+
+    mp3_path = out_wav.with_suffix(".mp3")
+    mp3_path.write_bytes(resp.content)
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", str(mp3_path), "-ar", "44100", "-ac", "1", str(out_wav)],
+        check=True, capture_output=True,
+    )
+    mp3_path.unlink()
 
 
 def wav_duration_s(path: Path) -> float:
@@ -72,17 +104,25 @@ def main():
 
     engine = args.engine
     piper_voice = None
-    if engine in ("auto", "piper"):
-        voice_model = find_voice_model(Path(args.voices_dir))
-        if voice_model:
-            from piper import PiperVoice
+    if engine == "auto":
+        # Qualitaets-Rangfolge, wenn nichts explizit gewaehlt wurde: ElevenLabs (falls Key
+        # gesetzt) vor Piper (falls Stimmmodell vorhanden) vor espeak-ng (immer verfuegbar).
+        import os
 
-            piper_voice = PiperVoice.load(str(voice_model))
+        if os.environ.get("ELEVENLABS_API_KEY"):
+            engine = "cloud"
+        elif find_voice_model(Path(args.voices_dir)):
             engine = "piper"
-        elif engine == "piper":
-            raise SystemExit(f"Kein Stimmmodell (*.onnx) in {args.voices_dir}/ gefunden - siehe README.")
         else:
             engine = "espeak"
+
+    if engine == "piper":
+        voice_model = find_voice_model(Path(args.voices_dir))
+        if not voice_model:
+            raise SystemExit(f"Kein Stimmmodell (*.onnx) in {args.voices_dir}/ gefunden - siehe README.")
+        from piper import PiperVoice
+
+        piper_voice = PiperVoice.load(str(voice_model))
 
     print(f"[voiceover] Engine: {engine}")
 

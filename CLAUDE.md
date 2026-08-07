@@ -116,13 +116,17 @@ Browser (website/)                         Cloudflare Worker (worker/)
   Aufruf: `node scripts/backfill-cli.js <Ordner> <Genre-Slug>`. Gültige
   Genre-Slugs stehen in `GENRE_PAGE_DEFS` in `worker/songtext-worker.js`.
 - **`tools/video-pipeline/`** – eigenständiges Werkzeug (kein Teil des
-  Produkts/Deploys) für Produktpräsentationsvideos: nimmt den
-  Website-Flow per Playwright als Bildschirmvideo auf, schneidet Leerlauf
-  automatisch raus, vertont per TTS (Piper offline, Fallback `espeak-ng`)
-  und brennt Untertitel ein (`voiceover.py --from-manifest` oder
-  `caption.py --from-audio` per faster-whisper für bereits hochgeladene
-  Videos mit echter Sprachspur). Details/Setup in
-  `tools/video-pipeline/README.md`.
+  Produkts/Deploys) für Produktpräsentationsvideos, Shorts und
+  Thumbnails: nimmt den Website-Flow per Playwright als Bildschirmvideo
+  auf, schneidet Leerlauf automatisch raus, vertont per TTS (ElevenLabs
+  wenn `ELEVENLABS_API_KEY` gesetzt ist, sonst Piper offline, sonst
+  Fallback `espeak-ng`), brennt Untertitel ein (`voiceover.py
+  --from-manifest` oder `caption.py --from-audio` per faster-whisper für
+  bereits hochgeladene Videos mit echter Sprachspur), schneidet daraus
+  Hochkant-Shorts (`shorts.py`) und erzeugt Thumbnails (`thumbnail.py`).
+  Lokales Web-Dashboard unter `web/` (`npm run dashboard`) steuert alle
+  Schritte über eine Oberfläche statt einzelner CLI-Aufrufe. Details/Setup
+  in `tools/video-pipeline/README.md`.
 
 ## Entwicklung
 

@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<title>Overhertz Video-Pipeline</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: system-ui, sans-serif; background: #0e0e14; color: #eee; margin: 0; padding: 24px; }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  .sub { color: #999; margin-bottom: 24px; font-size: 0.9rem; }
+  section { background: #17171f; border: 1px solid #2a2a35; border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; }
+  h2 { font-size: 1rem; margin: 0 0 12px; color: #ff9a3c; }
+  label { display: block; font-size: 0.8rem; color: #bbb; margin-top: 8px; }
+  input[type=text], input[type=number], select { width: 100%; box-sizing: border-box; padding: 6px 8px; background: #0e0e14; border: 1px solid #333; color: #eee; border-radius: 6px; margin-top: 2px; }
+  input[type=file] { margin-top: 4px; }
+  button { margin-top: 12px; background: #ff9a3c; color: #1a1a1a; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 160px; }
+  pre.log { background: #0a0a0e; border: 1px solid #2a2a35; border-radius: 6px; padding: 10px; margin-top: 10px; max-height: 200px; overflow: auto; font-size: 0.75rem; white-space: pre-wrap; }
+  .files { list-style: none; padding: 0; font-size: 0.85rem; }
+  .files li { padding: 4px 0; border-bottom: 1px solid #222; display: flex; justify-content: space-between; }
+  .files a { color: #ff9a3c; }
+  .hint { font-size: 0.75rem; color: #888; margin-top: 4px; }
+  .status-running { color: #ffcc66; }
+  .status-done { color: #7ee787; }
+  .status-error { color: #ff6b6b; }
+</style>
+</head>
+<body>
+<h1>Overhertz Video-Pipeline</h1>
+<p class="sub">Eigenes Werkzeug, kein Teil des Produkts. Läuft nur lokal auf diesem Rechner.</p>
+
+<section>
+  <h2>1. Aufnahme (Playwright)</h2>
+  <label>Storyboard-JSON</label>
+  <input type="text" id="rec-storyboard" value="storyboard.example.json" />
+  <div class="row">
+    <div><label>Ausgabeordner</label><input type="text" id="rec-out" value="out/raw" /></div>
+    <div><label>Base-URL (leer = lokal aus website/)</label><input type="text" id="rec-baseurl" placeholder="https://overhertz.app" /></div>
+  </div>
+  <button onclick="runRecord()">Aufnehmen</button>
+  <pre class="log" id="rec-log" hidden></pre>
+</section>
+
+<section>
+  <h2>Video hochladen (statt selbst aufnehmen)</h2>
+  <input type="file" id="upload-file" accept="video/*" />
+  <button onclick="runUpload()">Hochladen</button>
+  <div class="hint" id="upload-result"></div>
+</section>
+
+<section>
+  <h2>2. Schneiden (Leerlauf raus)</h2>
+  <div class="row">
+    <div><label>Modus</label>
+      <select id="cut-mode" onchange="document.getElementById('cut-steps-row').hidden = this.value !== 'steps'">
+        <option value="steps">steps (eigene Aufnahme)</option>
+        <option value="silence">silence (hochgeladenes Video)</option>
+      </select>
+    </div>
+    <div><label>Eingabevideo</label><input type="text" id="cut-in" placeholder="out/raw/xyz.webm" /></div>
+  </div>
+  <div class="row" id="cut-steps-row">
+    <div><label>steps.json</label><input type="text" id="cut-steps" value="out/raw/steps.json" /></div>
+    <div><label>Max. Pause (s)</label><input type="number" id="cut-maxgap" value="1.2" step="0.1" /></div>
+  </div>
+  <label>Ausgabedatei</label>
+  <input type="text" id="cut-out" value="out/cut.mp4" />
+  <button onclick="runCut()">Schneiden</button>
+  <pre class="log" id="cut-log" hidden></pre>
+</section>
+
+<section>
+  <h2>3. Voiceover</h2>
+  <div class="row">
+    <div><label>Sprecherscript (JSON)</label><input type="text" id="vo-script" value="script.example.json" /></div>
+    <div><label>Engine</label>
+      <select id="vo-engine">
+        <option value="auto">auto (ElevenLabs &gt; Piper &gt; espeak)</option>
+        <option value="cloud">cloud (ElevenLabs, braucht ELEVENLABS_API_KEY)</option>
+        <option value="piper">piper (offline, braucht Stimmmodell)</option>
+        <option value="espeak">espeak (immer verfügbar, robotisch)</option>
+      </select>
+    </div>
+  </div>
+  <label>Ausgabeordner</label>
+  <input type="text" id="vo-out" value="out/voiceover" />
+  <button onclick="runVoiceover()">Vertonen</button>
+  <pre class="log" id="vo-log" hidden></pre>
+</section>
+
+<section>
+  <h2>4. Untertitel</h2>
+  <div class="row">
+    <div><label>Aus Voiceover-Manifest</label><input type="text" id="cap-manifest" value="out/voiceover/manifest.json" /></div>
+    <div><label>ODER aus Video mit echter Sprachspur</label><input type="text" id="cap-audio" placeholder="mein-video.mp4" /></div>
+  </div>
+  <label>Ausgabedatei</label>
+  <input type="text" id="cap-out" value="out/captions.srt" />
+  <button onclick="runCaption()">Untertitel erzeugen</button>
+  <pre class="log" id="cap-log" hidden></pre>
+</section>
+
+<section>
+  <h2>5. Zusammensetzen</h2>
+  <div class="row">
+    <div><label>Geschnittenes Video</label><input type="text" id="asm-video" value="out/cut.mp4" /></div>
+    <div><label>Voiceover-Ordner (optional)</label><input type="text" id="asm-vo" value="out/voiceover" /></div>
+  </div>
+  <div class="row">
+    <div><label>Untertitel (optional)</label><input type="text" id="asm-cap" value="out/captions.srt" /></div>
+    <div><label>Titelkarte (optional)</label><input type="text" id="asm-title" value="Overhertz" /></div>
+  </div>
+  <label>Ausgabedatei</label>
+  <input type="text" id="asm-out" value="out/final.mp4" />
+  <button onclick="runAssemble()">Zusammensetzen</button>
+  <pre class="log" id="asm-log" hidden></pre>
+</section>
+
+<section>
+  <h2>6. Shorts (Hochkant, 1080×1920)</h2>
+  <div class="row">
+    <div><label>Eingabevideo</label><input type="text" id="sh-in" value="out/final.mp4" /></div>
+    <div><label>Untertitel (optional)</label><input type="text" id="sh-cap" placeholder="out/captions.srt" /></div>
+  </div>
+  <div class="row">
+    <div><label>Start (s)</label><input type="number" id="sh-start" value="0" /></div>
+    <div><label>Ende (s)</label><input type="number" id="sh-end" value="10" /></div>
+  </div>
+  <label>Ausgabedatei (Einzelclip)</label>
+  <input type="text" id="sh-out" value="out/shorts/clip1.mp4" />
+  <div class="hint">Oder automatisch in Häppchen zerlegen:</div>
+  <div class="row">
+    <div><label>Auto-Split alle N Sekunden</label><input type="number" id="sh-autosplit" placeholder="15" /></div>
+    <div><label>Zielordner (Auto-Split)</label><input type="text" id="sh-outdir" value="out/shorts" /></div>
+  </div>
+  <button onclick="runShorts()">Short erzeugen</button>
+  <pre class="log" id="sh-log" hidden></pre>
+</section>
+
+<section>
+  <h2>7. Thumbnail</h2>
+  <div class="row">
+    <div><label>Eingabevideo</label><input type="text" id="th-in" value="out/final.mp4" /></div>
+    <div><label>Zeitpunkt (s, leer = 30%)</label><input type="number" id="th-time" /></div>
+  </div>
+  <label>Titeltext</label>
+  <input type="text" id="th-title" value="In Sekunden zum Urteil" />
+  <label>Untertitel (optional)</label>
+  <input type="text" id="th-subtitle" placeholder="Overhertz prüft deinen Track" />
+  <div class="row">
+    <div><label>Ausgabe 16:9</label><input type="text" id="th-out" value="out/thumb.png" /></div>
+    <div><label>Ausgabe 9:16 (optional)</label><input type="text" id="th-vout" value="out/thumb-9x16.png" /></div>
+  </div>
+  <button onclick="runThumbnail()">Thumbnail erzeugen</button>
+  <pre class="log" id="th-log" hidden></pre>
+</section>
+
+<section>
+  <h2>Ausgabedateien</h2>
+  <button onclick="loadFiles()">Aktualisieren</button>
+  <ul class="files" id="file-list"></ul>
+</section>
+
+<script>
+async function postJson(url, body) {
+  const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  return res.json();
+}
+
+async function pollJob(jobId, logEl, button) {
+  logEl.hidden = false;
+  button.disabled = true;
+  while (true) {
+    const res = await fetch(`/api/jobs/${jobId}`);
+    const job = await res.json();
+    logEl.textContent = job.log || "(läuft...)";
+    logEl.className = "log status-" + job.status;
+    if (job.status !== "running") {
+      button.disabled = false;
+      loadFiles();
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
+function val(id) { return document.getElementById(id).value; }
+function num(id) { const v = val(id); return v === "" ? undefined : Number(v); }
+
+async function runRecord() {
+  const btn = event.target;
+  const { jobId } = await postJson("/api/record", { storyboard: val("rec-storyboard"), out: val("rec-out"), baseUrl: val("rec-baseurl") || undefined });
+  pollJob(jobId, document.getElementById("rec-log"), btn);
+}
+
+async function runUpload() {
+  const fileInput = document.getElementById("upload-file");
+  if (!fileInput.files[0]) return;
+  const form = new FormData();
+  form.append("file", fileInput.files[0]);
+  const res = await fetch("/api/upload", { method: "POST", body: form });
+  const data = await res.json();
+  document.getElementById("upload-result").textContent = "Hochgeladen als: " + data.path;
+}
+
+async function runCut() {
+  const btn = event.target;
+  const { jobId } = await postJson("/api/cut", { mode: val("cut-mode"), input: val("cut-in"), steps: val("cut-steps"), maxGap: num("cut-maxgap"), out: val("cut-out") });
+  pollJob(jobId, document.getElementById("cut-log"), btn);
+}
+
+async function runVoiceover() {
+  const btn = event.target;
+  const { jobId } = await postJson("/api/voiceover", { script: val("vo-script"), out: val("vo-out"), engine: val("vo-engine") });
+  pollJob(jobId, document.getElementById("vo-log"), btn);
+}
+
+async function runCaption() {
+  const btn = event.target;
+  const fromAudio = val("cap-audio");
+  const { jobId } = await postJson("/api/caption", fromAudio
+    ? { fromAudio, out: val("cap-out") }
+    : { fromManifest: val("cap-manifest"), out: val("cap-out") });
+  pollJob(jobId, document.getElementById("cap-log"), btn);
+}
+
+async function runAssemble() {
+  const btn = event.target;
+  const { jobId } = await postJson("/api/assemble", { video: val("asm-video"), voiceoverDir: val("asm-vo") || undefined, captions: val("asm-cap") || undefined, title: val("asm-title") || undefined, out: val("asm-out") });
+  pollJob(jobId, document.getElementById("asm-log"), btn);
+}
+
+async function runShorts() {
+  const btn = event.target;
+  const autoSplit = num("sh-autosplit");
+  const body = { input: val("sh-in"), captions: val("sh-cap") || undefined };
+  if (autoSplit) { body.autoSplit = autoSplit; body.outDir = val("sh-outdir"); }
+  else { body.start = num("sh-start"); body.end = num("sh-end"); body.out = val("sh-out"); }
+  const { jobId } = await postJson("/api/shorts", body);
+  pollJob(jobId, document.getElementById("sh-log"), btn);
+}
+
+async function runThumbnail() {
+  const btn = event.target;
+  const { jobId } = await postJson("/api/thumbnail", { input: val("th-in"), time: num("th-time"), title: val("th-title"), subtitle: val("th-subtitle") || undefined, out: val("th-out"), verticalOut: val("th-vout") || undefined });
+  pollJob(jobId, document.getElementById("th-log"), btn);
+}
+
+async function loadFiles() {
+  const res = await fetch("/api/files");
+  const files = await res.json();
+  const list = document.getElementById("file-list");
+  list.innerHTML = files.map(f => `<li><a href="/out/${f.path}" target="_blank">${f.path}</a><span>${(f.size/1024).toFixed(0)} KB</span></li>`).join("");
+}
+loadFiles();
+</script>
+</body>
+</html>
