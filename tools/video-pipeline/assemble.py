@@ -15,6 +15,14 @@ from pathlib import Path
 FFMPEG = "ffmpeg"
 
 
+def ffprobe_duration(path: Path) -> float:
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+        capture_output=True, text=True, check=True,
+    )
+    return float(out.stdout.strip())
+
+
 def build_voiceover_track(manifest_path: Path, tmp_dir: Path) -> Path:
     """Mischt die einzelnen Voiceover-Schnipsel anhand ihrer start_s-Zeiten zu einer einzigen
     Tonspur - amix statt simples Concat, weil das Manifest bereits absolute Startzeiten enthaelt
@@ -51,11 +59,27 @@ def main():
         tmp = Path(tmp)
         video_path = Path(args.video)
 
-        # 1) Voiceover-Spur bauen und auf die Videolaenge bringen (falls Voiceover laenger/kuerzer
-        #    ist, lieber abschneiden/mit Stille auffuellen als das Video zu verzerren).
+        # 1) Voiceover-Spur bauen. Ist sie laenger als das Rohvideo (haeufig bei kurzen
+        #    Bildschirm-Rundgaengen mit langem Sprechertext), lieber das letzte Bild einfrieren
+        #    und halten, bis die Vertonung fertig ist, statt mit -shortest den Satz mitten drin
+        #    abzuwuergen - Standardtrick bei erzaehlten Screen-Recordings.
         if args.voiceover_dir:
             manifest_path = Path(args.voiceover_dir) / "manifest.json"
             voiceover_wav = build_voiceover_track(manifest_path, tmp)
+
+            video_duration = ffprobe_duration(video_path)
+            voiceover_duration = ffprobe_duration(voiceover_wav)
+            if voiceover_duration > video_duration:
+                extended = tmp / "video-extended.mp4"
+                pad_s = voiceover_duration - video_duration
+                subprocess.run(
+                    [FFMPEG, "-y", "-i", str(video_path),
+                     "-vf", f"tpad=stop_mode=clone:stop_duration={pad_s:.3f}",
+                     "-c:v", "libx264", "-pix_fmt", "yuv420p", str(extended)],
+                    check=True, capture_output=True,
+                )
+                video_path = extended
+
             with_audio = tmp / "with-audio.mp4"
             subprocess.run(
                 [FFMPEG, "-y", "-i", str(video_path), "-i", str(voiceover_wav),

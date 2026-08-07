@@ -37,7 +37,11 @@ def ffprobe_duration(path: Path) -> float:
 
 def segments_from_steps(steps_path: Path, total_duration: float, max_gap: float, min_gap: float = 0.15):
     data = json.loads(steps_path.read_text(encoding="utf-8"))
-    boundaries = [0.0] + [s["atMs"] / 1000 for s in data["steps"]] + [total_duration]
+    # Schritt-Zeitstempel koennen das tatsaechliche Videoende ueberschreiten (z.B. wenn eine
+    # Aktion laenger wartet, als am Ende noch Frames aufgezeichnet wurden) - ungeklippt wuerden
+    # daraus Segmente jenseits des Videos entstehen, die ffmpeg still leer/kaputt schneidet und
+    # den ganzen Zusammenschnitt auf wenige Sekunden zusammenstauchen. Deshalb hart clippen.
+    boundaries = [0.0] + [min(s["atMs"] / 1000, total_duration) for s in data["steps"]] + [total_duration]
     boundaries = sorted(set(boundaries))
 
     segments = []
