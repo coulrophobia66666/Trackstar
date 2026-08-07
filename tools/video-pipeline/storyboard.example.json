@@ -1,0 +1,15 @@
+{
+  "_hinweis": "Beispiel-Rundgang durch den kostenlosen Kurzcheck. audio-file.wav via make-test-audio.sh erzeugen (kein echter Track noetig, nur zum Testen der Pipeline-Mechanik). Loest keinen echten KI-Call aus - #free-results ist reine Client-Analyse.",
+  "steps": [
+    { "id": "landing", "action": "goto", "url": "/index.html", "label": "Startseite laedt", "voiceover": "Overhertz prueft deinen Track in Sekunden." },
+    { "id": "wait-hero", "action": "waitMs", "ms": 1200, "label": "kurze Pause auf der Startseite" },
+    { "id": "scroll-upload", "action": "scrollTo", "selector": "#upload-card", "label": "zur Upload-Karte scrollen" },
+    { "id": "highlight-upload", "action": "highlight", "selector": "#audio-file", "label": "Upload-Feld hervorheben" },
+    { "id": "upload", "action": "upload", "selector": "#audio-file", "files": ["./sample/test-audio.wav"], "label": "Track hochladen", "voiceover": "Einfach hochladen -" },
+    { "id": "title", "action": "fill", "selector": "#track-title", "value": "Testtrack", "label": "Songtitel eintragen" },
+    { "id": "submit", "action": "click", "selector": "#analyze-btn", "label": "Analyse starten" },
+    { "id": "wait-result", "action": "waitFor", "selector": "#free-results", "state": "visible", "timeout": 20000, "label": "auf Ergebnis warten", "voiceover": "und sofort das Ampel-Urteil sehen." },
+    { "id": "scroll-result", "action": "scrollTo", "selector": "#free-results", "label": "zum Ergebnis scrollen" },
+    { "id": "wait-end", "action": "waitMs", "ms": 2000, "label": "Ergebnis stehen lassen" }
+  ]
+}

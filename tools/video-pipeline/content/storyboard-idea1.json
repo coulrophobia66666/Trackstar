@@ -1,0 +1,17 @@
+{
+  "_hinweis": "Rohmaterial fuer Idea 1 (Suno-Check-Hook). audio-file via make-test-audio.sh erzeugen oder einen echten (KI-generierten) Testtrack unter sample/ ablegen und den Pfad unten anpassen. Fuer eine echte Aufnahme mit echtem Ergebnis --base-url auf die Live-Seite setzen (kostet dann einen echten Check).",
+  "steps": [
+    { "id": "landing", "action": "goto", "url": "/index.html", "label": "Startseite laedt" },
+    { "id": "scroll-upload", "action": "scrollTo", "selector": "#upload-card", "label": "zur Upload-Karte scrollen" },
+    { "id": "highlight-upload", "action": "highlight", "selector": "#audio-file", "label": "Upload-Feld hervorheben" },
+    { "id": "upload", "action": "upload", "selector": "#audio-file", "files": ["./sample/test-audio.wav"], "label": "Track hochladen", "voiceover": "hook" },
+    { "id": "title", "action": "fill", "selector": "#track-title", "value": "Mein KI-Track", "label": "Songtitel eintragen" },
+    { "id": "submit", "action": "click", "selector": "#analyze-btn", "label": "Analyse starten", "voiceover": "setup" },
+    { "id": "wait-result", "action": "waitFor", "selector": "#free-results", "state": "visible", "timeout": 20000, "label": "auf Ergebnis warten" },
+    { "id": "scroll-result", "action": "scrollTo", "selector": "#free-results", "label": "zum Ampel-Urteil scrollen", "voiceover": "reveal" },
+    { "id": "wait-badge", "action": "waitMs", "ms": 1500, "label": "Urteil stehen lassen" },
+    { "id": "highlight-badges", "action": "highlight", "selector": "#badges", "label": "Badges hervorheben" },
+    { "id": "scroll-problem", "action": "scrollTo", "selector": "#badges", "label": "zum groessten Problem scrollen", "voiceover": "detail" },
+    { "id": "wait-end", "action": "waitMs", "ms": 2500, "label": "Ergebnis stehen lassen fuer CTA", "voiceover": "cta" }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "overhertz-video-pipeline",
+  "private": true,
+  "type": "module",
+  "description": "Eigenes Werkzeug (kein Teil des Overhertz-Produkts): Produktvideos, Shorts und Thumbnails automatisiert erstellen.",
+  "scripts": {
+    "dashboard": "node web/server.mjs"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "multer": "^2.2.0",
+    "playwright": "^1.62.1"
+  }
+}
