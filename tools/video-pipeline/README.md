@@ -10,6 +10,10 @@ Aufnahme. Ein lokales Web-Dashboard (`web/`) steuert alle Schritte über eine Ob
 Kein Teil des Produkts/Repos-Deploys, deshalb eigenständig hier unter `tools/` und ohne Einfluss
 auf `website/`/`worker/`.
 
+Standardmäßig lokal auf dem eigenen Rechner gedacht (`npm run dashboard`). Für dauerhaften
+Zugriff über eine echte URL (statt `localhost`) siehe **[DEPLOY.md](./DEPLOY.md)** - eigener
+kleiner Server nötig, läuft nicht auf Cloudflare wie der Rest von Overhertz.
+
 ## Der einfachste Weg: nur Bild + Musik + Part
 
 Zielbild dieses Werkzeugs: **Bild hochladen (optional), Musik hochladen, gewünschten Ausschnitt
