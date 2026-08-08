@@ -843,6 +843,16 @@ button#unlock-btn {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+  padding: 0.9rem 0.4rem 0.7rem;
+  background: var(--surface-2);
+  border: 1px solid var(--gridline);
+  border-radius: 12px;
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+.eq-slider.is-adjusted {
+  background: var(--gold-wash);
+  border-color: rgba(205, 168, 107, 0.45);
 }
 
 .eq-slider label {
@@ -852,12 +862,77 @@ button#unlock-btn {
   text-align: center;
 }
 
+.eq-slider-track-wrap {
+  position: relative;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.eq-slider-zero-tick {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 1px;
+  background: var(--text-muted);
+  opacity: 0.6;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 .eq-slider input[type="range"] {
   writing-mode: vertical-lr;
   direction: rtl;
-  width: 6px;
-  height: 90px;
-  accent-color: var(--gold);
+  appearance: none;
+  -webkit-appearance: none;
+  width: 8px;
+  height: 100px;
+  background: var(--gridline);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.eq-slider.is-adjusted input[type="range"] {
+  background: linear-gradient(0deg, var(--gold-deep), var(--gold-bright));
+}
+
+.eq-slider input[type="range"]::-webkit-slider-runnable-track {
+  width: 8px;
+  background: transparent;
+  border-radius: 999px;
+}
+
+.eq-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  border: 3px solid var(--bg-plane);
+  box-shadow: 0 0 0 1px var(--gridline), 0 2px 5px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.eq-slider input[type="range"]::-moz-range-track {
+  width: 8px;
+  background: transparent;
+  border-radius: 999px;
+}
+
+.eq-slider input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  border: 3px solid var(--bg-plane);
+  box-shadow: 0 0 0 1px var(--gridline), 0 2px 5px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.eq-slider input[type="range"]::-moz-range-progress {
+  background: transparent;
 }
 
 .eq-value {

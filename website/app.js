@@ -4129,9 +4129,13 @@ function renderEqSliders() {
   FREQ_BANDS.forEach((band, i) => {
     const wrap = document.createElement("div");
     wrap.className = "eq-slider";
+    if (eqGains[i] !== 0) wrap.classList.add("is-adjusted");
     wrap.innerHTML = `
       <span class="eq-value" id="eq-value-${i}">${eqGains[i].toFixed(1)} dB</span>
-      <input type="range" id="eq-band-${i}" min="-12" max="12" step="0.5" value="${eqGains[i]}" />
+      <div class="eq-slider-track-wrap">
+        <span class="eq-slider-zero-tick" aria-hidden="true"></span>
+        <input type="range" id="eq-band-${i}" min="-12" max="12" step="0.5" value="${eqGains[i]}" />
+      </div>
       <label for="eq-band-${i}">${bandLabel(band)}</label>
     `;
     container.appendChild(wrap);
@@ -4139,6 +4143,7 @@ function renderEqSliders() {
     input.addEventListener("input", () => {
       eqGains[i] = Number(input.value);
       document.getElementById(`eq-value-${i}`).textContent = `${eqGains[i].toFixed(1)} dB`;
+      wrap.classList.toggle("is-adjusted", eqGains[i] !== 0);
       if (eqPlaying) updateEqFilterGains();
       redrawEqWaveformNow();
       scheduleEqPreviewUpdate();
