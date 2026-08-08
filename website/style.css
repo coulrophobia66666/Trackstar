@@ -851,8 +851,8 @@ button#unlock-btn {
 }
 
 .eq-slider.is-adjusted {
-  background: var(--gold-wash);
-  border-color: rgba(205, 168, 107, 0.45);
+  background: rgba(76, 195, 138, 0.14);
+  border-color: rgba(76, 195, 138, 0.45);
 }
 
 .eq-slider label {
@@ -895,7 +895,7 @@ button#unlock-btn {
 }
 
 .eq-slider.is-adjusted input[type="range"] {
-  background: linear-gradient(0deg, var(--gold-deep), var(--gold-bright));
+  background: linear-gradient(0deg, #2f7a58, var(--status-good));
 }
 
 .eq-slider input[type="range"]::-webkit-slider-runnable-track {
