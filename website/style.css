@@ -887,7 +887,7 @@ button#unlock-btn {
   direction: rtl;
   appearance: none;
   -webkit-appearance: none;
-  width: 8px;
+  width: 5px;
   height: 100px;
   background: var(--gridline);
   border-radius: 999px;
@@ -899,34 +899,34 @@ button#unlock-btn {
 }
 
 .eq-slider input[type="range"]::-webkit-slider-runnable-track {
-  width: 8px;
+  width: 5px;
   background: transparent;
   border-radius: 999px;
 }
 
 .eq-slider input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
+  width: 28px;
+  height: 13px;
+  border-radius: 999px;
   background: var(--gold-bright);
-  border: 3px solid var(--bg-plane);
+  border: 2px solid var(--bg-plane);
   box-shadow: 0 0 0 1px var(--gridline), 0 2px 5px rgba(0, 0, 0, 0.45);
   cursor: pointer;
 }
 
 .eq-slider input[type="range"]::-moz-range-track {
-  width: 8px;
+  width: 5px;
   background: transparent;
   border-radius: 999px;
 }
 
 .eq-slider input[type="range"]::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
+  width: 28px;
+  height: 13px;
+  border-radius: 999px;
   background: var(--gold-bright);
-  border: 3px solid var(--bg-plane);
+  border: 2px solid var(--bg-plane);
   box-shadow: 0 0 0 1px var(--gridline), 0 2px 5px rgba(0, 0, 0, 0.45);
   cursor: pointer;
 }
