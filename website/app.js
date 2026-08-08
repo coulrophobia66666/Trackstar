@@ -360,6 +360,7 @@ const I18N = {
     eqResetDone: "Zurückgesetzt.",
     eqNeedTrackFirst: "Bitte zuerst einen Track analysieren.",
     eqScorePreviewCalculating: "Berechne Score nach deiner Bearbeitung …",
+    eqScorePreviewWaitingForStop: "Score-Vorschau folgt, sobald die Wiedergabe pausiert (läuft im Hintergrund weiter ruckelfrei).",
     eqScorePreviewResult: "Nach deiner Bearbeitung: {before} → {after}/100 ({delta})",
     eqScorePreviewNoChange: "±0",
     eqScorePreviewFailed: "Vorschau konnte nicht berechnet werden.",
@@ -757,6 +758,7 @@ const I18N = {
     eqResetDone: "Reset.",
     eqNeedTrackFirst: "Please analyze a track first.",
     eqScorePreviewCalculating: "Calculating your score after this edit …",
+    eqScorePreviewWaitingForStop: "Score preview follows once playback is paused (keeps playing smoothly in the meantime).",
     eqScorePreviewResult: "After your edit: {before} → {after}/100 ({delta})",
     eqScorePreviewNoChange: "±0",
     eqScorePreviewFailed: "Couldn't calculate the preview.",
@@ -3662,21 +3664,14 @@ async function renderEditedBufferOffline() {
 // sieht der Kunde direkt (mit kurzer Verzoegerung statt "sofort bei jedem Pixel", das waere ohne
 // echten Neu-Render/Neu-Analyse-Durchlauf nicht moeglich), wo sein Track nach der Bearbeitung
 // tatsaechlich steht - Verbesserung UND Verschlechterung, keine Schoenrechnerei.
-let eqPreviewDebounceId = null;
 let eqPreviewToken = 0;
 let eqPreviewShowingEdited = false;
-const EQ_PREVIEW_DEBOUNCE_MS = 900;
+let eqPreviewPendingWhilePlaying = false;
 
 function eqHasEdits() {
   return (
     eqGains.some((g) => g !== 0) || eqGainDb !== 0 || eqDeEsserEnabled || eqTrimIntroEnabled || eqFadeOutEnabled
   );
-}
-
-function scheduleEqPreviewUpdate() {
-  if (!currentAnalysisSnapshot || !eqLastProfile) return;
-  if (eqPreviewDebounceId) clearTimeout(eqPreviewDebounceId);
-  eqPreviewDebounceId = setTimeout(updateEqPreview, EQ_PREVIEW_DEBOUNCE_MS);
 }
 
 function setEqPreviewStatus(text) {
@@ -3688,6 +3683,17 @@ async function updateEqPreview() {
   const previewEl = document.getElementById("eq-preview");
   if (!currentAnalysisSnapshot || !eqLastProfile) {
     if (previewEl) previewEl.hidden = true;
+    return;
+  }
+
+  // Die Neuberechnung (Offline-Render + volle Analyse) blockiert den Hauptthread kurz spuerbar
+  // (in Tests bis zu ~600ms an einem Stueck) - waehrend gerade Musik laeuft, faellt genau das als
+  // hoerbares/sichtbares Ruckeln auf. Deshalb hier warten, bis die Wiedergabe steht, und danach
+  // automatisch nachholen (siehe stopEqPreview).
+  if (eqPlaying && eqHasEdits()) {
+    eqPreviewPendingWhilePlaying = true;
+    if (previewEl) previewEl.hidden = false;
+    setEqPreviewStatus(t("eqScorePreviewWaitingForStop"));
     return;
   }
 
@@ -3929,6 +3935,10 @@ function stopEqPreview() {
   eqPlaying = false;
   eqSeeking = false;
   bgWavesPaused = false;
+  if (eqPreviewPendingWhilePlaying) {
+    eqPreviewPendingWhilePlaying = false;
+    updateEqPreview();
+  }
   const btn = document.getElementById("eq-play-btn");
   if (btn) btn.textContent = t("eqPlayBtn");
   drawEqWaveform(0);
@@ -4146,7 +4156,9 @@ function renderEqSliders() {
       wrap.classList.toggle("is-adjusted", eqGains[i] !== 0);
       if (eqPlaying) updateEqFilterGains();
       redrawEqWaveformNow();
-      scheduleEqPreviewUpdate();
+      // Score-Neuberechnung bewusst NICHT hier - nur nach Klick auf "Vorschlag uebernehmen"
+      // (siehe eqSuggestBtn), sonst wuerde jede einzelne Reglerbewegung eine teure Offline-
+      // Neuanalyse anstossen.
     });
   });
 }
@@ -4163,7 +4175,6 @@ function initEqEditor(audioMetrics, profile) {
   eqFadeOutEnabled = false;
   eqPendingSeekOffset = 0;
   stopEqPreview();
-  if (eqPreviewDebounceId) clearTimeout(eqPreviewDebounceId);
   eqPreviewToken++;
   eqPreviewShowingEdited = false;
   const previewEl = document.getElementById("eq-preview");
@@ -4244,7 +4255,6 @@ if (eqDeEsserAutoBtn) {
     if (eqDeEsserStrengthValueEl) eqDeEsserStrengthValueEl.textContent = `${pct}%`;
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
     if (eqStatus) eqStatus.textContent = needed ? t("eqDeesserAutoApplied") : t("eqDeesserAutoNotNeeded");
-    scheduleEqPreviewUpdate();
   });
 }
 
@@ -4253,7 +4263,6 @@ if (eqDeEsserEnabledEl) {
     eqDeEsserEnabled = eqDeEsserEnabledEl.checked;
     if (eqDeEsserStrengthWrap) eqDeEsserStrengthWrap.hidden = !eqDeEsserEnabled;
     if (eqPlaying) startEqPreview(getEqElapsedPosition()); // Graph neu aufbauen (De-Esser rein/raus), an gleicher Stelle weiterspielen
-    scheduleEqPreviewUpdate();
   });
 }
 
@@ -4262,7 +4271,7 @@ if (eqDeEsserStrengthEl) {
     eqDeEsserAmount = Number(eqDeEsserStrengthEl.value) / 100;
     if (eqDeEsserStrengthValueEl) eqDeEsserStrengthValueEl.textContent = `${eqDeEsserStrengthEl.value}%`;
     if (eqPlaying && eqDeEsserNodes) updateDeEsserAmount(eqDeEsserNodes, eqDeEsserAmount);
-    scheduleEqPreviewUpdate();
+    // Score-Vorschau bewusst nicht hier ausloesen - nur nach "Vorschlag uebernehmen"/Reset (siehe dort).
   });
 }
 
@@ -4277,7 +4286,7 @@ if (eqGainEl) {
     eqGainDb = Number(eqGainEl.value);
     if (eqGainValueEl) eqGainValueEl.textContent = `${eqGainDb.toFixed(1)} dB`;
     if (eqPlaying && eqGainNode) rampAudioParam(eqGainNode.gain, Math.pow(10, eqGainDb / 20), eqAudioCtx);
-    scheduleEqPreviewUpdate();
+    // Score-Vorschau bewusst nicht hier ausloesen - nur nach "Vorschlag uebernehmen"/Reset (siehe dort).
   });
 }
 
@@ -4290,7 +4299,7 @@ if (eqGainMatchBtn) {
     if (eqGainValueEl) eqGainValueEl.textContent = `${eqGainDb.toFixed(1)} dB`;
     if (eqPlaying && eqGainNode) rampAudioParam(eqGainNode.gain, Math.pow(10, eqGainDb / 20), eqAudioCtx);
     if (eqStatus) eqStatus.textContent = t("eqGainMatched");
-    scheduleEqPreviewUpdate();
+    // Score-Vorschau bewusst nicht hier ausloesen - nur nach "Vorschlag uebernehmen"/Reset (siehe dort).
   });
 }
 
@@ -4298,7 +4307,7 @@ if (eqTrimIntroEl) {
   eqTrimIntroEl.addEventListener("change", () => {
     eqTrimIntroEnabled = eqTrimIntroEl.checked;
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
-    scheduleEqPreviewUpdate();
+    // Score-Vorschau bewusst nicht hier ausloesen - nur nach "Vorschlag uebernehmen"/Reset (siehe dort).
   });
 }
 
@@ -4306,7 +4315,7 @@ if (eqFadeOutEl) {
   eqFadeOutEl.addEventListener("change", () => {
     eqFadeOutEnabled = eqFadeOutEl.checked;
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
-    scheduleEqPreviewUpdate();
+    // Score-Vorschau bewusst nicht hier ausloesen - nur nach "Vorschlag uebernehmen"/Reset (siehe dort).
   });
 }
 
@@ -4327,7 +4336,10 @@ if (eqSuggestBtn) {
     if (eqPlaying) updateEqFilterGains();
     redrawEqWaveformNow();
     if (eqStatus) eqStatus.textContent = t("eqSuggestionApplied");
-    scheduleEqPreviewUpdate();
+    // Direkt starten statt ueber das Drag-Debounce - ein Klick ist ein einzelnes, diskretes Ereignis,
+    // die Berechnung soll sofort im Hintergrund losgehen (siehe updateEqPreview fuer das
+    // Zurueckstellen waehrend aktiver Wiedergabe).
+    updateEqPreview();
   });
 }
 
@@ -4348,7 +4360,7 @@ if (eqResetBtn) {
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
     else redrawEqWaveformNow();
     if (eqStatus) eqStatus.textContent = t("eqResetDone");
-    scheduleEqPreviewUpdate();
+    updateEqPreview();
   });
 }
 
