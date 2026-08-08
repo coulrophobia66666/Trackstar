@@ -627,23 +627,39 @@ button#unlock-btn {
   align-items: center;
   gap: 0.35rem;
   color: var(--text-secondary);
-  font-size: 0.83rem;
+  font-size: 0.98rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
 .meter-status svg { flex: none; }
 
 .meter-track {
-  height: 6px;
+  position: relative;
+  height: 10px;
   border-radius: 999px;
   background: var(--gridline);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .meter-fill {
   height: 100%;
   border-radius: 999px;
+  overflow: hidden;
   transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.meter-handle {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 3px solid var(--bg-plane);
+  box-shadow: 0 0 0 1px var(--gridline), 0 2px 6px rgba(0, 0, 0, 0.4);
+  transform: translate(-50%, -50%);
+  transition: left 0.9s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .meter-note {
@@ -668,53 +684,40 @@ button#unlock-btn {
 }
 
 .freq-chart {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
-  height: 160px;
-  padding: 0 4px;
   margin-bottom: 1.9rem;
 }
 
-.freq-bar-wrap {
-  flex: 1;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  position: relative;
-}
-
-.freq-ref-zone {
-  position: absolute;
-  left: 0;
-  right: 0;
-  background: var(--gridline);
-  opacity: 0.7;
-  border-radius: 6px;
-}
-
-.freq-bar {
+.freq-svg {
   width: 100%;
-  max-width: 24px;
-  border-radius: 8px 8px 0 0;
-  background: var(--gold);
-  position: relative;
+  height: 230px;
+  overflow: visible;
 }
 
-.freq-value {
-  font-size: 0.7rem;
-  color: var(--text-secondary);
-  margin-bottom: 4px;
+.freq-gridline {
+  stroke: var(--gridline);
+  stroke-width: 1;
 }
 
-.freq-label {
-  font-size: 0.66rem;
-  color: var(--text-muted);
-  margin-top: 6px;
-  text-align: center;
-  line-height: 1.25;
+.freq-y-label {
+  font-size: 9px;
+  fill: var(--text-muted);
+}
+
+.freq-point-value {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.freq-x-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  fill: var(--text-primary);
+}
+
+.freq-x-sublabel {
+  font-size: 8.5px;
+  fill: var(--text-muted);
+  transform: translateY(11px);
 }
 
 /* Tips */
@@ -1709,7 +1712,8 @@ button#vocals-check-btn:disabled {
   .shine-sweep::after {
     animation: none !important;
   }
-  .meter-fill {
+  .meter-fill,
+  .meter-handle {
     transition: none !important;
   }
   .page-shine-streak {
@@ -1721,7 +1725,8 @@ button#vocals-check-btn:disabled {
   .header h1 { font-size: 1.7rem; }
   .hero-title { font-size: 1.4rem; }
   .star-rating { font-size: 1.6rem; }
-  .freq-chart { gap: 5px; }
+  .freq-svg { height: 190px; }
+  .freq-x-sublabel { display: none; }
 }
 
 /* Desktop/breite Screens: mehr Platz nutzen statt Handy-Hochkant hochskaliert darzustellen */

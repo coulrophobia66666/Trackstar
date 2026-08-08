@@ -93,7 +93,7 @@ const I18N = {
     premiumHeading: "Die Tiefenanalyse",
     zoneFacts: "Die Fakten — objektiv gemessen",
     freqBlockHeading: "Frequenzbalance",
-    freqBlockHint: "Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).",
+    freqBlockHint: "Anteil der Energie je Frequenzband. Grün = im Referenzbereich, Gelb/Rot = spürbar drüber oder drunter.",
     formatCheckHeading: "Formatcheck",
     formatCheckHint: "Technische Anforderungen und Titel-Metadaten, wie sie Distributoren prüfen – unabhängig vom Klang.",
     formatTitleEmoji: "Titel enthält Emojis – bei den meisten Distributoren nicht erlaubt.",
@@ -405,7 +405,6 @@ const I18N = {
     checkoutStillProcessing: "Zahlung wird noch verarbeitet ({err}) – gleich nochmal auf 'Vollanalyse ansehen' klicken.",
     checkoutPleaseWait: "bitte kurz warten",
 
-    freqRefZoneTitle: "Referenzbereich: {lo}–{hi}%",
     freqBarTitle: "{name}: {val}% (Referenz {lo}–{hi}%)",
   },
   en: {
@@ -487,7 +486,7 @@ const I18N = {
     premiumHeading: "The in-depth analysis",
     zoneFacts: "The facts — objectively measured",
     freqBlockHeading: "Frequency balance",
-    freqBlockHint: "Share of energy per frequency band, compared with a balanced reference range (grey zone).",
+    freqBlockHint: "Share of energy per frequency band. Green = within reference range, yellow/red = noticeably above or below.",
     formatCheckHeading: "Format check",
     formatCheckHint: "Technical requirements and title metadata, as checked by distributors – independent of the sound.",
     formatTitleEmoji: "Title contains emojis – not allowed by most distributors.",
@@ -799,7 +798,6 @@ const I18N = {
     checkoutStillProcessing: "Payment is still processing ({err}) – try clicking 'View full analysis' again in a moment.",
     checkoutPleaseWait: "please wait a moment",
 
-    freqRefZoneTitle: "Reference range: {lo}–{hi}%",
     freqBarTitle: "{name}: {val}% (reference {lo}–{hi}%)",
   },
 };
@@ -1935,48 +1933,115 @@ function renderMeter(container, { name, score, statusText }) {
       <span class="meter-name">${name}</span>
       <span class="meter-status" style="color:${status.color}">${iconFor(status.key)} ${status.label} · ${score.toFixed(1)}/100</span>
     </div>
-    <div class="meter-track"><div class="meter-fill" style="width:0%;background:${status.color}"></div></div>
+    <div class="meter-track">
+      <div class="meter-fill" style="width:0%;background:${status.color}"></div>
+      <div class="meter-handle" style="left:0%;background:${status.color}"></div>
+    </div>
   `;
   container.appendChild(el);
   const fill = el.querySelector(".meter-fill");
-  requestAnimationFrame(() => requestAnimationFrame(() => (fill.style.width = score + "%")));
+  const handle = el.querySelector(".meter-handle");
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      fill.style.width = score + "%";
+      handle.style.left = score + "%";
+    })
+  );
 }
 
+let freqChartUid = 0;
+
+// Ob ein Frequenzband im, knapp neben oder deutlich ausserhalb seines Referenzbereichs liegt -
+// dieselbe +-3-Prozentpunkte-Toleranz wie bei suggestedEqGainDb, damit Kurvenfarbe und
+// EQ-Vorschlag immer dieselbe Grenze meinen statt zwei leicht widerspruechlichen Massstaeben.
+function statusForBandValue(val, lo, hi) {
+  if (val >= lo && val <= hi) return "good";
+  if (val < lo - 3 || val > hi + 3) return "critical";
+  return "warning";
+}
+
+function statusColorVar(key) {
+  return key === "good" ? "var(--status-good)" : key === "critical" ? "var(--status-critical)" : "var(--status-warning)";
+}
+
+// Sanfte Verlaufskurve statt einzelner Balken: derselbe Glaettungs-Trick wie bei
+// drawEqCurveOverlay im EQ-Editor (Quadratic-Curve durch die Mittelpunkte benachbarter Punkte) -
+// sorgt fuer denselben visuellen Wiedererkennungswert zwischen Kurzcheck-Chart und EQ-Editor.
+// Farbe pro Punkt/Segment zeigt an, ob dieses Band im Referenzbereich liegt (grafisch sofort
+// erkennbar statt nur ueber eine grau hinterlegte Zielzone wie zuvor).
 function renderFreqChart(container, bandPercents, refs) {
   container.innerHTML = "";
+  const uid = freqChartUid++;
   const maxVal = Math.max(...bandPercents, ...refs.map((r) => r[1])) * 1.15;
+  const W = 700;
+  const H = 190;
+  const padTop = 14;
+  const padBottom = 40;
+  const padLeft = 30;
+  const padRight = 10;
+  const plotW = W - padLeft - padRight;
+  const baseY = padTop + H;
 
-  FREQ_BANDS.forEach((band, i) => {
+  const xFor = (i) => padLeft + (i / (FREQ_BANDS.length - 1)) * plotW;
+  const yFor = (val) => padTop + H * (1 - Math.min(1, val / maxVal));
+
+  const points = FREQ_BANDS.map((band, i) => {
     const val = bandPercents[i];
-    const [refLo, refHi] = refs[i];
-    const wrap = document.createElement("div");
-    wrap.className = "freq-bar-wrap";
-
-    const refZone = document.createElement("div");
-    refZone.className = "freq-ref-zone";
-    refZone.style.bottom = `${(refLo / maxVal) * 100}%`;
-    refZone.style.height = `${((refHi - refLo) / maxVal) * 100}%`;
-    refZone.title = t("freqRefZoneTitle", { lo: refLo, hi: refHi });
-
-    const valueLabel = document.createElement("div");
-    valueLabel.className = "freq-value";
-    valueLabel.textContent = `${val.toFixed(1)}%`;
-
-    const bar = document.createElement("div");
-    bar.className = "freq-bar";
-    bar.style.height = `${Math.max(2, (val / maxVal) * 100)}%`;
-    bar.title = t("freqBarTitle", { name: bandLabel(band), val: val.toFixed(1), lo: refLo, hi: refHi });
-
-    const label = document.createElement("div");
-    label.className = "freq-label";
-    label.textContent = `${bandLabel(band)}\n${band.range[0]}-${band.range[1]}Hz`;
-
-    wrap.appendChild(refZone);
-    wrap.appendChild(valueLabel);
-    wrap.appendChild(bar);
-    wrap.appendChild(label);
-    container.appendChild(wrap);
+    const [lo, hi] = refs[i];
+    return { x: xFor(i), y: yFor(val), val, lo, hi, status: statusForBandValue(val, lo, hi), band };
   });
+
+  const linePath = points.reduce((d, p, i) => {
+    if (i === 0) return `M${p.x},${p.y}`;
+    const prev = points[i - 1];
+    const midX = (prev.x + p.x) / 2;
+    const midY = (prev.y + p.y) / 2;
+    return `${d} Q${prev.x},${prev.y} ${midX},${midY}`;
+  }, "");
+  const lastPoint = points[points.length - 1];
+  const fullLinePath = `${linePath} L${lastPoint.x},${lastPoint.y}`;
+  const areaPath = `${fullLinePath} L${lastPoint.x},${baseY} L${points[0].x},${baseY} Z`;
+
+  const gradStops = points
+    .map((p) => `<stop offset="${((p.x / W) * 100).toFixed(1)}%" stop-color="${statusColorVar(p.status)}"/>`)
+    .join("");
+
+  const gridTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => {
+    const y = padTop + H * (1 - f);
+    return `<line x1="${padLeft}" y1="${y}" x2="${W - padRight}" y2="${y}" class="freq-gridline"/>
+      <text x="${padLeft - 6}" y="${y}" class="freq-y-label" text-anchor="end" dominant-baseline="middle">${(maxVal * f).toFixed(0)}</text>`;
+  });
+
+  const dots = points
+    .map(
+      (p) => `<circle cx="${p.x}" cy="${p.y}" r="5" fill="${statusColorVar(p.status)}" stroke="var(--bg-plane)" stroke-width="2">
+        <title>${t("freqBarTitle", { name: bandLabel(p.band), val: p.val.toFixed(1), lo: p.lo, hi: p.hi })}</title>
+      </circle>
+      <text x="${p.x}" y="${p.y - 12}" class="freq-point-value" text-anchor="middle" fill="${statusColorVar(p.status)}">${p.val.toFixed(1)}%</text>`
+    )
+    .join("");
+
+  const xLabels = points
+    .map(
+      (p) =>
+        `<text x="${p.x}" y="${baseY + 18}" class="freq-x-label" text-anchor="middle">${bandLabel(p.band)}</text>
+         <text x="${p.x}" y="${baseY + 32}" class="freq-x-sublabel" text-anchor="middle">${p.band.range[0]}-${p.band.range[1]}Hz</text>`
+    )
+    .join("");
+
+  container.innerHTML = `
+    <svg class="freq-svg" viewBox="0 0 ${W} ${padTop + H + padBottom}" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="freq-grad-${uid}" x1="0" y1="0" x2="${W}" y2="0" gradientUnits="userSpaceOnUse">${gradStops}</linearGradient>
+        <linearGradient id="freq-grad-area-${uid}" x1="0" y1="0" x2="${W}" y2="0" gradientUnits="userSpaceOnUse">${gradStops}</linearGradient>
+      </defs>
+      ${gridTicks.join("")}
+      <path d="${areaPath}" fill="url(#freq-grad-area-${uid})" opacity="0.28" stroke="none"/>
+      <path d="${fullLinePath}" fill="none" stroke="url(#freq-grad-${uid})" stroke-width="3" stroke-linecap="round"/>
+      ${dots}
+      ${xLabels}
+    </svg>
+  `;
 }
 
 function renderTips(container, tips) {
