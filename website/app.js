@@ -359,6 +359,10 @@ const I18N = {
     eqSuggestionApplied: "Vorschlag aus der Analyse übernommen.",
     eqResetDone: "Zurückgesetzt.",
     eqNeedTrackFirst: "Bitte zuerst einen Track analysieren.",
+    eqScorePreviewCalculating: "Berechne Score nach deiner Bearbeitung …",
+    eqScorePreviewResult: "Nach deiner Bearbeitung: {before} → {after}/100 ({delta})",
+    eqScorePreviewNoChange: "±0",
+    eqScorePreviewFailed: "Vorschau konnte nicht berechnet werden.",
     eqPreviewPlaying: "Vorschau läuft (in Schleife) – Slider bewegen für Live-Vergleich.",
     eqPreviewFailed: "Vorschau fehlgeschlagen: {msg}",
     eqRendering: "Bearbeitete Version wird gerendert…",
@@ -752,6 +756,10 @@ const I18N = {
     eqSuggestionApplied: "Suggestion from the analysis applied.",
     eqResetDone: "Reset.",
     eqNeedTrackFirst: "Please analyze a track first.",
+    eqScorePreviewCalculating: "Calculating your score after this edit …",
+    eqScorePreviewResult: "After your edit: {before} → {after}/100 ({delta})",
+    eqScorePreviewNoChange: "±0",
+    eqScorePreviewFailed: "Couldn't calculate the preview.",
     eqPreviewPlaying: "Preview playing (looping) – move the sliders for a live comparison.",
     eqPreviewFailed: "Preview failed: {msg}",
     eqRendering: "Rendering edited version…",
@@ -1618,6 +1626,64 @@ function scoreTitel(lyrics) {
   if (!lyrics.hasLyrics || !lyrics.hasTitle) return null;
   if (!lyrics.titleInLyrics) return 15;
   return Math.round(Math.min(100, (lyrics.titleOccurrences / TITLE_OCCURRENCES_FOR_FULL_SCORE) * 100));
+}
+
+// Buendelt alle Einzel-Scores + Gesamtscore an einer Stelle, damit die Erstanalyse
+// (renderAnalysis) und die EQ-Live-Vorschau (updateEqPreview) exakt dieselbe Gewichtung nutzen -
+// zwei getrennte Kopien derselben Formel waeren eine Quelle fuer leise auseinanderlaufende Werte.
+function computeAllScores(audioMetrics, lyrics, profile) {
+  const scores = {
+    technik: scoreTechnik(audioMetrics, profile),
+    lautheit: scoreLautheit(audioMetrics, profile.loudnessTarget),
+    frequenz: scoreFrequenz(audioMetrics, profile.refs),
+    hook: scoreHook(lyrics),
+    titel: scoreTitel(lyrics),
+    monoCompat: scoreMonoCompat(audioMetrics.phaseCorrelation),
+    dynamikumfang: scoreDynamikumfang(audioMetrics, profile),
+  };
+
+  const weighted = [
+    { score: scores.technik, weight: 18 },
+    { score: scores.lautheit, weight: 12 },
+    { score: scores.frequenz, weight: 20 },
+    { score: scores.hook, weight: 25 },
+    { score: scores.titel, weight: 25 },
+  ].filter((x) => x.score !== null);
+
+  const totalWeight = weighted.reduce((a, x) => a + x.weight, 0);
+  const overallScore = Math.round(weighted.reduce((a, x) => a + x.score * x.weight, 0) / totalWeight);
+
+  return { scores, overallScore };
+}
+
+// Rendert die 7 Fakten-Meter - gemeinsam genutzt von der Erstanalyse und der EQ-Live-Vorschau,
+// damit beide exakt dasselbe Markup/dieselbe Beschriftungslogik erzeugen.
+function renderMetersInto(metersEl, scores, audioMetrics, lyrics, profile) {
+  const isInstrumentalGenre = TYPICALLY_INSTRUMENTAL_GENRES.includes(profile.rawKey);
+  const lyricsMissingLabel = isInstrumentalGenre && !lyrics.hasLyrics ? t("meterInstrumentalGenre") : t("meterLyricsMissing");
+
+  metersEl.innerHTML = "";
+  renderMeter(metersEl, { name: t("meterTechnik"), score: scores.technik });
+  renderMeter(metersEl, { name: t("meterLautheit"), score: scores.lautheit });
+  renderMeter(metersEl, { name: t("meterFrequenz"), score: scores.frequenz });
+  renderMeter(metersEl, {
+    name: t("meterHook"),
+    score: scores.hook,
+    statusText: scores.hook === null ? lyricsMissingLabel : "",
+  });
+  renderMeter(metersEl, {
+    name: t("meterTitel"),
+    score: scores.titel,
+    statusText: scores.titel === null ? (lyrics.hasLyrics ? t("meterTitleMissing") : lyricsMissingLabel) : "",
+  });
+  renderMeter(metersEl, {
+    name: t("meterDynamik", { db: audioMetrics.crestFactorDb.toFixed(1) }),
+    score: scores.dynamikumfang,
+  });
+  renderMeter(metersEl, {
+    name: t("meterMonoCompat", { corr: audioMetrics.phaseCorrelation.toFixed(2) }),
+    score: scores.monoCompat,
+  });
 }
 
 /* ---------- Tips ---------- */
@@ -2655,31 +2721,10 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { u
   const lyrics = analyzeLyrics(lyricsRaw, title);
   const profile = genreProfile(genre);
 
-  const scores = {
-    technik: scoreTechnik(audioMetrics, profile),
-    lautheit: scoreLautheit(audioMetrics, profile.loudnessTarget),
-    frequenz: scoreFrequenz(audioMetrics, profile.refs),
-    hook: scoreHook(lyrics),
-    titel: scoreTitel(lyrics),
-    // Fliessen bewusst NICHT in den Gesamtscore/die Kurzcheck-Badges ein - neue, noch unkalibrierte
-    // Kennzahlen, die als zusaetzliche Fakten in der Tiefenanalyse stehen, nicht die bereits
-    // eingespielte Gesamtgewichtung verschieben sollen.
-    monoCompat: scoreMonoCompat(audioMetrics.phaseCorrelation),
-    dynamikumfang: scoreDynamikumfang(audioMetrics, profile),
-  };
-
-  // Hook & Songtitel sind die wichtigsten Wiedererkennungs-Hebel, deshalb zusammen die Haelfte
-  // des Gesamtscores - nicht nur ein Nebenaspekt neben den technischen Werten.
-  const weighted = [
-    { score: scores.technik, weight: 18 },
-    { score: scores.lautheit, weight: 12 },
-    { score: scores.frequenz, weight: 20 },
-    { score: scores.hook, weight: 25 },
-    { score: scores.titel, weight: 25 },
-  ].filter((x) => x.score !== null);
-
-  const totalWeight = weighted.reduce((a, x) => a + x.weight, 0);
-  const overallScore = Math.round(weighted.reduce((a, x) => a + x.score * x.weight, 0) / totalWeight);
+  // monoCompat/dynamikumfang fliessen bewusst NICHT in den Gesamtscore/die Kurzcheck-Badges ein -
+  // neue, noch unkalibrierte Kennzahlen, die als zusaetzliche Fakten in der Tiefenanalyse stehen,
+  // nicht die bereits eingespielte Gesamtgewichtung verschieben sollen.
+  const { scores, overallScore } = computeAllScores(audioMetrics, lyrics, profile);
 
   const soundScore = combineScores([scores.technik, scores.frequenz]);
   const starPotentialScore = scores.lautheit;
@@ -2733,29 +2778,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { u
 
   premiumResultsEl.hidden = !unlockedPremium;
 
-  const metersEl = document.getElementById("meters");
-  metersEl.innerHTML = "";
-  renderMeter(metersEl, { name: t("meterTechnik"), score: scores.technik });
-  renderMeter(metersEl, { name: t("meterLautheit"), score: scores.lautheit });
-  renderMeter(metersEl, { name: t("meterFrequenz"), score: scores.frequenz });
-  renderMeter(metersEl, {
-    name: t("meterHook"),
-    score: scores.hook,
-    statusText: scores.hook === null ? lyricsMissingLabel : "",
-  });
-  renderMeter(metersEl, {
-    name: t("meterTitel"),
-    score: scores.titel,
-    statusText: scores.titel === null ? (lyrics.hasLyrics ? t("meterTitleMissing") : lyricsMissingLabel) : "",
-  });
-  renderMeter(metersEl, {
-    name: t("meterDynamik", { db: audioMetrics.crestFactorDb.toFixed(1) }),
-    score: scores.dynamikumfang,
-  });
-  renderMeter(metersEl, {
-    name: t("meterMonoCompat", { corr: audioMetrics.phaseCorrelation.toFixed(2) }),
-    score: scores.monoCompat,
-  });
+  renderMetersInto(document.getElementById("meters"), scores, audioMetrics, lyrics, profile);
 
   const detectedGenreEl = document.getElementById("detected-genre");
   if (audioMetrics.estimatedGenre && !audioMetrics.estimatedGenreLowConfidence) {
@@ -3604,6 +3627,115 @@ function scheduleFadeOut(gainNode, startTime, duration, fadeSeconds) {
   gainNode.gain.linearRampToValueAtTime(0.0001, fadeStart + fadeSeconds);
 }
 
+// Rendert den aktuellen EQ-Editor-Stand (Baender, Lautheits-Trim, De-Esser, Intro-Trim, Fade-out)
+// offline zu einem fertigen Buffer - identisch zu dem, was beim Download tatsaechlich rauskommt.
+// Gemeinsam genutzt vom Download-Button UND von der Live-Vorschau (updateEqPreview), damit die
+// angezeigte Vorschau nie von der heruntergeladenen Datei abweichen kann.
+async function renderEditedBufferOffline() {
+  const helperCtx = ensureEqAudioCtx();
+  const sourceBuffer = getEqSourceBuffer(helperCtx);
+  const offlineCtx = new OfflineAudioContext(sourceBuffer.numberOfChannels, sourceBuffer.length, sourceBuffer.sampleRate);
+  const source = offlineCtx.createBufferSource();
+  source.buffer = sourceBuffer;
+  const filters = buildEqFilterChain(offlineCtx, eqGains);
+  source.connect(filters[0]);
+  let chainOutput = filters[filters.length - 1];
+  if (eqDeEsserEnabled) {
+    const de = attachDeEsser(offlineCtx, chainOutput, eqDeEsserAmount);
+    chainOutput = de.output;
+  }
+  const gainNode = offlineCtx.createGain();
+  gainNode.gain.value = Math.pow(10, eqGainDb / 20);
+  chainOutput.connect(gainNode);
+  gainNode.connect(offlineCtx.destination);
+  if (eqFadeOutEnabled) {
+    scheduleFadeOut(gainNode, 0, sourceBuffer.duration, Math.min(2.5, sourceBuffer.duration / 3));
+  }
+  source.start();
+  return offlineCtx.startRendering();
+}
+
+// ---------- Live-Vorschau der Fakten-Box nach EQ-Bearbeitung ----------
+// Nach jeder Aenderung im EQ-Editor (Regler, "Vorschlag uebernehmen", Lautheits-Trim, De-Esser,
+// Intro-Trim, Fade-out) wird der bearbeitete Track kurz danach neu gerendert und neu analysiert -
+// dieselbe Analyse-Pipeline wie beim Erst-Upload, keine separate/vereinfachte Schaetzung. Damit
+// sieht der Kunde direkt (mit kurzer Verzoegerung statt "sofort bei jedem Pixel", das waere ohne
+// echten Neu-Render/Neu-Analyse-Durchlauf nicht moeglich), wo sein Track nach der Bearbeitung
+// tatsaechlich steht - Verbesserung UND Verschlechterung, keine Schoenrechnerei.
+let eqPreviewDebounceId = null;
+let eqPreviewToken = 0;
+let eqPreviewShowingEdited = false;
+const EQ_PREVIEW_DEBOUNCE_MS = 900;
+
+function eqHasEdits() {
+  return (
+    eqGains.some((g) => g !== 0) || eqGainDb !== 0 || eqDeEsserEnabled || eqTrimIntroEnabled || eqFadeOutEnabled
+  );
+}
+
+function scheduleEqPreviewUpdate() {
+  if (!currentAnalysisSnapshot || !eqLastProfile) return;
+  if (eqPreviewDebounceId) clearTimeout(eqPreviewDebounceId);
+  eqPreviewDebounceId = setTimeout(updateEqPreview, EQ_PREVIEW_DEBOUNCE_MS);
+}
+
+function setEqPreviewStatus(text) {
+  const el = document.getElementById("eq-preview-status");
+  if (el) el.textContent = text;
+}
+
+async function updateEqPreview() {
+  const previewEl = document.getElementById("eq-preview");
+  if (!currentAnalysisSnapshot || !eqLastProfile) {
+    if (previewEl) previewEl.hidden = true;
+    return;
+  }
+
+  if (!eqHasEdits()) {
+    // Zurueck zum unbearbeiteten Original - keine Bearbeitung (mehr) aktiv.
+    if (eqPreviewShowingEdited) {
+      const { audioMetrics, lyricsRaw, title } = currentAnalysisSnapshot;
+      const lyrics = analyzeLyrics(lyricsRaw, title);
+      const { scores } = computeAllScores(audioMetrics, lyrics, eqLastProfile);
+      renderMetersInto(document.getElementById("meters"), scores, audioMetrics, lyrics, eqLastProfile);
+      renderFreqChart(document.getElementById("freq-chart"), audioMetrics.bandPercents, eqLastProfile.refs);
+      eqPreviewShowingEdited = false;
+    }
+    if (previewEl) previewEl.hidden = true;
+    return;
+  }
+
+  const token = ++eqPreviewToken;
+  if (previewEl) {
+    previewEl.hidden = false;
+    previewEl.classList.add("is-calculating");
+  }
+  setEqPreviewStatus(t("eqScorePreviewCalculating"));
+
+  try {
+    const rendered = await renderEditedBufferOffline();
+    if (token !== eqPreviewToken) return; // inzwischen ist eine neuere Anfrage unterwegs
+    const editedMetrics = analyzeAudioBuffer(rendered);
+    const { audioMetrics: originalMetrics, lyricsRaw, title } = currentAnalysisSnapshot;
+    const lyrics = analyzeLyrics(lyricsRaw, title);
+    const { overallScore: originalOverall } = computeAllScores(originalMetrics, lyrics, eqLastProfile);
+    const { scores: editedScores, overallScore: editedOverall } = computeAllScores(editedMetrics, lyrics, eqLastProfile);
+
+    renderMetersInto(document.getElementById("meters"), editedScores, editedMetrics, lyrics, eqLastProfile);
+    renderFreqChart(document.getElementById("freq-chart"), editedMetrics.bandPercents, eqLastProfile.refs);
+    eqPreviewShowingEdited = true;
+
+    const delta = editedOverall - originalOverall;
+    const deltaText = delta === 0 ? t("eqScorePreviewNoChange") : delta > 0 ? `+${delta}` : `${delta}`;
+    setEqPreviewStatus(t("eqScorePreviewResult", { before: originalOverall, after: editedOverall, delta: deltaText }));
+  } catch (err) {
+    if (token !== eqPreviewToken) return;
+    setEqPreviewStatus(t("eqScorePreviewFailed"));
+  } finally {
+    if (previewEl) previewEl.classList.remove("is-calculating");
+  }
+}
+
 function updateDeEsserAmount(nodes, amount) {
   if (!nodes) return;
   rampAudioParam(nodes.notch.gain, -12 * amount, eqAudioCtx);
@@ -4009,6 +4141,7 @@ function renderEqSliders() {
       document.getElementById(`eq-value-${i}`).textContent = `${eqGains[i].toFixed(1)} dB`;
       if (eqPlaying) updateEqFilterGains();
       redrawEqWaveformNow();
+      scheduleEqPreviewUpdate();
     });
   });
 }
@@ -4025,6 +4158,11 @@ function initEqEditor(audioMetrics, profile) {
   eqFadeOutEnabled = false;
   eqPendingSeekOffset = 0;
   stopEqPreview();
+  if (eqPreviewDebounceId) clearTimeout(eqPreviewDebounceId);
+  eqPreviewToken++;
+  eqPreviewShowingEdited = false;
+  const previewEl = document.getElementById("eq-preview");
+  if (previewEl) previewEl.hidden = true;
   renderEqSliders();
   if (lastAudioBuffer) updateEqSeekBounds(lastAudioBuffer.duration);
   updateEqSeekDisplay(0);
@@ -4101,6 +4239,7 @@ if (eqDeEsserAutoBtn) {
     if (eqDeEsserStrengthValueEl) eqDeEsserStrengthValueEl.textContent = `${pct}%`;
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
     if (eqStatus) eqStatus.textContent = needed ? t("eqDeesserAutoApplied") : t("eqDeesserAutoNotNeeded");
+    scheduleEqPreviewUpdate();
   });
 }
 
@@ -4109,6 +4248,7 @@ if (eqDeEsserEnabledEl) {
     eqDeEsserEnabled = eqDeEsserEnabledEl.checked;
     if (eqDeEsserStrengthWrap) eqDeEsserStrengthWrap.hidden = !eqDeEsserEnabled;
     if (eqPlaying) startEqPreview(getEqElapsedPosition()); // Graph neu aufbauen (De-Esser rein/raus), an gleicher Stelle weiterspielen
+    scheduleEqPreviewUpdate();
   });
 }
 
@@ -4117,6 +4257,7 @@ if (eqDeEsserStrengthEl) {
     eqDeEsserAmount = Number(eqDeEsserStrengthEl.value) / 100;
     if (eqDeEsserStrengthValueEl) eqDeEsserStrengthValueEl.textContent = `${eqDeEsserStrengthEl.value}%`;
     if (eqPlaying && eqDeEsserNodes) updateDeEsserAmount(eqDeEsserNodes, eqDeEsserAmount);
+    scheduleEqPreviewUpdate();
   });
 }
 
@@ -4131,6 +4272,7 @@ if (eqGainEl) {
     eqGainDb = Number(eqGainEl.value);
     if (eqGainValueEl) eqGainValueEl.textContent = `${eqGainDb.toFixed(1)} dB`;
     if (eqPlaying && eqGainNode) rampAudioParam(eqGainNode.gain, Math.pow(10, eqGainDb / 20), eqAudioCtx);
+    scheduleEqPreviewUpdate();
   });
 }
 
@@ -4143,6 +4285,7 @@ if (eqGainMatchBtn) {
     if (eqGainValueEl) eqGainValueEl.textContent = `${eqGainDb.toFixed(1)} dB`;
     if (eqPlaying && eqGainNode) rampAudioParam(eqGainNode.gain, Math.pow(10, eqGainDb / 20), eqAudioCtx);
     if (eqStatus) eqStatus.textContent = t("eqGainMatched");
+    scheduleEqPreviewUpdate();
   });
 }
 
@@ -4150,6 +4293,7 @@ if (eqTrimIntroEl) {
   eqTrimIntroEl.addEventListener("change", () => {
     eqTrimIntroEnabled = eqTrimIntroEl.checked;
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
+    scheduleEqPreviewUpdate();
   });
 }
 
@@ -4157,6 +4301,7 @@ if (eqFadeOutEl) {
   eqFadeOutEl.addEventListener("change", () => {
     eqFadeOutEnabled = eqFadeOutEl.checked;
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
+    scheduleEqPreviewUpdate();
   });
 }
 
@@ -4177,6 +4322,7 @@ if (eqSuggestBtn) {
     if (eqPlaying) updateEqFilterGains();
     redrawEqWaveformNow();
     if (eqStatus) eqStatus.textContent = t("eqSuggestionApplied");
+    scheduleEqPreviewUpdate();
   });
 }
 
@@ -4197,6 +4343,7 @@ if (eqResetBtn) {
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
     else redrawEqWaveformNow();
     if (eqStatus) eqStatus.textContent = t("eqResetDone");
+    scheduleEqPreviewUpdate();
   });
 }
 
@@ -4263,31 +4410,7 @@ if (eqDownloadBtn) {
     eqDownloadBtn.disabled = true;
     if (eqStatus) eqStatus.textContent = t("eqRendering");
     try {
-      const helperCtx = ensureEqAudioCtx();
-      const sourceBuffer = getEqSourceBuffer(helperCtx);
-      const offlineCtx = new OfflineAudioContext(
-        sourceBuffer.numberOfChannels,
-        sourceBuffer.length,
-        sourceBuffer.sampleRate
-      );
-      const source = offlineCtx.createBufferSource();
-      source.buffer = sourceBuffer;
-      const filters = buildEqFilterChain(offlineCtx, eqGains);
-      source.connect(filters[0]);
-      let chainOutput = filters[filters.length - 1];
-      if (eqDeEsserEnabled) {
-        const de = attachDeEsser(offlineCtx, chainOutput, eqDeEsserAmount);
-        chainOutput = de.output;
-      }
-      const gainNode = offlineCtx.createGain();
-      gainNode.gain.value = Math.pow(10, eqGainDb / 20);
-      chainOutput.connect(gainNode);
-      gainNode.connect(offlineCtx.destination);
-      if (eqFadeOutEnabled) {
-        scheduleFadeOut(gainNode, 0, sourceBuffer.duration, Math.min(2.5, sourceBuffer.duration / 3));
-      }
-      source.start();
-      const rendered = await offlineCtx.startRendering();
+      const rendered = await renderEditedBufferOffline();
       const metaTitleEl = document.getElementById("eq-meta-title");
       const metaArtistEl = document.getElementById("eq-meta-artist");
       const tagTitle = metaTitleEl ? metaTitleEl.value.trim() : "";
