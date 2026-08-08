@@ -1595,28 +1595,27 @@ button#vocals-check-btn:disabled {
 }
 
 .password-field {
-  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
   width: 100%;
 }
 
 .password-field input {
-  padding-right: 2.5rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .password-toggle {
-  position: absolute;
-  top: 50%;
-  right: 0.55rem;
-  transform: translateY(-50%);
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.9rem;
-  height: 1.9rem;
+  width: 2.6rem;
   padding: 0;
-  border: none;
-  border-radius: 8px;
-  background: none;
+  border: 1px solid var(--gridline);
+  border-radius: 10px;
+  background: var(--surface-2);
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -1640,6 +1639,11 @@ button#vocals-check-btn:disabled {
 .auth-form button {
   width: 100%;
   margin-top: 0.4rem;
+}
+
+.auth-form button.password-toggle {
+  width: 2.6rem;
+  margin-top: 0;
 }
 
 .plans {
