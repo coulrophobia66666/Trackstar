@@ -148,7 +148,7 @@ Caddy konfigurieren:
 ```bash
 sudo tee /etc/caddy/Caddyfile > /dev/null <<'EOF'
 video.overhertz.app {
-    basic_auth {
+    basicauth {
         finn <HIER_DEN_HASH_AUS_caddy_hash-password_EINFUEGEN>
     }
     reverse_proxy 127.0.0.1:5177
