@@ -1,0 +1,23 @@
+{
+  "_hinweis": "Ganze Produktvorstellung (kostenloser Kurzcheck + Upsell-Punkte). audio-file via make-test-audio.sh (synthetischer Testton, keine echte Musik - Ergebnis daher nicht repraesentativ, nur Mechanik-Demo). Loest keinen echten KI-Call aus - #free-results ist reine Client-Analyse. Kein Voiceover-Audio im finalen Video - nur Untertitel, Stimme legt der Nutzer selbst drueber (script.produktvorstellung.json als Sprechtext).",
+  "steps": [
+    { "id": "landing", "action": "goto", "url": "/index.html", "label": "Startseite laedt", "voiceover": "Overhertz prueft deinen Track in Sekunden - und sagt dir ehrlich, ob er Star-Potential hat." },
+    { "id": "wait-hero", "action": "waitMs", "ms": 1800, "label": "Hero stehen lassen" },
+    { "id": "scroll-upload", "action": "scrollTo", "selector": "#upload-card", "label": "zur Upload-Karte scrollen", "voiceover": "Kein Konto noetig fuer den ersten Check." },
+    { "id": "highlight-upload", "action": "highlight", "selector": "#audio-file", "label": "Upload-Feld hervorheben" },
+    { "id": "upload", "action": "upload", "selector": "#audio-file", "files": ["./sample/test-audio.wav"], "label": "Track hochladen", "voiceover": "Track hochladen," },
+    { "id": "title", "action": "fill", "selector": "#track-title", "value": "Testtrack", "label": "Songtitel eintragen", "voiceover": "Titel eintragen," },
+    { "id": "lyrics", "action": "fill", "selector": "#track-lyrics", "value": "Testzeile fuer den Hook-Check", "label": "Songtext eintragen (optional)", "voiceover": "und optional den Songtext fuer den Hook-Check dazu." },
+    { "id": "submit", "action": "click", "selector": "#analyze-btn", "label": "Analyse starten", "voiceover": "Dann die Analyse starten." },
+    { "id": "wait-result", "action": "waitFor", "selector": "#free-results", "state": "visible", "timeout": 20000, "label": "auf Ergebnis warten", "voiceover": "Sekunden spaeter steht das Ampel-Urteil." },
+    { "id": "scroll-result", "action": "scrollTo", "selector": "#free-results", "label": "zum Ergebnis scrollen" },
+    { "id": "wait-badges", "action": "waitMs", "ms": 1800, "label": "Sterne/Badges zeigen", "voiceover": "Mit Sternebewertung, kurzem Fazit und Achievements." },
+    { "id": "scroll-teaser", "action": "scrollTo", "selector": "#teaser-tip", "label": "zum Teaser-Hinweis scrollen", "voiceover": "Und einem ersten Hinweis, wo der groesste Hebel liegt." },
+    { "id": "wait-teaser", "action": "waitMs", "ms": 1400, "label": "Teaser stehen lassen" },
+    { "id": "scroll-unlock", "action": "scrollTo", "selector": ".unlock-card", "label": "zur Freischalt-Karte scrollen", "voiceover": "Die komplette Tiefenanalyse - Frequenzkurve, alle Tipps, KI-Einordnung - schaltest du mit Credits oder dem Pro-Abo frei." },
+    { "id": "wait-unlock", "action": "waitMs", "ms": 2200, "label": "Preis-Hinweis stehen lassen" },
+    { "id": "scroll-album", "action": "scrollTo", "selector": "#album-card", "label": "zum Album-Check scrollen", "voiceover": "Mit Pro pruefst du gleich ein ganzes Album auf einmal." },
+    { "id": "wait-album", "action": "waitMs", "ms": 1800, "label": "Album-Check stehen lassen" },
+    { "id": "wait-end", "action": "waitMs", "ms": 1600, "label": "Abspann-Pause", "voiceover": "Overhertz - dein Track, ehrlich eingeschaetzt." }
+  ]
+}

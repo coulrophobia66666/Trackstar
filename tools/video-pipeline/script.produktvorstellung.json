@@ -1,0 +1,14 @@
+[
+  { "id": "landing", "text": "Overhertz prueft deinen Track in Sekunden - und sagt dir ehrlich, ob er Star-Potential hat." },
+  { "id": "scroll-upload", "text": "Kein Konto noetig fuer den ersten Check." },
+  { "id": "upload", "text": "Track hochladen," },
+  { "id": "title", "text": "Titel eintragen," },
+  { "id": "lyrics", "text": "und optional den Songtext fuer den Hook-Check dazu." },
+  { "id": "submit", "text": "Dann die Analyse starten." },
+  { "id": "wait-result", "text": "Sekunden spaeter steht das Ampel-Urteil." },
+  { "id": "wait-badges", "text": "Mit Sternebewertung, kurzem Fazit und Achievements." },
+  { "id": "scroll-teaser", "text": "Und einem ersten Hinweis, wo der groesste Hebel liegt." },
+  { "id": "scroll-unlock", "text": "Die komplette Tiefenanalyse - Frequenzkurve, alle Tipps, KI-Einordnung - schaltest du mit Credits oder dem Pro-Abo frei." },
+  { "id": "scroll-album", "text": "Mit Pro pruefst du gleich ein ganzes Album auf einmal." },
+  { "id": "wait-end", "text": "Overhertz - dein Track, ehrlich eingeschaetzt." }
+]
