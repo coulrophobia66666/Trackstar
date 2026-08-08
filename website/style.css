@@ -883,9 +883,15 @@ button#unlock-btn {
   -webkit-appearance: none;
   width: 3px;
   height: 100px;
+  margin: 0;
+  padding: 0;
   background: #000000;
   border-radius: 999px;
   cursor: pointer;
+}
+
+.eq-slider.is-adjusted input[type="range"] {
+  background: var(--status-good);
 }
 
 .eq-slider input[type="range"]::-webkit-slider-runnable-track {
@@ -896,33 +902,16 @@ button#unlock-btn {
 
 .eq-slider input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 26px;
-  height: 34px;
-  border-radius: 7px;
-  background: linear-gradient(
-    to bottom,
-    #eef1ee 0%,
-    #eef1ee 45%,
-    rgba(0, 0, 0, 0.45) 45%,
-    rgba(0, 0, 0, 0.45) 55%,
-    #eef1ee 55%,
-    #eef1ee 100%
-  );
-  border: 1px solid rgba(0, 0, 0, 0.5);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #eef1ee;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   cursor: pointer;
 }
 
 .eq-slider.is-adjusted input[type="range"]::-webkit-slider-thumb {
-  background: linear-gradient(
-    to bottom,
-    var(--status-good) 0%,
-    var(--status-good) 45%,
-    rgba(0, 0, 0, 0.45) 45%,
-    rgba(0, 0, 0, 0.45) 55%,
-    var(--status-good) 55%,
-    var(--status-good) 100%
-  );
+  background: var(--status-good);
 }
 
 .eq-slider input[type="range"]::-moz-range-track {
@@ -932,33 +921,17 @@ button#unlock-btn {
 }
 
 .eq-slider input[type="range"]::-moz-range-thumb {
-  width: 26px;
-  height: 34px;
-  border-radius: 7px;
-  background: linear-gradient(
-    to bottom,
-    #eef1ee 0%,
-    #eef1ee 45%,
-    rgba(0, 0, 0, 0.45) 45%,
-    rgba(0, 0, 0, 0.45) 55%,
-    #eef1ee 55%,
-    #eef1ee 100%
-  );
-  border: 1px solid rgba(0, 0, 0, 0.5);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  width: 11px;
+  height: 11px;
+  border: none;
+  border-radius: 50%;
+  background: #eef1ee;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   cursor: pointer;
 }
 
 .eq-slider.is-adjusted input[type="range"]::-moz-range-thumb {
-  background: linear-gradient(
-    to bottom,
-    var(--status-good) 0%,
-    var(--status-good) 45%,
-    rgba(0, 0, 0, 0.45) 45%,
-    rgba(0, 0, 0, 0.45) 55%,
-    var(--status-good) 55%,
-    var(--status-good) 100%
-  );
+  background: var(--status-good);
 }
 
 .eq-slider input[type="range"]::-moz-range-progress {
