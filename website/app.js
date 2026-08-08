@@ -3544,7 +3544,12 @@ function drawEqCurveOverlay(ctx, w, h) {
 
 function ensureEqAudioCtx() {
   const Ctx = window.AudioContext || window.webkitAudioContext;
-  if (!eqAudioCtx) eqAudioCtx = new Ctx();
+  // "interactive" (Standard) haelt den Audiopuffer bewusst winzig fuer minimale Latenz bei
+  // Instrumenten/Live-Eingabe - das laesst den Audio-Thread aber sehr oft (alle paar ms)
+  // aufwachen, was auf schwaecheren Geraeten mit dem Hauptthread um CPU-Zeit konkurriert und
+  // sich als Ruckeln zeigt. Hier spielen wir nur eine feste Datei ab, keine Latenz-kritische
+  // Interaktion - "playback" nutzt groessere Puffer (weniger, dafuer seltenere Wakeups).
+  if (!eqAudioCtx) eqAudioCtx = new Ctx({ latencyHint: "playback" });
   if (eqAudioCtx.state === "suspended") eqAudioCtx.resume();
   return eqAudioCtx;
 }
