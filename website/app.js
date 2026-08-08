@@ -4161,10 +4161,11 @@ function renderEqSliders() {
       wrap.classList.toggle("is-adjusted", eqGains[i] !== 0);
       if (eqPlaying) updateEqFilterGains();
       redrawEqWaveformNow();
-      // Score-Neuberechnung bewusst NICHT hier - nur nach Klick auf "Vorschlag uebernehmen"
-      // (siehe eqSuggestBtn), sonst wuerde jede einzelne Reglerbewegung eine teure Offline-
-      // Neuanalyse anstossen.
+      // Waehrend des Ziehens (input-Event, mehrfach pro Sekunde) bewusst KEINE Score-Neuberechnung -
+      // das waere eine teure Offline-Neuanalyse pro Frame. Stattdessen erst beim Loslassen (change,
+      // siehe unten).
     });
+    input.addEventListener("change", () => updateEqPreview());
   });
 }
 
@@ -4260,6 +4261,7 @@ if (eqDeEsserAutoBtn) {
     if (eqDeEsserStrengthValueEl) eqDeEsserStrengthValueEl.textContent = `${pct}%`;
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
     if (eqStatus) eqStatus.textContent = needed ? t("eqDeesserAutoApplied") : t("eqDeesserAutoNotNeeded");
+    updateEqPreview();
   });
 }
 
@@ -4268,6 +4270,7 @@ if (eqDeEsserEnabledEl) {
     eqDeEsserEnabled = eqDeEsserEnabledEl.checked;
     if (eqDeEsserStrengthWrap) eqDeEsserStrengthWrap.hidden = !eqDeEsserEnabled;
     if (eqPlaying) startEqPreview(getEqElapsedPosition()); // Graph neu aufbauen (De-Esser rein/raus), an gleicher Stelle weiterspielen
+    updateEqPreview();
   });
 }
 
@@ -4276,8 +4279,9 @@ if (eqDeEsserStrengthEl) {
     eqDeEsserAmount = Number(eqDeEsserStrengthEl.value) / 100;
     if (eqDeEsserStrengthValueEl) eqDeEsserStrengthValueEl.textContent = `${eqDeEsserStrengthEl.value}%`;
     if (eqPlaying && eqDeEsserNodes) updateDeEsserAmount(eqDeEsserNodes, eqDeEsserAmount);
-    // Score-Vorschau bewusst nicht hier ausloesen - nur nach "Vorschlag uebernehmen"/Reset (siehe dort).
+    // Waehrend des Ziehens bewusst keine Score-Neuberechnung - erst beim Loslassen (change).
   });
+  eqDeEsserStrengthEl.addEventListener("change", () => updateEqPreview());
 }
 
 const eqGainEl = document.getElementById("eq-gain");
@@ -4291,8 +4295,9 @@ if (eqGainEl) {
     eqGainDb = Number(eqGainEl.value);
     if (eqGainValueEl) eqGainValueEl.textContent = `${eqGainDb.toFixed(1)} dB`;
     if (eqPlaying && eqGainNode) rampAudioParam(eqGainNode.gain, Math.pow(10, eqGainDb / 20), eqAudioCtx);
-    // Score-Vorschau bewusst nicht hier ausloesen - nur nach "Vorschlag uebernehmen"/Reset (siehe dort).
+    // Waehrend des Ziehens bewusst keine Score-Neuberechnung - erst beim Loslassen (change).
   });
+  eqGainEl.addEventListener("change", () => updateEqPreview());
 }
 
 if (eqGainMatchBtn) {
@@ -4304,7 +4309,7 @@ if (eqGainMatchBtn) {
     if (eqGainValueEl) eqGainValueEl.textContent = `${eqGainDb.toFixed(1)} dB`;
     if (eqPlaying && eqGainNode) rampAudioParam(eqGainNode.gain, Math.pow(10, eqGainDb / 20), eqAudioCtx);
     if (eqStatus) eqStatus.textContent = t("eqGainMatched");
-    // Score-Vorschau bewusst nicht hier ausloesen - nur nach "Vorschlag uebernehmen"/Reset (siehe dort).
+    updateEqPreview();
   });
 }
 
@@ -4312,7 +4317,7 @@ if (eqTrimIntroEl) {
   eqTrimIntroEl.addEventListener("change", () => {
     eqTrimIntroEnabled = eqTrimIntroEl.checked;
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
-    // Score-Vorschau bewusst nicht hier ausloesen - nur nach "Vorschlag uebernehmen"/Reset (siehe dort).
+    updateEqPreview();
   });
 }
 
@@ -4320,7 +4325,7 @@ if (eqFadeOutEl) {
   eqFadeOutEl.addEventListener("change", () => {
     eqFadeOutEnabled = eqFadeOutEl.checked;
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
-    // Score-Vorschau bewusst nicht hier ausloesen - nur nach "Vorschlag uebernehmen"/Reset (siehe dort).
+    updateEqPreview();
   });
 }
 
