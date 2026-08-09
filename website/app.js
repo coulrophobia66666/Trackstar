@@ -2183,9 +2183,10 @@ function loadImageAsync(src) {
   });
 }
 
-// Zentrierter Text mit einfachem wortweisem Zeilenumbruch, falls Songtitel/Urteil zu lang fuer
-// eine Zeile sind - kein Bibliotheks-Overhead fuer diesen einen Anwendungsfall im Share-Bild.
-function wrapCenteredText(ctx, text, x, y, maxWidth, lineHeight) {
+// Wortweiser Zeilenumbruch (kein Bibliotheks-Overhead fuer diesen einen Anwendungsfall im
+// Share-Bild) - ctx.font muss vor dem Aufruf bereits gesetzt sein, da die Breitenmessung darauf
+// basiert.
+function wrapLines(ctx, text, maxWidth) {
   const words = text.split(" ");
   const lines = [];
   let line = "";
@@ -2199,8 +2200,16 @@ function wrapCenteredText(ctx, text, x, y, maxWidth, lineHeight) {
     }
   }
   if (line) lines.push(line);
+  return lines;
+}
+
+// Wie wrapLines, zeichnet aber direkt zentriert um y herum - gibt die Zeilenzahl zurueck, damit
+// nachfolgende Elemente (Trennlinie, Fusszeile) sich an der tatsaechlichen Hoehe ausrichten koennen.
+function wrapCenteredText(ctx, text, x, y, maxWidth, lineHeight) {
+  const lines = wrapLines(ctx, text, maxWidth);
   const startY = y - ((lines.length - 1) * lineHeight) / 2;
   lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
+  return lines.length;
 }
 
 // Baut ein quadratisches Ergebnis-Bild (Sterne, Score, Urteil, Songtitel) zum Mitschicken beim
@@ -2214,23 +2223,26 @@ async function buildShareCardBlob(info) {
     /* Font-Ladefehler ignorieren - Canvas faellt dann auf eine System-Schrift zurueck */
   }
 
-  const size = 1080;
+  // Hochformat statt quadratisch - Ampel-Urteil + "groesstes Problem" (der eigentliche
+  // Kurzcheck-Kern, siehe Produktbeschreibung) brauchen mehr vertikalen Platz als nur Score+Sterne.
+  const width = 1080;
+  const height = 1320;
   const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext("2d");
 
-  const bgGrad = ctx.createLinearGradient(0, 0, size, size);
+  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
   bgGrad.addColorStop(0, "#07080c");
   bgGrad.addColorStop(1, "#0b0e14");
   ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, size, size);
+  ctx.fillRect(0, 0, width, height);
 
-  const glow = ctx.createRadialGradient(size / 2, size * 0.52, 40, size / 2, size * 0.52, size * 0.62);
+  const glow = ctx.createRadialGradient(width / 2, height * 0.4, 40, width / 2, height * 0.4, height * 0.55);
   glow.addColorStop(0, "rgba(205, 168, 107, 0.16)");
   glow.addColorStop(1, "rgba(205, 168, 107, 0)");
   ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, size, size);
+  ctx.fillRect(0, 0, width, height);
 
   ctx.textBaseline = "alphabetic";
 
@@ -2247,8 +2259,8 @@ async function buildShareCardBlob(info) {
   const logoSize = 64;
   const logoGap = 18;
   const lockupWidth = (logoImg ? logoSize + logoGap : 0) + wordmarkWidth;
-  const lockupStartX = size / 2 - lockupWidth / 2;
-  const lockupY = 130;
+  const lockupStartX = width / 2 - lockupWidth / 2;
+  const lockupY = 120;
   if (logoImg) ctx.drawImage(logoImg, lockupStartX, lockupY - logoSize / 2 - 8, logoSize, logoSize);
   ctx.fillStyle = "#cda86b";
   ctx.textAlign = "left";
@@ -2259,16 +2271,30 @@ async function buildShareCardBlob(info) {
   const stars = Math.max(0, Math.min(5, info.stars || 0));
   ctx.font = "64px Manrope, sans-serif";
   const starGap = 58;
-  const starsStartX = size / 2 - (starGap * 4) / 2;
+  const starsStartX = width / 2 - (starGap * 4) / 2;
   for (let i = 0; i < 5; i++) {
     ctx.fillStyle = i < stars ? "#f0d19c" : "rgba(245, 240, 230, 0.18)";
-    ctx.fillText("★", starsStartX + i * starGap, 310);
+    ctx.fillText("★", starsStartX + i * starGap, 290);
   }
 
-  // Urteil (Ampel-Titel)
-  ctx.fillStyle = info.colorHex || "#f5f0e6";
+  // Ampel-Punkt + Urteil, als Gruppe zentriert - der farbige Punkt macht das "Ampel"-Prinzip
+  // (rot/gelb/gruen) auf den ersten Blick klar, nicht nur ueber die Textfarbe.
+  const verdictColor = info.colorHex || "#f5f0e6";
+  const verdictY = 400;
   ctx.font = "600 46px Fraunces, serif";
-  wrapCenteredText(ctx, info.title || "", size / 2, 410, size - 160, 54);
+  const verdictText = info.title || "";
+  const verdictWidth = ctx.measureText(verdictText).width;
+  const dotRadius = 15;
+  const dotGap = 22;
+  const verdictGroupWidth = dotRadius * 2 + dotGap + verdictWidth;
+  const verdictGroupStartX = width / 2 - verdictGroupWidth / 2;
+  ctx.fillStyle = verdictColor;
+  ctx.beginPath();
+  ctx.arc(verdictGroupStartX + dotRadius, verdictY - 16, dotRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.textAlign = "left";
+  ctx.fillText(verdictText, verdictGroupStartX + dotRadius * 2 + dotGap, verdictY);
+  ctx.textAlign = "center";
 
   // Score gross, "/100" kleiner direkt daneben
   const scoreText = String(info.score != null ? info.score : "–");
@@ -2277,34 +2303,52 @@ async function buildShareCardBlob(info) {
   ctx.font = "600 56px Fraunces, serif";
   const suffixWidth = ctx.measureText("/100").width;
   const totalScoreWidth = scoreWidth + 14 + suffixWidth;
-  const scoreBaseline = 700;
+  const scoreBaseline = 660;
   ctx.textAlign = "left";
   ctx.font = "700 190px Fraunces, serif";
-  ctx.fillStyle = info.colorHex || "#f5f0e6";
-  ctx.fillText(scoreText, size / 2 - totalScoreWidth / 2, scoreBaseline);
+  ctx.fillStyle = verdictColor;
+  ctx.fillText(scoreText, width / 2 - totalScoreWidth / 2, scoreBaseline);
   ctx.font = "600 56px Fraunces, serif";
   ctx.fillStyle = "rgba(245, 240, 230, 0.7)";
-  ctx.fillText("/100", size / 2 - totalScoreWidth / 2 + scoreWidth + 14, scoreBaseline);
+  ctx.fillText("/100", width / 2 - totalScoreWidth / 2 + scoreWidth + 14, scoreBaseline);
   ctx.textAlign = "center";
 
   // Songtitel
   if (info.songTitle) {
     ctx.font = "500 38px Manrope, sans-serif";
     ctx.fillStyle = "rgba(183, 178, 166, 0.9)";
-    wrapCenteredText(ctx, `„${info.songTitle}“`, size / 2, 800, size - 200, 46);
+    wrapCenteredText(ctx, `„${info.songTitle}“`, width / 2, 760, width - 200, 46);
+  }
+
+  // Groesstes Problem (bzw. groesste Staerke) - der eigentliche Inhalt des kostenlosen
+  // Kurzchecks, nicht nur die Randdaten Score/Sterne.
+  let afterProblemY = 830;
+  if (info.problemText) {
+    ctx.font = "700 28px Manrope, sans-serif";
+    ctx.fillStyle = "#cda86b";
+    const labelY = 860;
+    ctx.fillText((info.problemLabel || "").toUpperCase(), width / 2, labelY);
+
+    ctx.font = "500 36px Manrope, sans-serif";
+    ctx.fillStyle = "#f5f0e6";
+    const problemLineHeight = 46;
+    const problemStartY = labelY + 65;
+    const lines = wrapLines(ctx, info.problemText, width - 240);
+    lines.forEach((l, i) => ctx.fillText(l, width / 2, problemStartY + i * problemLineHeight));
+    afterProblemY = problemStartY + (lines.length - 1) * problemLineHeight + 70;
   }
 
   // Fusszeile mit Trennlinie
   ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(size / 2 - 90, 930);
-  ctx.lineTo(size / 2 + 90, 930);
+  ctx.moveTo(width / 2 - 90, afterProblemY);
+  ctx.lineTo(width / 2 + 90, afterProblemY);
   ctx.stroke();
 
   ctx.font = "600 32px Manrope, sans-serif";
   ctx.fillStyle = "#cda86b";
-  ctx.fillText(t("shareCardCta"), size / 2, 985);
+  ctx.fillText(t("shareCardCta"), width / 2, afterProblemY + 55);
 
   return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
 }
@@ -2931,6 +2975,8 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { u
   const topTip = pickTopTip(tips);
   const teaserLabel = topTip.level === "good" ? t("teaserStrength") : t("teaserProblem");
   document.getElementById("teaser-tip").innerHTML = `<span class="mark">✦ ${teaserLabel}</span> ${topTip.problem}`;
+  lastShareInfo.problemLabel = teaserLabel;
+  lastShareInfo.problemText = topTip.problem;
 
   lastAnalysis = {
     overallScore,
