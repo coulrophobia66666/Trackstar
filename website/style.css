@@ -1622,6 +1622,22 @@ button#vocals-check-btn:disabled {
   color: var(--text-secondary);
 }
 
+.verify-email-banner {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.1rem 0 0;
+  font-size: 0.8rem;
+  color: var(--status-warning);
+  text-align: right;
+}
+
+.verify-email-banner .link-btn {
+  color: var(--status-warning);
+}
+
 .auth-card h2, .pricing-card h2, .history-card h2 {
   font-family: var(--font-display);
   font-size: 1.3rem;

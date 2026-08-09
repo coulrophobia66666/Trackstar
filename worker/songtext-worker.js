@@ -158,7 +158,45 @@ function publicUser(u) {
     checksUsedPeriod: u.checks_used_period,
     planRenewsAt: u.plan_renews_at,
     proQuota: PRO_MONTHLY_QUOTA,
+    emailVerified: !!u.email_verified_at,
   };
+}
+
+const EMAIL_VERIFICATION_TTL_MS = 48 * 60 * 60 * 1000; // 48 Stunden - grosszuegiger als der Passwort-Reset,
+// da rein informativ (blockiert nichts) und niemand ausgesperrt werden soll, der die Mail erst spaeter liest.
+
+// Erzeugt einen Verifizierungs-Token und verschickt die Bestaetigungsmail - von Registrierung und
+// "Erneut senden" gemeinsam genutzt. Bewusst best-effort: ein fehlgeschlagener Mailversand soll nie
+// die Registrierung selbst scheitern lassen (Verifizierung ist informativ, nicht blockierend).
+async function sendVerificationEmail(env, request, user) {
+  await env.DB.prepare("DELETE FROM email_verifications WHERE user_id = ?").bind(user.id).run();
+  const token = toHex(crypto.getRandomValues(new Uint8Array(32)));
+  const now = Date.now();
+  await env.DB.prepare("INSERT INTO email_verifications (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)")
+    .bind(token, user.id, now, now + EMAIL_VERIFICATION_TTL_MS)
+    .run();
+
+  const origin = ALLOWED_ORIGINS.has(request.headers.get("Origin") || "")
+    ? request.headers.get("Origin")
+    : [...ALLOWED_ORIGINS][0];
+  const verifyUrl = origin + "/index.html?verify=" + token;
+
+  const sent = await sendEmail(env, {
+    to: user.email,
+    subject: "Overhertz - Bitte E-Mail bestaetigen",
+    text:
+      "Hallo,\n\nbitte bestaetige deine E-Mail-Adresse fuer dein Overhertz-Konto (Link 48 Stunden gueltig):\n" +
+      verifyUrl +
+      "\n\nHast du dich nicht bei Overhertz registriert, kannst du diese E-Mail ignorieren.",
+    html:
+      "<p>Hallo,</p><p>bitte bestätige deine E-Mail-Adresse für dein Overhertz-Konto (Link 48 Stunden gültig):</p>" +
+      '<p><a href="' + verifyUrl + '">' + verifyUrl + "</a></p>" +
+      "<p>Hast du dich nicht bei Overhertz registriert, kannst du diese E-Mail ignorieren.</p>",
+  });
+  if (!sent) {
+    console.error("E-Mail-Verifizierung: Mailversand fehlgeschlagen oder RESEND_API_KEY/RESEND_FROM_EMAIL nicht gesetzt.");
+  }
+  return sent;
 }
 
 async function handleRegister(request, env, cors) {
@@ -182,9 +220,17 @@ async function handleRegister(request, env, cors) {
     .bind(id, email, passwordHash, Date.now())
     .run();
 
+  // Best-effort: ein fehlgeschlagener Mailversand soll die Registrierung nie scheitern lassen -
+  // die Verifizierung ist informativ, nicht blockierend (siehe Banner im Frontend).
+  try {
+    await sendVerificationEmail(env, request, { id, email });
+  } catch (err) {
+    console.error("E-Mail-Verifizierung bei Registrierung fehlgeschlagen", err);
+  }
+
   const token = await createSession(env, id);
   return jsonResponse(
-    { token, user: publicUser({ id, email, plan: "free", credits: 0, checks_used_period: 0, plan_renews_at: null }) },
+    { token, user: publicUser({ id, email, plan: "free", credits: 0, checks_used_period: 0, plan_renews_at: null, email_verified_at: null }) },
     200,
     cors
   );
@@ -249,6 +295,7 @@ async function handleDeleteAccount(request, env, cors) {
 
   await env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id).run();
   await env.DB.prepare("DELETE FROM password_resets WHERE user_id = ?").bind(user.id).run();
+  await env.DB.prepare("DELETE FROM email_verifications WHERE user_id = ?").bind(user.id).run();
   await env.DB.prepare("DELETE FROM ratings WHERE user_id = ?").bind(user.id).run();
   await env.DB.prepare("DELETE FROM checks WHERE user_id = ?").bind(user.id).run();
   await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id).run();
@@ -328,6 +375,41 @@ async function handleResetPassword(request, env, cors) {
   const user = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(reset.user_id).first();
   const newToken = await createSession(env, reset.user_id);
   return jsonResponse({ token: newToken, user: publicUser(user) }, 200, cors);
+}
+
+// Braucht bewusst KEIN Login - der Link wird per Mail geklickt, moeglicherweise auf einem anderen
+// Geraet/Browser ohne bestehende Session. Der Verifizierungsstand liegt serverseitig am Konto, ein
+// spaeteres /auth/me (z.B. nach einem Login) zeigt ihn dann korrekt an.
+async function handleVerifyEmail(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const body = await safeJson(request);
+  const token = typeof body.token === "string" ? body.token.trim() : "";
+  if (!token) return jsonResponse({ error: "Bestaetigungslink ist ungueltig." }, 400, cors);
+
+  const verification = await env.DB.prepare("SELECT user_id, expires_at FROM email_verifications WHERE token = ?").bind(token).first();
+  if (!verification || verification.expires_at <= Date.now()) {
+    return jsonResponse({ error: "Bestaetigungslink ist ungueltig oder abgelaufen." }, 400, cors);
+  }
+
+  await env.DB.prepare("UPDATE users SET email_verified_at = ? WHERE id = ?").bind(Date.now(), verification.user_id).run();
+  await env.DB.prepare("DELETE FROM email_verifications WHERE user_id = ?").bind(verification.user_id).run();
+
+  return jsonResponse({ ok: true }, 200, cors);
+}
+
+async function handleResendVerification(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const user = await getUserFromRequest(request, env);
+  if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
+  if (user.email_verified_at) return jsonResponse({ ok: true, alreadyVerified: true }, 200, cors);
+
+  const sent = await sendVerificationEmail(env, request, user);
+  if (!sent) return jsonResponse({ error: "Mail konnte nicht verschickt werden. Bitte spaeter erneut versuchen." }, 502, cors);
+  return jsonResponse({ ok: true }, 200, cors);
 }
 
 async function handleConsumeCredit(request, env, cors) {
@@ -1237,6 +1319,12 @@ export default {
     }
     if (url.pathname === "/auth/reset-password" && request.method === "POST") {
       return withRateLimit(env, "pwreset:" + clientIp, cors, () => handleResetPassword(request, env, cors));
+    }
+    if (url.pathname === "/auth/verify-email" && request.method === "POST") {
+      return withRateLimit(env, "verifyemail:" + clientIp, cors, () => handleVerifyEmail(request, env, cors));
+    }
+    if (url.pathname === "/auth/resend-verification" && request.method === "POST") {
+      return withRateLimit(env, "verifyemail:" + clientIp, cors, () => handleResendVerification(request, env, cors));
     }
     if (url.pathname === "/consume-credit" && request.method === "POST") {
       return withRateLimit(env, "credit:" + clientIp, cors, () => handleConsumeCredit(request, env, cors));

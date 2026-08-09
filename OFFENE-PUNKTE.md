@@ -1,8 +1,41 @@
 # Offene Punkte
 
-Stand: 06.08.2026. Code für alle Features unten ist geschrieben, committed
+Stand: 09.08.2026. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
+
+## ⚠️ NEU (09.08.): E-Mail-Verifizierung nach Registrierung – manueller D1-Schritt noch offen (Finn)
+Neu registrierte Nutzer bekommen jetzt automatisch eine Bestätigungsmail
+mit Link (Resend, gleiches Muster wie der bestehende Passwort-Reset-Link,
+48h gültig). **Bewusst informativ, nicht blockierend** (siehe Entscheidung
+im Chat): Konto ist sofort nach Registrierung voll nutzbar, oben in der
+Konto-Leiste erscheint nur ein dezentes Hinweis-Banner mit "Erneut
+senden"-Link, bis die Mail bestätigt wurde. Kein Login/Kauf wird dadurch
+blockiert.
+
+**Vor dem Live-Gang in der D1-Console einmalig ausführen** (siehe
+`worker/schema.sql`, Kommentare dort):
+```sql
+ALTER TABLE users ADD COLUMN email_verified_at INTEGER;
+UPDATE users SET email_verified_at = strftime('%s','now') * 1000 WHERE email_verified_at IS NULL;
+CREATE TABLE IF NOT EXISTS email_verifications (
+  token TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_user ON email_verifications(user_id);
+```
+Die `UPDATE`-Zeile ist wichtig: bestehende Konten gelten damit rückwirkend
+als verifiziert, niemand wird nachträglich ausgesperrt oder mit dem Banner
+genervt – nur neue Registrierungen durchlaufen den Verifizierungs-Flow.
+
+Neue Endpunkte: `POST /auth/verify-email` (`{token}`, kein Login nötig -
+der Link wird per Mail geklickt, ggf. auf einem anderen Gerät),
+`POST /auth/resend-verification` (braucht Login). Getestet (Playwright,
+Worker-Endpunkte gemockt): Banner erscheint nach Registrierung, "Erneut
+senden" funktioniert, falscher/abgelaufener Link zeigt Fehlermeldung,
+korrekter Link bestätigt und blendet das Banner aus.
 
 ## ✅ NEU (06.08., dreizehnter Durchgang): Hip-Hop/Trap-Referenzwerte neu kalibriert
 Nutzer-Feedback anhand vieler echter Trap-/Hip-Hop-Checks: EQ-Vorschlag hat

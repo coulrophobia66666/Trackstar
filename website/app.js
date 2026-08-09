@@ -326,6 +326,13 @@ const I18N = {
     accountDeleteConfirm: "Konto und alle zugehörigen Daten unwiderruflich löschen? Ein aktives Abo wird dabei automatisch gekündigt.",
     accountDeleteSuccess: "Konto wurde gelöscht.",
     accountDeleteFailed: "Konto konnte nicht gelöscht werden.",
+    verifyEmailBanner: "Bitte bestätige deine E-Mail-Adresse (Link wurde dir zugeschickt).",
+    verifyEmailResendBtn: "Erneut senden",
+    verifyEmailResendSending: "Wird verschickt…",
+    verifyEmailResendSuccess: "Neue Bestätigungsmail verschickt.",
+    verifyEmailResendFailed: "Konnte nicht verschickt werden. Bitte später erneut versuchen.",
+    verifyEmailLinkSuccess: "E-Mail-Adresse bestätigt!",
+    verifyEmailLinkFailed: "Bestätigungslink ist ungültig oder abgelaufen.",
     historyToggleBtn: "Meine Checks",
     historyHeading: "Meine Checks",
     historyHint: "Deine bisherigen Tiefenanalysen – nur die Ergebnisse (Tipps, Fazit, Einordnung), nicht die Audiodateien selbst.",
@@ -725,6 +732,13 @@ const I18N = {
     accountDeleteConfirm: "Permanently delete your account and all associated data? An active subscription will be cancelled automatically.",
     accountDeleteSuccess: "Account deleted.",
     accountDeleteFailed: "Couldn't delete account.",
+    verifyEmailBanner: "Please confirm your email address (link was sent to you).",
+    verifyEmailResendBtn: "Resend",
+    verifyEmailResendSending: "Sending…",
+    verifyEmailResendSuccess: "New confirmation email sent.",
+    verifyEmailResendFailed: "Couldn't send it. Please try again later.",
+    verifyEmailLinkSuccess: "Email address confirmed!",
+    verifyEmailLinkFailed: "Confirmation link is invalid or expired.",
     historyToggleBtn: "My checks",
     historyHeading: "My checks",
     historyHint: "Your past deep analyses – results only (tips, summary, assessment), not the audio files themselves.",
@@ -2576,6 +2590,27 @@ function renderAccountBar() {
     accountBar.innerHTML = `<button type="button" id="account-toggle" class="account-btn">${t("accountLoginRegisterBtn")}</button>`;
     document.getElementById("account-toggle").addEventListener("click", () => toggleAuthCard());
   }
+  renderVerifyEmailBanner();
+}
+
+// Rein informativ (blockiert nichts, siehe /auth/resend-verification) - macht nur sichtbar, dass
+// die E-Mail noch nicht bestaetigt ist, mit direktem Weg zum erneuten Verschicken.
+function renderVerifyEmailBanner() {
+  const banner = document.getElementById("verify-email-banner");
+  if (!banner) return;
+  banner.hidden = !currentUser || currentUser.emailVerified !== false;
+  if (banner.hidden) return;
+  const resendBtn = document.getElementById("verify-email-resend-btn");
+  if (!resendBtn) return;
+  resendBtn.textContent = t("verifyEmailResendBtn");
+  resendBtn.onclick = async () => {
+    resendBtn.disabled = true;
+    resendBtn.textContent = t("verifyEmailResendSending");
+    const { ok, data } = await apiFetch("auth/resend-verification", { method: "POST" });
+    resendBtn.disabled = false;
+    resendBtn.textContent = ok ? t("verifyEmailResendSuccess") : data.error || t("verifyEmailResendFailed");
+    if (ok) setTimeout(() => (resendBtn.textContent = t("verifyEmailResendBtn")), 4000);
+  };
 }
 
 function toggleAuthCard(forceOpen) {
@@ -2859,6 +2894,24 @@ if (resetTokenFromUrl && resetPasswordForm) {
   resetPasswordForm.dataset.token = resetTokenFromUrl;
   toggleAuthCard(true);
   showAuthForm(resetPasswordForm);
+}
+
+// Verifizierungs-Link (?verify=<token>) direkt beim Laden erkennen und bestaetigen - blockiert
+// nichts (siehe renderVerifyEmailBanner), zeigt nur eine Rueckmeldung, ob's geklappt hat. Faengt
+// sowohl den Fall "auf diesem Geraet noch eingeloggt" (Banner verschwindet nach refreshAccount)
+// als auch "auf einem anderen Geraet/Browser geoeffnet" ab (Status liegt server-seitig am Konto).
+const verifyTokenFromUrl = new URLSearchParams(window.location.search).get("verify");
+if (verifyTokenFromUrl) {
+  (async () => {
+    const { ok, data } = await apiFetch("auth/verify-email", { method: "POST", body: JSON.stringify({ token: verifyTokenFromUrl }) });
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete("verify");
+    window.history.replaceState({}, "", cleanUrl);
+    await refreshAccount();
+    toggleAuthCard(true);
+    showAuthForm(loginForm);
+    authStatus.textContent = ok ? t("verifyEmailLinkSuccess") : data.error || t("verifyEmailLinkFailed");
+  })();
 }
 
 document.querySelectorAll(".plan-select-btn").forEach((btn) => {

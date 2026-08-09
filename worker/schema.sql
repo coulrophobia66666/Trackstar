@@ -12,12 +12,17 @@ CREATE TABLE IF NOT EXISTS users (
   plan_renews_at INTEGER,
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT,
-  has_bought_credits INTEGER NOT NULL DEFAULT 0 -- 1 sobald das Credits-Paket mind. einmal gekauft wurde (fuer den Pro-Upgrade-Rabatt)
+  has_bought_credits INTEGER NOT NULL DEFAULT 0, -- 1 sobald das Credits-Paket mind. einmal gekauft wurde (fuer den Pro-Upgrade-Rabatt)
+  email_verified_at INTEGER -- NULL = noch nicht bestaetigt (informativ, sperrt nichts - siehe email_verifications)
 );
 
 -- Falls die Tabelle "users" schon existiert (Datenbank vor dieser Aenderung angelegt),
--- diese Zeile EINMALIG zusaetzlich in der D1-Console ausfuehren:
+-- diese Zeilen EINMALIG zusaetzlich in der D1-Console ausfuehren:
 -- ALTER TABLE users ADD COLUMN has_bought_credits INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN email_verified_at INTEGER;
+-- Bestandskonten gelten rueckwirkend als verifiziert (kein Aussperren/Nerven fuer alte Nutzer -
+-- nur neue Registrierungen durchlaufen den Verifizierungs-Flow):
+-- UPDATE users SET email_verified_at = strftime('%s','now') * 1000 WHERE email_verified_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS sessions (
   token TEXT PRIMARY KEY,
@@ -36,6 +41,18 @@ CREATE TABLE IF NOT EXISTS password_resets (
 );
 
 CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
+
+-- Token fuer die (informative, nicht blockierende) E-Mail-Bestaetigung nach der Registrierung -
+-- gleiches Muster wie password_resets, nur mit laengerer Gueltigkeit (weniger sicherheitskritisch,
+-- soll niemanden aussperren, der die Mail erst spaeter liest).
+CREATE TABLE IF NOT EXISTS email_verifications (
+  token TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_verifications_user ON email_verifications(user_id);
 
 CREATE TABLE IF NOT EXISTS ratings (
   id TEXT PRIMARY KEY,
