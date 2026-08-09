@@ -2169,14 +2169,19 @@ if (shareResultBtn) {
     if (!lastShareInfo) return;
     const shareText = t("shareText", { stars: lastShareInfo.stars, title: lastShareInfo.title, score: lastShareInfo.score });
     const shareUrl = window.location.origin + window.location.pathname;
+    const combined = `${shareText} ${shareUrl}`;
     const labelSpan = shareResultBtn.querySelector("span");
     const originalLabel = labelSpan ? labelSpan.textContent : "";
     try {
       if (navigator.share) {
-        await navigator.share({ text: shareText, url: shareUrl });
+        // Text und url als GETRENNTE Felder uebergeben lief bei manchen Share-Zielen (u.a. WhatsApp
+        // auf Android) als zwei separate Nachrichten auf statt als eine - je ein Linkvorschau-Kaertchen
+        // und ein zusaetzlicher reiner Textschnipsel. Alles in ein einziges "text"-Feld gepackt, ohne
+        // separates "url", damit der Share-Dialog nur EIN Element weitergibt.
+        await navigator.share({ text: combined });
         return;
       }
-      await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+      await navigator.clipboard.writeText(combined);
       if (labelSpan) {
         labelSpan.textContent = t("shareCopied");
         setTimeout(() => (labelSpan.textContent = originalLabel), 2200);
