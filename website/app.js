@@ -86,6 +86,7 @@ const I18N = {
     shareBtn: "Ergebnis teilen",
     shareText: "Mein Track hat auf Overhertz {stars}/5 Sterne erreicht – „{title}“ ({score}/100). Check deinen Track auch kostenlos:",
     shareCopied: "Link kopiert!",
+    shareCardCta: "Kostenlosen Kurzcheck auf overhertz.app",
     unlockTitle: "Willst du wissen, woran's genau liegt – und wie du's behebst?",
     unlockDesc: "Frequenzkurve im Detail, alle Verbesserungstipps und wohin du den Track am besten einreichst.",
     unlockBtn: "Vollanalyse ansehen",
@@ -484,6 +485,7 @@ const I18N = {
     shareBtn: "Share result",
     shareText: "My track scored {stars}/5 stars on Overhertz – “{title}” ({score}/100). Check your track for free too:",
     shareCopied: "Link copied!",
+    shareCardCta: "Free short check at overhertz.app",
     unlockTitle: "Want to know exactly what's wrong – and how to fix it?",
     unlockDesc: "Detailed frequency curve, all improvement tips, and where best to submit your track.",
     unlockBtn: "View full analysis",
@@ -882,6 +884,15 @@ function statusForScore(score) {
 }
 
 /* ---------- Entertainment layer: grades, badges, teaser (for the free view) ---------- */
+
+// grade.color ist ein CSS-var()-String fuers Live-DOM (style.color = "var(--status-good)") - fuer
+// das Canvas-Share-Bild (siehe buildShareCardBlob) braucht es echte Hex-Werte, deshalb die gleiche
+// Zuordnung hier nochmal als Klartext-Map.
+const STATUS_COLOR_HEX = {
+  "var(--status-good)": "#4cc38a",
+  "var(--status-warning)": "#dc9a3f",
+  "var(--status-critical)": "#d64545",
+};
 
 function gradeForScore(score) {
   if (score >= 80) {
@@ -2163,6 +2174,141 @@ let lastShareInfo = null;
 let lastFazitText = "";
 let currentCheckId = null;
 
+function loadImageAsync(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+// Zentrierter Text mit einfachem wortweisem Zeilenumbruch, falls Songtitel/Urteil zu lang fuer
+// eine Zeile sind - kein Bibliotheks-Overhead fuer diesen einen Anwendungsfall im Share-Bild.
+function wrapCenteredText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(" ");
+  const lines = [];
+  let line = "";
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (line && ctx.measureText(test).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  const startY = y - ((lines.length - 1) * lineHeight) / 2;
+  lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
+}
+
+// Baut ein quadratisches Ergebnis-Bild (Sterne, Score, Urteil, Songtitel) zum Mitschicken beim
+// Teilen. Bewusst mit Canvas selbst gezeichnet statt eines DOM-Screenshots der echten Seite (z.B.
+// per html2canvas) - so sieht das Bild immer so aus, wie es aussehen SOLL, unabhaengig vom
+// Scroll-/Layout-Zustand der Seite im Moment des Klicks, und ohne fremde Bibliothek nachzuladen.
+async function buildShareCardBlob(info) {
+  try {
+    await document.fonts.ready;
+  } catch {
+    /* Font-Ladefehler ignorieren - Canvas faellt dann auf eine System-Schrift zurueck */
+  }
+
+  const size = 1080;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  const bgGrad = ctx.createLinearGradient(0, 0, size, size);
+  bgGrad.addColorStop(0, "#07080c");
+  bgGrad.addColorStop(1, "#0b0e14");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, size, size);
+
+  const glow = ctx.createRadialGradient(size / 2, size * 0.52, 40, size / 2, size * 0.52, size * 0.62);
+  glow.addColorStop(0, "rgba(205, 168, 107, 0.16)");
+  glow.addColorStop(1, "rgba(205, 168, 107, 0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, size, size);
+
+  ctx.textBaseline = "alphabetic";
+
+  // Logo + Wortmarke als zentrierte Gruppe
+  let logoImg = null;
+  try {
+    logoImg = await loadImageAsync("logo.svg");
+  } catch {
+    /* Logo ist ein Bonus, kein Blocker fuers restliche Bild */
+  }
+  const wordmark = "OVERHERTZ";
+  ctx.font = "700 40px Manrope, sans-serif";
+  const wordmarkWidth = ctx.measureText(wordmark).width;
+  const logoSize = 64;
+  const logoGap = 18;
+  const lockupWidth = (logoImg ? logoSize + logoGap : 0) + wordmarkWidth;
+  const lockupStartX = size / 2 - lockupWidth / 2;
+  const lockupY = 130;
+  if (logoImg) ctx.drawImage(logoImg, lockupStartX, lockupY - logoSize / 2 - 8, logoSize, logoSize);
+  ctx.fillStyle = "#cda86b";
+  ctx.textAlign = "left";
+  ctx.fillText(wordmark, lockupStartX + (logoImg ? logoSize + logoGap : 0), lockupY + 12);
+
+  // Sterne
+  ctx.textAlign = "center";
+  const stars = Math.max(0, Math.min(5, info.stars || 0));
+  ctx.font = "64px Manrope, sans-serif";
+  const starGap = 58;
+  const starsStartX = size / 2 - (starGap * 4) / 2;
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = i < stars ? "#f0d19c" : "rgba(245, 240, 230, 0.18)";
+    ctx.fillText("★", starsStartX + i * starGap, 310);
+  }
+
+  // Urteil (Ampel-Titel)
+  ctx.fillStyle = info.colorHex || "#f5f0e6";
+  ctx.font = "600 46px Fraunces, serif";
+  wrapCenteredText(ctx, info.title || "", size / 2, 410, size - 160, 54);
+
+  // Score gross, "/100" kleiner direkt daneben
+  const scoreText = String(info.score != null ? info.score : "–");
+  ctx.font = "700 190px Fraunces, serif";
+  const scoreWidth = ctx.measureText(scoreText).width;
+  ctx.font = "600 56px Fraunces, serif";
+  const suffixWidth = ctx.measureText("/100").width;
+  const totalScoreWidth = scoreWidth + 14 + suffixWidth;
+  const scoreBaseline = 700;
+  ctx.textAlign = "left";
+  ctx.font = "700 190px Fraunces, serif";
+  ctx.fillStyle = info.colorHex || "#f5f0e6";
+  ctx.fillText(scoreText, size / 2 - totalScoreWidth / 2, scoreBaseline);
+  ctx.font = "600 56px Fraunces, serif";
+  ctx.fillStyle = "rgba(245, 240, 230, 0.7)";
+  ctx.fillText("/100", size / 2 - totalScoreWidth / 2 + scoreWidth + 14, scoreBaseline);
+  ctx.textAlign = "center";
+
+  // Songtitel
+  if (info.songTitle) {
+    ctx.font = "500 38px Manrope, sans-serif";
+    ctx.fillStyle = "rgba(183, 178, 166, 0.9)";
+    wrapCenteredText(ctx, `„${info.songTitle}“`, size / 2, 800, size - 200, 46);
+  }
+
+  // Fusszeile mit Trennlinie
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(size / 2 - 90, 930);
+  ctx.lineTo(size / 2 + 90, 930);
+  ctx.stroke();
+
+  ctx.font = "600 32px Manrope, sans-serif";
+  ctx.fillStyle = "#cda86b";
+  ctx.fillText(t("shareCardCta"), size / 2, 985);
+
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+}
+
 const shareResultBtn = document.getElementById("share-result-btn");
 if (shareResultBtn) {
   shareResultBtn.addEventListener("click", async () => {
@@ -2172,16 +2318,29 @@ if (shareResultBtn) {
     const combined = `${shareText} ${shareUrl}`;
     const labelSpan = shareResultBtn.querySelector("span");
     const originalLabel = labelSpan ? labelSpan.textContent : "";
+    let imageBlob = null;
+    try {
+      imageBlob = await buildShareCardBlob(lastShareInfo);
+    } catch {
+      // Bild ist ein Bonus obendrauf, kein Blocker fuers Teilen selbst - ohne Bild faellt's auf
+      // reinen Text+Link zurueck.
+    }
     try {
       if (navigator.share) {
-        // Text und url als GETRENNTE Felder uebergeben lief bei manchen Share-Zielen (u.a. WhatsApp
-        // auf Android) als zwei separate Nachrichten auf statt als eine - je ein Linkvorschau-Kaertchen
-        // und ein zusaetzlicher reiner Textschnipsel. Alles in ein einziges "text"-Feld gepackt, ohne
-        // separates "url", damit der Share-Dialog nur EIN Element weitergibt.
-        await navigator.share({ text: combined });
+        const file = imageBlob ? new File([imageBlob], "overhertz-ergebnis.png", { type: "image/png" }) : null;
+        if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ text: combined, files: [file] });
+        } else {
+          // Text und url als GETRENNTE Felder uebergeben lief bei manchen Share-Zielen (u.a. WhatsApp
+          // auf Android) als zwei separate Nachrichten auf statt als eine - je ein Linkvorschau-Kaertchen
+          // und ein zusaetzlicher reiner Textschnipsel. Alles in ein einziges "text"-Feld gepackt, ohne
+          // separates "url", damit der Share-Dialog nur EIN Element weitergibt.
+          await navigator.share({ text: combined });
+        }
         return;
       }
       await navigator.clipboard.writeText(combined);
+      if (imageBlob) downloadBlob(imageBlob, "overhertz-ergebnis.png");
       if (labelSpan) {
         labelSpan.textContent = t("shareCopied");
         setTimeout(() => (labelSpan.textContent = originalLabel), 2200);
@@ -2743,7 +2902,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { u
   heroTitleEl.textContent = grade.title;
   heroTitleEl.style.color = grade.color;
   document.getElementById("hero-desc").textContent = grade.desc;
-  lastShareInfo = { stars: grade.stars, title: grade.title, score: overallScore };
+  lastShareInfo = { stars: grade.stars, title: grade.title, score: overallScore, songTitle: title, colorHex: STATUS_COLOR_HEX[grade.color] || "#f5f0e6" };
   const shareBtnEl = document.getElementById("share-result-btn");
   if (shareBtnEl) shareBtnEl.hidden = false;
 
