@@ -1634,6 +1634,10 @@ button#vocals-check-btn:disabled {
   text-align: right;
 }
 
+.verify-email-banner[hidden] {
+  display: none;
+}
+
 .verify-email-banner .link-btn {
   color: var(--status-warning);
 }
