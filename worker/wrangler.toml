@@ -2,6 +2,17 @@ name = "trackstar-songtext-worker"
 main = "songtext-worker.js"
 compatibility_date = "2025-01-01"
 
+# Ohne das hier im Repo zurueckgesetzt der naechste Git-Deploy die im Dashboard manuell
+# aktivierten Protokolle wieder auf "Deaktiviert" (Diagnose des Resend-E-Mail-Problems, siehe
+# OFFENE-PUNKTE.md).
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+head_sampling_rate = 1
+
 [[ratelimits]]
 name = "RATE_LIMITER"
 namespace_id = "1001"
