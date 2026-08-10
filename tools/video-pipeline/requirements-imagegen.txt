@@ -1,0 +1,13 @@
+# Optional, nur fuer imagegen.py - separat von requirements.txt, weil torch/diffusers gross sind
+# (mehrere hundert MB) und die meisten Pipeline-Schritte sie nicht brauchen.
+#
+# Installation (in der aktivierten .venv):
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch
+#   pip install -r requirements-imagegen.txt
+#
+# Die separate --index-url fuer torch ist wichtig: ohne sie zieht pip die CUDA-Variante von
+# PyPI (mehrere GB, unnoetig auf einem Server ohne GPU wie dem in DEPLOY.md beschriebenen).
+diffusers
+transformers
+accelerate
+safetensors

@@ -147,6 +147,19 @@ app.post("/api/music-short", (req, res) => {
   res.json({ jobId: runJob(VENV_PYTHON, args) });
 });
 
+app.post("/api/imagegen", (req, res) => {
+  const { prompt, negativePrompt, model, steps, width, height, guidanceScale, seed, out } = req.body;
+  const args = [path.join(ROOT, "imagegen.py"), "--prompt", prompt, "--out", out || "out/images/image.png"];
+  if (negativePrompt) args.push("--negative-prompt", negativePrompt);
+  if (model) args.push("--model", model);
+  if (steps) args.push("--steps", String(steps));
+  if (width) args.push("--width", String(width));
+  if (height) args.push("--height", String(height));
+  if (guidanceScale) args.push("--guidance-scale", String(guidanceScale));
+  if (seed !== undefined && seed !== "") args.push("--seed", String(seed));
+  res.json({ jobId: runJob(VENV_PYTHON, args) });
+});
+
 app.post("/api/thumbnail", (req, res) => {
   const { input, time, title, subtitle, out, verticalOut } = req.body;
   const args = [path.join(ROOT, "thumbnail.py"), "--in", input, "--title", title, "--out", out];

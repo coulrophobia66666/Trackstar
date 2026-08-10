@@ -127,9 +127,13 @@ Browser (website/)                         Cloudflare Worker (worker/)
   Einfachster Weg für reine Musik-Shorts (Zielbild des Werkzeugs):
   `music-short.py` – nur Musik (+ optionales Cover-Bild, sonst
   automatisch generierte Wellenform) + gewählter Ausschnitt ergibt direkt
-  einen fertigen Short, ohne Umweg über ein Video. Lokales Web-Dashboard
-  unter `web/` (`npm run dashboard`) steuert alle Schritte über eine
-  Oberfläche statt einzelner CLI-Aufrufe. Details/Setup in
+  einen fertigen Short, ohne Umweg über ein Video. `imagegen.py` erzeugt
+  Bilder (Cover/Hintergründe) aus einem Text-Prompt lokal per
+  Stable-Diffusion-Derivat (`OFA-Sys/small-stable-diffusion-v0`,
+  Apache-2.0) statt über einen kostenpflichtigen Cloud-Dienst – kein
+  API-Key, aber ohne GPU spürbar langsam (Minuten pro Bild). Lokales
+  Web-Dashboard unter `web/` (`npm run dashboard`) steuert alle Schritte
+  über eine Oberfläche statt einzelner CLI-Aufrufe. Details/Setup in
   `tools/video-pipeline/README.md`.
 
 ## Entwicklung

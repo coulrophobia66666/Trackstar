@@ -43,10 +43,13 @@ Ein-/Auspunkte in einem Schnittprogramm) – dann per Klick direkt in die Shorts
 oder Schneiden-Sektion übernehmen, statt Sekundenzahlen zu schätzen und von Hand einzutippen.
 Das ist bewusst manuell/visuell gehalten, als Ergänzung zu den automatischen Schritten.
 
-Eine Seite mit einem Formular pro Pipeline-Schritt (Aufnahme, Schnitt, Voiceover, Untertitel,
-Zusammensetzen, Shorts, Thumbnail), Job-Log live im Browser, Dateiliste mit Downloads. Läuft nur
-lokal (127.0.0.1), kein Deploy. Alle Skripte sind trotzdem einzeln über die Kommandozeile nutzbar
-(siehe unten) – das Dashboard ruft im Hintergrund genau dieselben Skripte auf.
+Seitenleiste mit Schnellstart (Trimmer, Musik-Short, Bild-Generator), den sieben
+Pipeline-Schritten (Aufnahme, Schnitt, Voiceover, Untertitel, Zusammensetzen, Shorts, Thumbnail)
+und der Dateiverwaltung – jede Sektion eine eigene Seite statt einer langen Scroll-Liste,
+Job-Log live im Browser, Dateiliste mit Vorschaubildern (Bilder als echtes Thumbnail,
+Videos/Audio/Untertitel als Icon). Läuft nur lokal (127.0.0.1),
+kein Deploy. Alle Skripte sind trotzdem einzeln über die Kommandozeile nutzbar (siehe unten) –
+das Dashboard ruft im Hintergrund genau dieselben Skripte auf.
 
 ## Ablauf
 
@@ -90,8 +93,52 @@ record.mjs  --------->  cut.py  --------->  assemble.py  --------->  final.mp4
    lesbarem Verlaufsbalken drüber, in 16:9 (YouTube) und optional 9:16 (Shorts-Cover).
 8. **`music-short.py`** – eigener, kürzerer Pfad ohne Video als Ausgangspunkt: nur Musik (+
    optionales Bild) + gewählter Ausschnitt → fertiger Hochkant-Short. Siehe Abschnitt oben.
+9. **`imagegen.py`** – lokale KI-Bildgenerierung (Cover/Hintergründe/Thumbnail-Motive) aus einem
+   Text-Prompt, unabhängig vom restlichen Video-Ablauf. Siehe eigener Abschnitt unten.
 
 `demo.sh` führt Schritte 1–5 einmal am Beispiel-Rundgang aus (guter erster Test).
+
+## Lokale KI-Bildgenerierung (`imagegen.py`)
+
+Erzeugt Bilder aus einem Text-Prompt – lokal, offline, ohne API-Key/Tokens/Kontingent-Grenzen.
+Bewusst kein Cloud-Dienst (Midjourney/DALL-E/etc.): kein Secret nötig, keine Kosten pro Bild –
+dafür ohne GPU spürbar langsam und mit dem Qualitätsniveau eines kleinen, offline-tauglichen
+Modells statt eines State-of-the-Art-Riesen.
+
+```bash
+python3 imagegen.py --prompt "warmes Bokeh-Licht, dunkle Bühne, Vinyl-Schallplatte" --out out/images/cover.png
+```
+
+Auch im Dashboard nutzbar (Sektion "Bild-Generator").
+
+**Setup** (zusätzlich zum Einmaligen Setup unten, separat weil groß):
+
+```bash
+source .venv/bin/activate
+pip install --index-url https://download.pytorch.org/whl/cpu torch   # CPU-Variante, keine CUDA-Bloat
+pip install -r requirements-imagegen.txt
+```
+
+**Modell:** Standardmäßig `OFA-Sys/small-stable-diffusion-v0` (Apache-2.0, kommerziell
+unbedenklich nutzbar) – ein auf halbe Größe destilliertes Stable-Diffusion-1.5-Derivat, damit auf
+einer CPU überhaupt in vertretbarer Zeit nutzbar. Bewusst *nicht* `stabilityai/sd-turbo`/
+`sdxl-turbo`: die wären schneller, stehen aber unter Stability AIs nicht-kommerzieller
+Community-Lizenz – ungeeignet, sobald ein generiertes Bild in echtem Marketing-Material landen
+könnte. Über `--model` austauschbar, falls ein anderes Modell gebraucht wird (Lizenz dann selbst
+prüfen).
+
+**Performance-Realität ohne GPU:** grob 1–5 Minuten pro Bild auf einer 2-vCPU-Maschine wie dem in
+`DEPLOY.md` beschriebenen Server, stark abhängig von `--steps`/`--width`/`--height`. Attention-
+und VAE-Slicing sind fest aktiv, um mit wenig RAM auszukommen (Zielserver hat nur 4GB insgesamt,
+geteilt mit Dashboard/ffmpeg/Chromium) – trotzdem lieber ein Bild nach dem anderen erzeugen statt
+parallel, sonst OOM-Risiko.
+
+**Nicht getestet in der Sandbox, in der dieses Skript entstanden ist:** `huggingface.co` und
+`download.pytorch.org` sind dort per Netzwerk-Policy gesperrt (403) – weder `torch` noch das
+Modell selbst ließen sich herunterladen. Geprüft wurde nur, was ohne Download geht: CLI-Argumente
+(`--help`), und dass `diffusers` sich importieren lässt und `AutoPipelineForText2Image` wie
+erwartet existiert. Der eigentliche Bildgenerierungs-Aufruf ist ungetestet – vor dem ersten
+echten Einsatz einmal mit einem einfachen Test-Prompt gegenprüfen.
 
 ## Einmaliges Setup
 
@@ -205,6 +252,30 @@ wurde für Thumbnail- und Musik-Short-Jobs per echtem HTTP-Aufruf inkl. Datei-Up
 verifiziert.
 
 Nicht getestet, weil in dieser Sandbox nicht verfügbar: ElevenLabs (`--engine cloud`, kein Key
-vorhanden) und Piper mit echtem Stimmmodell (Download von huggingface.co dort blockiert) – beide
-Code-Pfade sind vorhanden, aber ungetestet mit echten Zugangsdaten/Modellen. Vor dem ersten
-echten Einsatz einmal mit einem kurzen Testscript gegenprüfen.
+vorhanden), Piper mit echtem Stimmmodell (Download von huggingface.co dort blockiert) und
+`imagegen.py` (siehe eigener Abschnitt oben – weder `torch` noch das Modell ließen sich laden) –
+alle drei Code-Pfade sind vorhanden, aber ungetestet mit echten Zugangsdaten/Modellen. Vor dem
+ersten echten Einsatz einmal mit einem kurzen Testscript gegenprüfen.
+
+**Wichtige Einschränkung, per Frame-für-Frame-Kontrolle gefunden:** `cut.py --mode steps`
+verlässt sich darauf, dass die von `record.mjs` geloggten Zeitstempel (`steps.json`) linear der
+tatsächlichen Videolänge entsprechen. Bei kurzen Rundgängen (wie dem Beispiel-Storyboard oben)
+stimmt das ausreichend. Bei längeren, mehrszenigen Rundgängen (viele `scrollTo`/`waitMs`-Schritte)
+kann die reale Aufnahme in dieser Sandbox spürbar kürzer ausfallen als die Summe der
+Schritt-Zeitstempel (beobachtet: 26,7s protokollierte Aktionen, nur 14,7s tatsächliches Video) –
+vermutlich, weil Playwrights Bildschirmaufnahme bei ruhigen Wartemomenten kaum neue Frames
+erzeugt. Weil `cut.py` Zeitstempel jenseits der echten Videolänge hart auf deren Ende kappt,
+kollabieren dann mehrere spätere Szenen auf denselben Punkt – der Schnitt wird unbrauchbar
+(einzeln per `ffprobe`/Frame-Extraktion verifiziert, nicht nur vermutet). Workaround für
+längere Rundgänge: `cut.py` überspringen und die Rohaufnahme direkt (ungeschnitten) verwenden,
+oder auf einem Rechner ohne diese Aufnahme-Eigenheit testen, bevor man sich auf `--mode steps`
+verlässt. Ursache nicht abschließend behoben, nur umgangen.
+
+Dashboard-Restyle (Seitenleiste mit Einzelseiten statt einer langen Scroll-Liste, Vorschaubilder
+in der Dateiliste, neue "Bild-Generator"-Sektion) per Playwright gegen den laufenden
+`web/server.mjs` verifiziert: alle Navigationspunkte zeigen die richtige Seite (auch mobile
+Seitenleiste mit Menü-Button), bestehende Formulare senden weiterhin dieselben Felder wie vorher,
+keine Konsolen-/Ladefehler. Live-Video-Frames als Thumbnail (`<video>`-Element mit
+Zeitstempel-Fragment) erwiesen sich als zu unzuverlässig (mal schwarzes Rechteck statt Frame,
+abhängig vom Rendering-Timing) – stattdessen ein festes Icon für Videos, echte Thumbnails nur für
+Bilddateien.
