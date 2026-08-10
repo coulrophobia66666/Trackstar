@@ -121,11 +121,14 @@ pip install -r requirements-imagegen.txt
 
 **Modell:** Standardmäßig `OFA-Sys/small-stable-diffusion-v0` (Apache-2.0, kommerziell
 unbedenklich nutzbar) – ein auf halbe Größe destilliertes Stable-Diffusion-1.5-Derivat, damit auf
-einer CPU überhaupt in vertretbarer Zeit nutzbar. Bewusst *nicht* `stabilityai/sd-turbo`/
-`sdxl-turbo`: die wären schneller, stehen aber unter Stability AIs nicht-kommerzieller
-Community-Lizenz – ungeeignet, sobald ein generiertes Bild in echtem Marketing-Material landen
-könnte. Über `--model` austauschbar, falls ein anderes Modell gebraucht wird (Lizenz dann selbst
-prüfen).
+einer CPU überhaupt in vertretbarer Zeit nutzbar. Bewusst *nicht standardmäßig*
+`stabilityai/sd-turbo`/`sdxl-turbo`: die wären schneller, stehen aber unter Stability AIs
+nicht-kommerzieller Community-Lizenz – ungeeignet, sobald ein generiertes Bild in echtem
+Marketing-Material landen könnte. Zum Vergleichen trotzdem nutzbar: `--model
+stabilityai/sd-turbo` (CLI) oder im Dashboard über die Modell-Auswahl im Bild-Generator, dort mit
+deutlichem Lizenz-Hinweis (nur zum Testen von Geschwindigkeit/Qualität, Ergebnisse nicht
+kommerziell verwenden). Auch ein frei eingetragenes anderes Modell ist möglich – Lizenz dann
+selbst prüfen.
 
 **Performance-Realität ohne GPU:** grob 1–5 Minuten pro Bild auf einer 2-vCPU-Maschine wie dem in
 `DEPLOY.md` beschriebenen Server, stark abhängig von `--steps`/`--width`/`--height`. Attention-

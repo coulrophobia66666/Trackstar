@@ -275,6 +275,14 @@
       </div>
       <div class="card">
         <p class="hint warn">Einmaliges Setup nötig, bevor das hier funktioniert: <code>pip install --index-url https://download.pytorch.org/whl/cpu torch</code> und <code>pip install -r requirements-imagegen.txt</code> in der aktivierten <code>.venv</code> (siehe README, Abschnitt "Lokale KI-Bildgenerierung"). Erster Aufruf lädt zusätzlich einmalig das Modell aus dem Netz (mehrere hundert MB).</p>
+        <label>Modell</label>
+        <select id="ig-model" onchange="onImagegenModelChange()">
+          <option value="OFA-Sys/small-stable-diffusion-v0" data-steps="15">small-stable-diffusion-v0 – Apache 2.0, kommerziell nutzbar</option>
+          <option value="stabilityai/sd-turbo" data-steps="4">sd-turbo – schneller, aber NICHT kommerziell nutzbar (nur zum Vergleichen/Testen)</option>
+          <option value="custom">Eigenes Modell (HuggingFace-Id)…</option>
+        </select>
+        <input type="text" id="ig-model-custom" placeholder="z. B. irgendwer/irgendein-modell" hidden style="margin-top:6px" />
+        <p class="hint" id="ig-model-hint" style="margin-top:6px"></p>
         <label>Prompt (Bildbeschreibung)</label>
         <textarea id="ig-prompt" placeholder="z. B. warmes Bokeh-Licht, dunkle Bühne, Vinyl-Schallplatte, cineastisch"></textarea>
         <label>Negativ-Prompt (optional – was NICHT im Bild sein soll)</label>
@@ -629,13 +637,36 @@ async function runMusicShort() {
   pollJob(jobId, document.getElementById("ms-log"), document.getElementById("ms-status"), btn);
 }
 
+const IG_LICENSE_HINTS = {
+  "OFA-Sys/small-stable-diffusion-v0": { class: "", text: "Apache 2.0 – Ergebnisse dürfen uneingeschränkt kommerziell verwendet werden (z. B. echtes Cover/Thumbnail)." },
+  "stabilityai/sd-turbo": { class: "warn", text: "Stability AI Non-Commercial Community License – Ergebnisse NICHT kommerziell verwenden (kein Marketing-Material, kein echtes Produktbild). Nur zum Ausprobieren/Vergleichen von Geschwindigkeit und Qualität." },
+  custom: { class: "warn", text: "Eigene Modell-Id – Lizenz vor kommerzieller Nutzung selbst prüfen." },
+};
+
+function onImagegenModelChange() {
+  const select = document.getElementById("ig-model");
+  const isCustom = select.value === "custom";
+  document.getElementById("ig-model-custom").hidden = !isCustom;
+  const info = IG_LICENSE_HINTS[select.value];
+  const hintEl = document.getElementById("ig-model-hint");
+  hintEl.textContent = info.text;
+  hintEl.className = "hint" + (info.class ? " " + info.class : "");
+  const selectedOption = select.options[select.selectedIndex];
+  if (selectedOption.dataset.steps) document.getElementById("ig-steps").value = selectedOption.dataset.steps;
+}
+onImagegenModelChange();
+
 async function runImagegen() {
   const btn = event.target;
   const prompt = val("ig-prompt").trim();
   if (!prompt) { alert("Erst einen Prompt eingeben."); return; }
+  const modelSelect = val("ig-model");
+  const model = modelSelect === "custom" ? val("ig-model-custom").trim() : modelSelect;
+  if (modelSelect === "custom" && !model) { alert("Eigene Modell-Id eintragen oder ein Modell aus der Liste wählen."); return; }
   const { jobId } = await postJson("/api/imagegen", {
     prompt,
     negativePrompt: val("ig-negative") || undefined,
+    model,
     width: num("ig-width"), height: num("ig-height"),
     steps: num("ig-steps"), seed: val("ig-seed"),
     out: val("ig-out"),
