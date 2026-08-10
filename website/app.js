@@ -318,6 +318,7 @@ const I18N = {
     statusAnalyzing: "Analysiere Frequenzen, Lautheit & Genre…",
     statusAnalyzeFailed: "Analyse fehlgeschlagen: {msg}",
 
+    accountMenuLabel: "Konto",
     accountLoginRegisterBtn: "Login / Registrieren",
     accountLogoutBtn: "Abmelden",
     accountManageSubscriptionBtn: "Abo verwalten/kündigen",
@@ -724,6 +725,7 @@ const I18N = {
     statusAnalyzing: "Analyzing frequencies, loudness & genre…",
     statusAnalyzeFailed: "Analysis failed: {msg}",
 
+    accountMenuLabel: "Account",
     accountLoginRegisterBtn: "Log in / Sign up",
     accountLogoutBtn: "Log out",
     accountManageSubscriptionBtn: "Manage/cancel subscription",
@@ -857,6 +859,17 @@ function applyStaticTranslations() {
   });
   document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
     el.placeholder = t(el.getAttribute("data-i18n-placeholder"));
+  });
+  // Generischer Mechanismus fuer uebersetzte Attribute (z.B. aria-label) - "attr:key" (mehrere
+  // durch Komma getrennt), im Gegensatz zu data-i18n/data-i18n-placeholder braucht es hier keinen
+  // festen Attributnamen wie text/placeholder.
+  document.querySelectorAll("[data-i18n-attr]").forEach((el) => {
+    el.getAttribute("data-i18n-attr")
+      .split(",")
+      .forEach((pair) => {
+        const [attr, key] = pair.split(":").map((s) => s.trim());
+        if (attr && key) el.setAttribute(attr, t(key));
+      });
   });
   document.title = t("pageTitle");
   const metaDesc = document.querySelector('meta[name="description"]');
@@ -2617,6 +2630,31 @@ function toggleAuthCard(forceOpen) {
   if (!authCard) return;
   authCard.hidden = forceOpen === true ? false : !authCard.hidden;
   if (!authCard.hidden) authCard.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Login/Registrieren-Button bzw. Konto-Infos stecken hinter einem Zahnrad-Symbol statt direkt im
+// Header zu stehen - raeumt die Seite fuer neue Besucher auf (nur noch DE/EN direkt sichtbar).
+const accountMenuToggle = document.getElementById("account-menu-toggle");
+const accountMenuPanel = document.getElementById("account-menu-panel");
+if (accountMenuToggle && accountMenuPanel) {
+  function closeAccountMenu() {
+    accountMenuPanel.hidden = true;
+    accountMenuToggle.setAttribute("aria-expanded", "false");
+  }
+  accountMenuToggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const willOpen = accountMenuPanel.hidden;
+    accountMenuPanel.hidden = !willOpen;
+    accountMenuToggle.setAttribute("aria-expanded", String(willOpen));
+  });
+  // Jeder Klick auf eine Aktion im Menue (Login, Logout, Meine Checks, ...) schliesst das Menue
+  // gleich mit - die eigentlichen Handler dafuer werden dynamisch in renderAccountBar() gesetzt.
+  accountMenuPanel.addEventListener("click", closeAccountMenu);
+  document.addEventListener("click", (e) => {
+    if (!accountMenuPanel.hidden && !accountMenuPanel.contains(e.target) && e.target !== accountMenuToggle) {
+      closeAccountMenu();
+    }
+  });
 }
 
 async function refreshAccount() {
