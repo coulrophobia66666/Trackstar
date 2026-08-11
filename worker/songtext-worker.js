@@ -961,7 +961,11 @@ async function stripeRequest(env, path, params) {
     body: body.toString(),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.error?.message || "Stripe-Fehler");
+  if (!res.ok) {
+    const err = new Error(data?.error?.message || "Stripe-Fehler");
+    err.stripeError = data?.error || null;
+    throw err;
+  }
   return data;
 }
 
@@ -1012,7 +1016,24 @@ async function handleCreateCheckoutSession(request, env, cors) {
       sessionParams.discounts = [{ coupon: env.STRIPE_COUPON_CREDITS_UPGRADE }];
     }
 
-    const session = await stripeRequest(env, "checkout/sessions", sessionParams);
+    let session;
+    try {
+      session = await stripeRequest(env, "checkout/sessions", sessionParams);
+    } catch (err) {
+      // "resource_missing" auf "customer" heisst: die gespeicherte stripe_customer_id existiert im
+      // aktuell aktiven Stripe-Modus nicht (z.B. Test-Kunde uebrig aus der Zeit vor dem Umstieg auf
+      // den Live-Key - Kunden-IDs sind zwischen Test und Live nicht kompatibel). Statt den Nutzer mit
+      // einem toten Konto haengen zu lassen: einmalig frischen Kunden anlegen und erneut versuchen.
+      if (err.stripeError?.code === "resource_missing" && err.stripeError?.param === "customer") {
+        const freshCustomer = await stripeRequest(env, "customers", { email: user.email, metadata: { user_id: user.id } });
+        customerId = freshCustomer.id;
+        await env.DB.prepare("UPDATE users SET stripe_customer_id = ? WHERE id = ?").bind(customerId, user.id).run();
+        sessionParams.customer = customerId;
+        session = await stripeRequest(env, "checkout/sessions", sessionParams);
+      } else {
+        throw err;
+      }
+    }
 
     return jsonResponse({ url: session.url }, 200, cors);
   } catch (err) {
