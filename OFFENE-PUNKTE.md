@@ -1,8 +1,42 @@
 # Offene Punkte
 
-Stand: 09.08.2026. Code für alle Features unten ist geschrieben, committed
+Stand: 11.08.2026. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
+
+## ✅ NEU (11.08.): Vier Markt-/Retention-Features (Genre-Vergleich, Verlaufs-Trend, PDF-Export, Referenz-Vergleich)
+Auf Wunsch als Antwort auf die Frage "welche Features helfen bei der
+Marktplatzierung, ohne viel zu kosten oder die Seite langsamer zu machen" –
+alle vier komplett client-seitig, kein neuer Server-Kostenpunkt. In
+Reihenfolge schnellstes-zuerst umgesetzt, jedes als eigener Commit:
+
+- **Genre-Vergleich im Kurzcheck**: Lautheit/Dynamik des eigenen Tracks
+  gegen den Median/Perzentil-Bereich (p25–p75) anderer Tracks im selben
+  Genre eingeordnet ("niedrig"/"mittel"/"hoch", bewusst wertneutral
+  formatiert, kein Gut/Schlecht). Neuer Endpunkt `GET /genre-stats?slug=`
+  (öffentlich, kein Rate-Limit), liest nur aus der bestehenden
+  `genre_stats`-Tabelle, ab 30 Tracks im Genre sichtbar.
+- **Verlaufs-Trend in "Meine Checks"**: kleine SVG-Kurve über die Scores
+  der letzten Checks + Delta zum ersten Check, direkt oberhalb der
+  History-Liste. Kein neuer Endpunkt nötig, nutzt nur, was `/my-checks`
+  eh schon liefert. Ab 2 Checks mit Score sichtbar.
+- **PDF-Export der Tiefenanalyse**: "Als PDF exportieren"-Button ruft
+  `window.print()` mit eigenem `@media print`-Stylesheet auf (bewusst
+  keine PDF-Library/CDN-Last) – blendet alles bis auf die Tiefenanalyse
+  aus, zeigt einen druckfreundlichen hellen Kopfbereich mit Branding/
+  Songtitel/Urteil/Datum. Jeder Browser bietet im Druckdialog direkt
+  "Als PDF speichern" an.
+- **Referenz-Track-Vergleich**: optionaler zweiter Upload unter dem
+  Frequenzchart (z. B. ein Hit aus dem eigenen Genre), läuft über
+  dieselbe `analyzeAudioBuffer()`-Pipeline wie der Haupt-Upload, komplett
+  client-seitig – die Referenzdatei verlässt den Browser nie. Zeigt beide
+  Frequenzkurven übereinander plus Text zum größten Unterschied. Wird bei
+  jeder neuen Hauptanalyse zurückgesetzt.
+
+Alle vier per Playwright getestet (Datei-Upload/Mocks, Sichtbarkeits-
+Zustände, i18n DE/EN, bei PDF-Export zusätzlich `emulateMedia('print')` +
+Screenshot zur visuellen Kontrolle). Gepusht auf den Feature-Branch, noch
+nicht nach `main` gemergt – wartet auf Freigabe.
 
 ## ⚠️ NEU (09.08.): E-Mail-Verifizierung nach Registrierung – manueller D1-Schritt noch offen (Finn)
 Neu registrierte Nutzer bekommen jetzt automatisch eine Bestätigungsmail
