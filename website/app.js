@@ -297,6 +297,13 @@ const I18N = {
     teaserProblem: "Größtes Problem",
     teaserStrength: "Stärke",
 
+    genreCompareTitle: "Im Vergleich zu {n} geprüften {genre}-Tracks",
+    genreCompareLoudness: "Lautheit",
+    genreCompareDynamics: "Dynamikumfang",
+    genreCompareBandLow: "unteres Viertel",
+    genreCompareBandMid: "mittlerer Bereich",
+    genreCompareBandHigh: "oberes Viertel",
+
     detectedGenreAuto: "Automatisch erkannt: {genre}{bpm} (Schätzung anhand Tempo, Klangfarbe & Bassanteil – oben im Formular korrigierbar).",
     detectedGenreBpmOnly: "Tempo gemessen: ~{bpm} BPM. Genre nicht eindeutig automatisch bestimmbar – oben im Formular manuell wählen für passendere Referenzwerte.",
 
@@ -703,6 +710,13 @@ const I18N = {
     badgeHook: "Hook",
     teaserProblem: "Biggest problem",
     teaserStrength: "Strength",
+
+    genreCompareTitle: "Compared to {n} checked {genre} tracks",
+    genreCompareLoudness: "Loudness",
+    genreCompareDynamics: "Dynamic range",
+    genreCompareBandLow: "bottom quartile",
+    genreCompareBandMid: "mid-range",
+    genreCompareBandHigh: "top quartile",
 
     detectedGenreAuto: "Auto-detected: {genre}{bpm} (estimate based on tempo, tone, and bass ratio – adjustable in the form above).",
     detectedGenreBpmOnly: "Tempo measured: ~{bpm} BPM. Genre couldn't be determined automatically with confidence – select manually in the form above for more accurate reference values.",
@@ -3018,6 +3032,56 @@ trackGenreSelect.addEventListener("change", () => {
   }
 });
 
+// Perzentil-Einordnung (unteres Viertel / mittlerer Bereich / oberes Viertel) im Vergleich zu
+// anderen bereits geprueften Tracks desselben Genres - dieselben genre_stats-Daten wie die
+// oeffentlichen /check/:slug-Seiten, hier direkt im Ergebnis statt auf einer separaten Seite.
+// Bewusst neutral formuliert (kein "gut"/"schlecht") - lauter oder dynamischer ist nicht per se
+// besser, nur anders als der Durchschnitt.
+function genreCompareBand(value, stat) {
+  if (value == null || !stat || stat.median == null) return null;
+  if (stat.p25 != null && value < stat.p25) return "low";
+  if (stat.p75 != null && value > stat.p75) return "high";
+  return "mid";
+}
+
+async function updateGenreCompare(genre, audioMetrics) {
+  const container = document.getElementById("genre-compare");
+  if (!container) return;
+  if (!genre) {
+    container.hidden = true;
+    return;
+  }
+  const { ok, data } = await apiFetch("genre-stats?slug=" + encodeURIComponent(genre), { method: "GET" });
+  if (!ok || !data.stats) {
+    container.hidden = true;
+    return;
+  }
+  const rows = [
+    { label: t("genreCompareLoudness"), band: genreCompareBand(audioMetrics.loudnessDb, data.stats.loudnessDb) },
+    { label: t("genreCompareDynamics"), band: genreCompareBand(audioMetrics.crestFactorDb, data.stats.crestFactorDb) },
+  ].filter((r) => r.band);
+  if (!rows.length) {
+    container.hidden = true;
+    return;
+  }
+  const bandLabel = { low: t("genreCompareBandLow"), mid: t("genreCompareBandMid"), high: t("genreCompareBandHigh") };
+  container.innerHTML = `
+    <p class="genre-compare-title">${escapeHtml(t("genreCompareTitle", { n: data.trackCount, genre: genreLabel(genre) }))}</p>
+    <div class="genre-compare-rows">
+      ${rows
+        .map(
+          (r) => `
+        <div class="genre-compare-row">
+          <span class="genre-compare-metric">${escapeHtml(r.label)}</span>
+          <span class="genre-compare-band">${escapeHtml(bandLabel[r.band])}</span>
+        </div>`
+        )
+        .join("")}
+    </div>
+  `;
+  container.hidden = false;
+}
+
 function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { unlockedPremium }) {
   const lyrics = analyzeLyrics(lyricsRaw, title);
   const profile = genreProfile(genre);
@@ -3068,6 +3132,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { u
   document.getElementById("teaser-tip").innerHTML = `<span class="mark">✦ ${teaserLabel}</span> ${topTip.problem}`;
   lastShareInfo.problemLabel = teaserLabel;
   lastShareInfo.problemText = topTip.problem;
+  updateGenreCompare(genre, audioMetrics).catch(() => {});
 
   lastAnalysis = {
     overallScore,

@@ -887,6 +887,24 @@ async function handleGenrePage(request, env, slug) {
   return new Response(html, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
 }
 
+// Fuer den Genre-Vergleich direkt im Check (nicht nur auf den oeffentlichen /check/:slug-Seiten) -
+// dieselben genre_stats-Daten, nur als JSON statt als gerenderte Seite. Bewusst ohne
+// GENRE_PAGE_DEFS-Einschraenkung: auch Genres ohne eigene Marketing-Seite liefern hier schon einen
+// Vergleich, sobald genug Tracks gesammelt sind.
+async function handleGenreStatsApi(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+  const url = new URL(request.url);
+  const slug = (url.searchParams.get("slug") || "").trim().toLowerCase();
+  if (!slug) return jsonResponse({ trackCount: 0, stats: null }, 200, cors);
+
+  const row = await env.DB.prepare("SELECT track_count, stats_json FROM genre_stats WHERE genre_slug = ?").bind(slug).first();
+  if (!row || row.track_count < MIN_TRACKS_FOR_PAGE) {
+    return jsonResponse({ trackCount: row ? row.track_count : 0, stats: null }, 200, cors);
+  }
+  return jsonResponse({ trackCount: row.track_count, stats: JSON.parse(row.stats_json) }, 200, cors);
+}
+
 // Nur Genres, die die 30-Tracks-Schwelle bereits erreicht haben, bekommen einen Sitemap-Eintrag -
 // kein Eintrag fuer eine Seite, die (noch) 404 zurueckgibt. Referenziert von sitemap.xml (siehe
 // website/sitemap.xml, jetzt ein Sitemap-Index statt einer einzelnen urlset-Datei).
@@ -1356,6 +1374,9 @@ export default {
     if (url.pathname.startsWith("/check/") && request.method === "GET") {
       const slug = url.pathname.slice("/check/".length).replace(/\/+$/, "");
       return handleGenrePage(request, env, slug);
+    }
+    if (url.pathname === "/genre-stats" && request.method === "GET") {
+      return handleGenreStatsApi(request, env, cors);
     }
     if (url.pathname === "/sitemap-genres.xml" && request.method === "GET") {
       return handleSitemapGenres(env);
