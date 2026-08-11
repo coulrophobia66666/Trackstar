@@ -349,6 +349,7 @@ const I18N = {
     historyLoadFailed: "Konnte nicht geladen werden.",
     historyEmpty: "Noch keine Tiefenanalysen gespeichert.",
     historyUntitled: "Unbenannt",
+    historyTrendTitle: "Dein Score-Verlauf ({delta})",
     accountFreePlanLabel: "Free",
     accountProLabel: "Pro",
     accountProAnnualLabel: "Pro (jährlich)",
@@ -763,6 +764,7 @@ const I18N = {
     historyLoadFailed: "Couldn't load.",
     historyEmpty: "No deep analyses saved yet.",
     historyUntitled: "Untitled",
+    historyTrendTitle: "Your score trend ({delta})",
     accountFreePlanLabel: "Free",
     accountProLabel: "Pro",
     accountProAnnualLabel: "Pro (annual)",
@@ -2736,9 +2738,80 @@ function toggleHistoryCard() {
   }
 }
 
+// Zeigt den Score-Verlauf ueber die letzten Checks als kleine Kurve - motiviert durch sichtbaren
+// Fortschritt, nutzt aber nur Daten, die /my-checks eh schon liefert (kein neuer Endpunkt noetig).
+// Erst ab 2 Checks mit Score sinnvoll, sonst gibt's schlicht keinen Verlauf zu zeigen.
+function renderHistoryTrend(container, checks) {
+  const points = checks
+    .filter((c) => typeof c.overallScore === "number")
+    .slice()
+    .reverse(); // /my-checks liefert neueste zuerst, der Verlauf soll chronologisch (alt -> neu) laufen
+  if (points.length < 2) {
+    container.hidden = true;
+    container.innerHTML = "";
+    return;
+  }
+
+  const W = 600;
+  const H = 80;
+  const padTop = 16;
+  const padBottom = 16;
+  const padX = 14;
+  const plotW = W - padX * 2;
+  const plotH = H - padTop - padBottom;
+
+  const xFor = (i) => padX + (i / (points.length - 1)) * plotW;
+  const yFor = (score) => padTop + plotH * (1 - Math.min(100, Math.max(0, score)) / 100);
+
+  const pts = points.map((c, i) => ({
+    x: xFor(i),
+    y: yFor(c.overallScore),
+    score: c.overallScore,
+    date: new Date(c.createdAt).toLocaleDateString(),
+    color: statusForScore(c.overallScore).color,
+  }));
+
+  const linePath = pts.reduce((d, p, i) => {
+    if (i === 0) return `M${p.x},${p.y}`;
+    const prev = pts[i - 1];
+    const midX = (prev.x + p.x) / 2;
+    const midY = (prev.y + p.y) / 2;
+    return `${d} Q${prev.x},${prev.y} ${midX},${midY}`;
+  }, "");
+  const lastPt = pts[pts.length - 1];
+  const fullLinePath = `${linePath} L${lastPt.x},${lastPt.y}`;
+
+  const dots = pts
+    .map(
+      (p) =>
+        `<circle cx="${p.x}" cy="${p.y}" r="4" fill="${p.color}" stroke="var(--bg-plane)" stroke-width="1.5"><title>${escapeHtml(
+          p.date
+        )}: ${p.score}/100</title></circle>`
+    )
+    .join("");
+
+  const first = pts[0];
+  const last = pts[pts.length - 1];
+  const delta = last.score - first.score;
+  const deltaText = delta === 0 ? "±0" : delta > 0 ? `+${delta}` : `${delta}`;
+
+  container.innerHTML = `
+    <p class="history-trend-title">${escapeHtml(t("historyTrendTitle", { delta: deltaText }))}</p>
+    <svg class="history-trend-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <path d="${fullLinePath}" fill="none" stroke="var(--gold)" stroke-width="2.5" stroke-linecap="round"/>
+      ${dots}
+      <text x="${first.x}" y="${H - 2}" class="history-trend-label" text-anchor="start">${first.score}</text>
+      <text x="${last.x}" y="${H - 2}" class="history-trend-label" text-anchor="end">${last.score}</text>
+    </svg>
+  `;
+  container.hidden = false;
+}
+
 async function loadHistoryList() {
   historyStatus.textContent = t("historyLoading");
   historyList.innerHTML = "";
+  const historyTrend = document.getElementById("history-trend");
+  if (historyTrend) historyTrend.hidden = true;
   const { ok, data } = await apiFetch("my-checks", { method: "GET" });
   if (!ok) {
     historyStatus.textContent = data.error || t("historyLoadFailed");
@@ -2749,6 +2822,7 @@ async function loadHistoryList() {
     return;
   }
   historyStatus.textContent = "";
+  if (historyTrend) renderHistoryTrend(historyTrend, data.checks);
   for (const check of data.checks) {
     const li = document.createElement("li");
     li.className = "history-item";
