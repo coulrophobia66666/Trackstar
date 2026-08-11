@@ -505,17 +505,27 @@ function showPage(id) {
 document.querySelectorAll(".nav-item").forEach((n) => n.addEventListener("click", () => showPage(n.dataset.page)));
 showPage(localStorage.getItem("vp-active-page") || "trim");
 
+// Zeigt Netzwerk-/Serverfehler immer sichtbar an, statt sie als stille "unhandled promise
+// rejection" verschwinden zu lassen - genau das fuehrte zuvor dazu, dass ein Klick auf einen
+// Button scheinbar gar nichts tat, wenn z.B. die Anfrage ans Backend fehlschlug.
+window.addEventListener("unhandledrejection", (e) => {
+  console.error(e.reason);
+  alert("Unerwarteter Fehler: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
+});
+
 async function postJson(url, body) {
   const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  return res.json();
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { throw new Error(`Server-Antwort war kein JSON (Status ${res.status}): ${text.slice(0, 200)}`); }
+  if (!res.ok) throw new Error(data.error || `Serverfehler (Status ${res.status})`);
+  return data;
 }
 
 async function pollJob(jobId, logEl, statusEl, button) {
-  logEl.hidden = false;
-  statusEl.hidden = false;
-  button.disabled = true;
   while (true) {
     const res = await fetch(`/api/jobs/${jobId}`);
+    if (!res.ok) throw new Error(`Status-Abfrage fehlgeschlagen (Status ${res.status})`);
     const job = await res.json();
     logEl.textContent = job.log || "(läuft...)";
     logEl.scrollTop = logEl.scrollHeight;
@@ -530,13 +540,32 @@ async function pollJob(jobId, logEl, statusEl, button) {
   }
 }
 
+// Startet einen Pipeline-Job und faengt Fehler (Netzwerk, Server down, falsche Antwort) direkt
+// hier ab, statt sie nur in der Browser-Konsole verschwinden zu lassen - auf einem Tablet/Handy
+// ohne Entwicklertools waere das sonst nicht sichtbar ("Button tut nichts").
+async function startJob(url, body, logEl, statusEl, btn) {
+  logEl.hidden = false;
+  statusEl.hidden = false;
+  statusEl.innerHTML = `<span class="pill pill-running">läuft…</span>`;
+  logEl.textContent = "(sende Anfrage...)";
+  btn.disabled = true;
+  try {
+    const { jobId } = await postJson(url, body);
+    await pollJob(jobId, logEl, statusEl, btn);
+  } catch (err) {
+    statusEl.innerHTML = `<span class="pill pill-error">Fehler</span>`;
+    logEl.textContent = "Anfrage fehlgeschlagen: " + err.message;
+    btn.disabled = false;
+  }
+}
+
 function val(id) { return document.getElementById(id).value; }
 function num(id) { const v = val(id); return v === "" ? undefined : Number(v); }
 
 async function runRecord() {
   const btn = event.target;
-  const { jobId } = await postJson("/api/record", { storyboard: val("rec-storyboard"), out: val("rec-out"), baseUrl: val("rec-baseurl") || undefined });
-  pollJob(jobId, document.getElementById("rec-log"), document.getElementById("rec-status"), btn);
+  await startJob("/api/record", { storyboard: val("rec-storyboard"), out: val("rec-out"), baseUrl: val("rec-baseurl") || undefined },
+    document.getElementById("rec-log"), document.getElementById("rec-status"), btn);
 }
 
 async function uploadFile(file) {
@@ -629,12 +658,11 @@ async function runMusicShortUpload() {
 async function runMusicShort() {
   const btn = event.target;
   if (!msAudioPath) { alert("Erst Musik hochladen."); return; }
-  const { jobId } = await postJson("/api/music-short", {
+  await startJob("/api/music-short", {
     audio: msAudioPath, image: msImagePath || undefined,
     start: num("ms-start"), end: num("ms-end"),
     title: val("ms-title") || undefined, out: val("ms-out"),
-  });
-  pollJob(jobId, document.getElementById("ms-log"), document.getElementById("ms-status"), btn);
+  }, document.getElementById("ms-log"), document.getElementById("ms-status"), btn);
 }
 
 const IG_LICENSE_HINTS = {
@@ -663,42 +691,41 @@ async function runImagegen() {
   const modelSelect = val("ig-model");
   const model = modelSelect === "custom" ? val("ig-model-custom").trim() : modelSelect;
   if (modelSelect === "custom" && !model) { alert("Eigene Modell-Id eintragen oder ein Modell aus der Liste wählen."); return; }
-  const { jobId } = await postJson("/api/imagegen", {
+  await startJob("/api/imagegen", {
     prompt,
     negativePrompt: val("ig-negative") || undefined,
     model,
     width: num("ig-width"), height: num("ig-height"),
     steps: num("ig-steps"), seed: val("ig-seed"),
     out: val("ig-out"),
-  });
-  pollJob(jobId, document.getElementById("ig-log"), document.getElementById("ig-status"), btn);
+  }, document.getElementById("ig-log"), document.getElementById("ig-status"), btn);
 }
 
 async function runCut() {
   const btn = event.target;
-  const { jobId } = await postJson("/api/cut", { mode: val("cut-mode"), input: val("cut-in"), steps: val("cut-steps"), maxGap: num("cut-maxgap"), out: val("cut-out") });
-  pollJob(jobId, document.getElementById("cut-log"), document.getElementById("cut-status"), btn);
+  await startJob("/api/cut", { mode: val("cut-mode"), input: val("cut-in"), steps: val("cut-steps"), maxGap: num("cut-maxgap"), out: val("cut-out") },
+    document.getElementById("cut-log"), document.getElementById("cut-status"), btn);
 }
 
 async function runVoiceover() {
   const btn = event.target;
-  const { jobId } = await postJson("/api/voiceover", { script: val("vo-script"), out: val("vo-out"), engine: val("vo-engine") });
-  pollJob(jobId, document.getElementById("vo-log"), document.getElementById("vo-status"), btn);
+  await startJob("/api/voiceover", { script: val("vo-script"), out: val("vo-out"), engine: val("vo-engine") },
+    document.getElementById("vo-log"), document.getElementById("vo-status"), btn);
 }
 
 async function runCaption() {
   const btn = event.target;
   const fromAudio = val("cap-audio");
-  const { jobId } = await postJson("/api/caption", fromAudio
+  await startJob("/api/caption", fromAudio
     ? { fromAudio, out: val("cap-out") }
-    : { fromManifest: val("cap-manifest"), out: val("cap-out") });
-  pollJob(jobId, document.getElementById("cap-log"), document.getElementById("cap-status"), btn);
+    : { fromManifest: val("cap-manifest"), out: val("cap-out") },
+    document.getElementById("cap-log"), document.getElementById("cap-status"), btn);
 }
 
 async function runAssemble() {
   const btn = event.target;
-  const { jobId } = await postJson("/api/assemble", { video: val("asm-video"), voiceoverDir: val("asm-vo") || undefined, captions: val("asm-cap") || undefined, title: val("asm-title") || undefined, out: val("asm-out") });
-  pollJob(jobId, document.getElementById("asm-log"), document.getElementById("asm-status"), btn);
+  await startJob("/api/assemble", { video: val("asm-video"), voiceoverDir: val("asm-vo") || undefined, captions: val("asm-cap") || undefined, title: val("asm-title") || undefined, out: val("asm-out") },
+    document.getElementById("asm-log"), document.getElementById("asm-status"), btn);
 }
 
 async function runShorts() {
@@ -707,14 +734,13 @@ async function runShorts() {
   const body = { input: val("sh-in"), captions: val("sh-cap") || undefined };
   if (autoSplit) { body.autoSplit = autoSplit; body.outDir = val("sh-outdir"); }
   else { body.start = num("sh-start"); body.end = num("sh-end"); body.out = val("sh-out"); }
-  const { jobId } = await postJson("/api/shorts", body);
-  pollJob(jobId, document.getElementById("sh-log"), document.getElementById("sh-status"), btn);
+  await startJob("/api/shorts", body, document.getElementById("sh-log"), document.getElementById("sh-status"), btn);
 }
 
 async function runThumbnail() {
   const btn = event.target;
-  const { jobId } = await postJson("/api/thumbnail", { input: val("th-in"), time: num("th-time"), title: val("th-title"), subtitle: val("th-subtitle") || undefined, out: val("th-out"), verticalOut: val("th-vout") || undefined });
-  pollJob(jobId, document.getElementById("th-log"), document.getElementById("th-status"), btn);
+  await startJob("/api/thumbnail", { input: val("th-in"), time: num("th-time"), title: val("th-title"), subtitle: val("th-subtitle") || undefined, out: val("th-out"), verticalOut: val("th-vout") || undefined },
+    document.getElementById("th-log"), document.getElementById("th-status"), btn);
 }
 
 function fileThumb(f) {
