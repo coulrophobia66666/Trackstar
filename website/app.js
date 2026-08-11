@@ -96,6 +96,15 @@ const I18N = {
     zoneFacts: "Die Fakten — objektiv gemessen",
     freqBlockHeading: "Frequenzbalance",
     freqBlockHint: "Anteil der Energie je Frequenzband. Grün = im Referenzbereich, Gelb/Rot = spürbar drüber oder drunter.",
+    refCompareLabel: "Mit einem Referenz-Track vergleichen (optional)",
+    refCompareHint: "Lad z. B. einen Hit aus deinem Genre hoch – bleibt nur in deinem Browser, wird nirgends hochgeladen.",
+    refCompareOwn: "Dein Track",
+    refCompareRef: "Referenz-Track",
+    refCompareMore: "Größter Unterschied: {band} ist bei dir {diff} Prozentpunkte stärker vertreten als beim Referenz-Track.",
+    refCompareLess: "Größter Unterschied: {band} ist bei dir {diff} Prozentpunkte schwächer vertreten als beim Referenz-Track.",
+    refCompareEqual: "Deine Frequenzbalance ist der des Referenz-Tracks sehr ähnlich.",
+    refCompareNoOwnTrack: "Erst deinen eigenen Track analysieren, dann vergleichen.",
+    refCompareError: "Referenz-Track konnte nicht gelesen werden – anderes Format probieren.",
     formatCheckHeading: "Formatcheck",
     formatCheckHint: "Technische Anforderungen und Titel-Metadaten, wie sie Distributoren prüfen – unabhängig vom Klang.",
     formatTitleEmoji: "Titel enthält Emojis – bei den meisten Distributoren nicht erlaubt.",
@@ -512,6 +521,15 @@ const I18N = {
     zoneFacts: "The facts — objectively measured",
     freqBlockHeading: "Frequency balance",
     freqBlockHint: "Share of energy per frequency band. Green = within reference range, yellow/red = noticeably above or below.",
+    refCompareLabel: "Compare with a reference track (optional)",
+    refCompareHint: "Upload a hit from your genre, for example – stays in your browser, never gets uploaded anywhere.",
+    refCompareOwn: "Your track",
+    refCompareRef: "Reference track",
+    refCompareMore: "Biggest difference: {band} is {diff} percentage points stronger in your track than in the reference track.",
+    refCompareLess: "Biggest difference: {band} is {diff} percentage points weaker in your track than in the reference track.",
+    refCompareEqual: "Your frequency balance is very similar to the reference track's.",
+    refCompareNoOwnTrack: "Analyze your own track first, then compare.",
+    refCompareError: "Couldn't read the reference track – try a different format.",
     formatCheckHeading: "Format check",
     formatCheckHint: "Technical requirements and title metadata, as checked by distributors – independent of the sound.",
     formatTitleEmoji: "Title contains emojis – not allowed by most distributors.",
@@ -2168,6 +2186,73 @@ function renderFreqChart(container, bandPercents, refs) {
   `;
 }
 
+// Referenz-Track-Vergleich: eigene, bewusst simple Mini-Chart getrennt von renderFreqChart (statt
+// dessen Signatur/Logik zu erweitern) - geringeres Risiko fuer Regressionen am gut getesteten
+// Hauptchart, zeigt beide Kurven (eigener Track vs. Referenz) uebereinander auf gleicher Skala.
+function buildFreqLinePath(percents, xFor, yFor) {
+  const pts = percents.map((v, i) => ({ x: xFor(i), y: yFor(v) }));
+  const d = pts.reduce((acc, p, i) => {
+    if (i === 0) return `M${p.x},${p.y}`;
+    const prev = pts[i - 1];
+    const midX = (prev.x + p.x) / 2;
+    const midY = (prev.y + p.y) / 2;
+    return `${acc} Q${prev.x},${prev.y} ${midX},${midY}`;
+  }, "");
+  const last = pts[pts.length - 1];
+  return `${d} L${last.x},${last.y}`;
+}
+
+function biggestBandDiff(ownPercents, refPercents) {
+  let maxDiff = 0;
+  let maxIdx = 0;
+  ownPercents.forEach((v, i) => {
+    const diff = v - refPercents[i];
+    if (Math.abs(diff) > Math.abs(maxDiff)) {
+      maxDiff = diff;
+      maxIdx = i;
+    }
+  });
+  return { band: FREQ_BANDS[maxIdx], diff: maxDiff };
+}
+
+function renderRefCompareChart(container, ownPercents, refPercents) {
+  const W = 700;
+  const H = 140;
+  const padTop = 14;
+  const padBottom = 26;
+  const padLeft = 34;
+  const padRight = 30;
+  const plotW = W - padLeft - padRight;
+  const maxVal = Math.max(...ownPercents, ...refPercents) * 1.15 || 1;
+
+  const xFor = (i) => padLeft + (i / (FREQ_BANDS.length - 1)) * plotW;
+  const yFor = (val) => padTop + H * (1 - Math.min(1, val / maxVal));
+
+  const ownPath = buildFreqLinePath(ownPercents, xFor, yFor);
+  const refPath = buildFreqLinePath(refPercents, xFor, yFor);
+
+  const xLabels = FREQ_BANDS.map(
+    (band, i) => `<text x="${xFor(i)}" y="${padTop + H + 18}" class="freq-x-label" text-anchor="middle">${bandLabel(band)}</text>`
+  ).join("");
+
+  const { band: diffBand, diff } = biggestBandDiff(ownPercents, refPercents);
+  const diffKey = diff > 0 ? "refCompareMore" : diff < 0 ? "refCompareLess" : "refCompareEqual";
+  const summaryText = t(diffKey, { band: bandLabel(diffBand), diff: Math.abs(diff).toFixed(1) });
+
+  container.innerHTML = `
+    <svg class="ref-compare-svg" viewBox="0 0 ${W} ${padTop + H + padBottom}" preserveAspectRatio="none">
+      <path d="${refPath}" fill="none" stroke="var(--text-muted)" stroke-width="2" stroke-dasharray="6,5"/>
+      <path d="${ownPath}" fill="none" stroke="var(--gold)" stroke-width="2.5" stroke-linecap="round"/>
+      ${xLabels}
+    </svg>
+    <div class="ref-compare-legend">
+      <span class="ref-legend-item"><span class="ref-legend-dot ref-legend-own"></span>${escapeHtml(t("refCompareOwn"))}</span>
+      <span class="ref-legend-item"><span class="ref-legend-dot ref-legend-ref"></span>${escapeHtml(t("refCompareRef"))}</span>
+    </div>
+    <p class="ref-compare-summary">${escapeHtml(summaryText)}</p>
+  `;
+}
+
 function renderTips(container, tips) {
   container.innerHTML = "";
   for (const tip of tips) {
@@ -2462,6 +2547,45 @@ if (exportPdfBtn) {
       `;
     }
     window.print();
+  });
+}
+
+// Referenz-Track-Vergleich: laeuft komplett ueber dieselbe analyzeAudioBuffer()-Pipeline wie der
+// Haupt-Upload, rein client-seitig - die Referenzdatei verlaesst den Browser nie, es gibt keinen
+// Server-Roundtrip dafuer.
+const refFileInput = document.getElementById("ref-file-input");
+if (refFileInput) {
+  refFileInput.addEventListener("change", async () => {
+    const file = refFileInput.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById("ref-compare-status");
+    const resultEl = document.getElementById("ref-compare-result");
+    resultEl.hidden = true;
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      statusEl.textContent = t("fileTooLarge", { size: Math.round(file.size / 1024 / 1024) });
+      return;
+    }
+    if (!currentAnalysisSnapshot || !currentAnalysisSnapshot.audioMetrics) {
+      statusEl.textContent = t("refCompareNoOwnTrack");
+      return;
+    }
+
+    statusEl.textContent = t("statusDecoding");
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioCtx();
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+      statusEl.textContent = t("statusAnalyzing");
+      await new Promise((r) => setTimeout(r, 10));
+      const refMetrics = analyzeAudioBuffer(audioBuffer);
+      renderRefCompareChart(resultEl, currentAnalysisSnapshot.audioMetrics.bandPercents, refMetrics.bandPercents);
+      resultEl.hidden = false;
+      statusEl.textContent = "";
+    } catch {
+      statusEl.textContent = t("refCompareError");
+    }
   });
 }
 
@@ -3243,6 +3367,15 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { u
   };
 
   currentAnalysisSnapshot = { title, lyricsRaw, audioMetrics, genre, fileInfo };
+
+  // Alter Referenz-Vergleich bezieht sich auf den vorigen Track - bei neuer Analyse zuruecksetzen,
+  // sonst zeigt die Kurve einen Vergleich gegen einen Track, der nicht mehr der aktuelle ist.
+  const refCompareResultEl = document.getElementById("ref-compare-result");
+  const refCompareStatusEl = document.getElementById("ref-compare-status");
+  const refFileInputEl = document.getElementById("ref-file-input");
+  if (refCompareResultEl) refCompareResultEl.hidden = true;
+  if (refCompareStatusEl) refCompareStatusEl.textContent = "";
+  if (refFileInputEl) refFileInputEl.value = "";
 
   premiumResultsEl.hidden = !unlockedPremium;
 

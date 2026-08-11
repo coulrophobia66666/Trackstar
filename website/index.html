@@ -322,6 +322,14 @@
             <h3 data-i18n="freqBlockHeading">Frequenzbalance</h3>
             <p class="hint" data-i18n="freqBlockHint">Anteil der Energie je Frequenzband, verglichen mit einem ausgewogenen Referenzbereich (graue Zone).</p>
             <div class="freq-chart" id="freq-chart"></div>
+
+            <div class="ref-compare">
+              <label for="ref-file-input" class="ref-compare-label" data-i18n="refCompareLabel">Mit einem Referenz-Track vergleichen (optional)</label>
+              <p class="hint" data-i18n="refCompareHint">Lad z. B. einen Hit aus deinem Genre hoch – bleibt nur in deinem Browser, wird nirgends hochgeladen.</p>
+              <input type="file" id="ref-file-input" class="ref-file-input" accept="audio/*" />
+              <p class="status-line" id="ref-compare-status" role="status" aria-live="polite"></p>
+              <div class="ref-compare-result" id="ref-compare-result" hidden></div>
+            </div>
           </div>
 
           <div class="format-check-block">
