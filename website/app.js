@@ -92,6 +92,7 @@ const I18N = {
     unlockBtn: "Vollanalyse ansehen",
     unlockNote: "5 Credits für 7 € oder Pro-Abo ab 9,50 €/Monat",
     premiumHeading: "Die Tiefenanalyse",
+    exportPdfBtn: "Als PDF exportieren",
     zoneFacts: "Die Fakten — objektiv gemessen",
     freqBlockHeading: "Frequenzbalance",
     freqBlockHint: "Anteil der Energie je Frequenzband. Grün = im Referenzbereich, Gelb/Rot = spürbar drüber oder drunter.",
@@ -507,6 +508,7 @@ const I18N = {
     unlockBtn: "View full analysis",
     unlockNote: "5 credits for €7 or Pro plan from €9.50/month",
     premiumHeading: "The in-depth analysis",
+    exportPdfBtn: "Export as PDF",
     zoneFacts: "The facts — objectively measured",
     freqBlockHeading: "Frequency balance",
     freqBlockHint: "Share of energy per frequency band. Green = within reference range, yellow/red = noticeably above or below.",
@@ -2436,6 +2438,30 @@ if (shareResultBtn) {
       // Abbruch durch Nutzer (z.B. Share-Dialog geschlossen) oder Clipboard nicht verfuegbar -
       // kein Fehler-Status noetig, das ist kein kritischer Vorgang.
     }
+  });
+}
+
+// PDF-Export der Tiefenanalyse: bewusst ueber den Browser-eigenen Druckdialog statt einer
+// PDF-Library (keine zusaetzliche CDN-Last/Page-Speed-Kosten) - @media print in style.css
+// blendet alles bis auf #premium-results aus. Hier wird nur der druckfreundliche Kopfbereich
+// (Branding, Songtitel, Urteil, Datum) aus lastShareInfo befuellt, bevor window.print() greift.
+const exportPdfBtn = document.getElementById("export-pdf-btn");
+if (exportPdfBtn) {
+  exportPdfBtn.addEventListener("click", () => {
+    const header = document.getElementById("pdf-print-header");
+    if (header && lastShareInfo) {
+      const dateStr = new Date().toLocaleDateString();
+      header.innerHTML = `
+        <div class="pdf-header-brand">Overhertz</div>
+        <h1 class="pdf-header-title">${escapeHtml(lastShareInfo.songTitle || t("historyUntitled"))}</h1>
+        <div class="pdf-header-meta">
+          <span class="pdf-header-dot" style="background:${lastShareInfo.colorHex || "#cda86b"}"></span>
+          <span>${escapeHtml(lastShareInfo.title)} — ${lastShareInfo.score}/100</span>
+          <span class="pdf-header-date">${escapeHtml(dateStr)}</span>
+        </div>
+      `;
+    }
+    window.print();
   });
 }
 
