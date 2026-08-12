@@ -2727,6 +2727,17 @@ function reportAnonymousMetrics(genreSlug, audioMetrics, fileInfo, metadataViola
   }).catch(() => {});
 }
 
+// Anonymer Trichter-Zaehler ("wo springen Besucher ab") - bewusst genauso schlank wie
+// reportAnonymousMetrics: kein user_id/keine Sitzungs-Kennung, nur ein Ereignisname + Zeitstempel,
+// best effort, blockiert nie die eigentliche Aktion.
+function reportFunnelEvent(eventName) {
+  fetch(WORKER_BASE + "track-funnel", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ event: eventName }),
+  }).catch(() => {});
+}
+
 const accountBar = document.getElementById("account-bar");
 const authCard = document.getElementById("auth-card");
 const authStatus = document.getElementById("auth-status");
@@ -3204,6 +3215,7 @@ document.querySelectorAll(".plan-select-btn").forEach((btn) => {
       body: JSON.stringify({ plan: btn.dataset.plan }),
     });
     if (ok && data.url) {
+      reportFunnelEvent("checkout_started");
       window.location.href = data.url;
     } else {
       pricingStatus.textContent = data.error || t("pricingFailed");
@@ -3587,6 +3599,7 @@ async function saveCheckResult(kiResult) {
 
 unlockBtn.addEventListener("click", async () => {
   if (!currentAnalysisSnapshot) return;
+  reportFunnelEvent("unlock_clicked");
   if (!currentUser) {
     toggleAuthCard(true);
     statusLine.textContent = t("unlockNeedLogin");
@@ -3746,6 +3759,7 @@ form.addEventListener("submit", async (e) => {
     }
 
     renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { unlockedPremium: false });
+    reportFunnelEvent("kurzcheck_completed");
     freeResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
     statusLine.textContent = "";
     ctx.close();

@@ -1,8 +1,43 @@
 # Offene Punkte
 
-Stand: 11.08.2026. Code für alle Features unten ist geschrieben, committed
+Stand: 12.08.2026. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
+
+## ⚠️ NEU (12.08.): Anonyme Trichter-Ereignisse – manueller D1-Schritt noch offen
+Hintergrund: Instagram-Post brachte 60 Follower, aber keinen einzigen Kauf.
+D1-Abfragen zeigten 958 Seitenaufrufe/7 Tage, aber nur 4 echte Neu-Konten und
+0 Käufe insgesamt – das ist eher ein Trichter- als ein Preis-Problem, aber
+bisher gab's keine Sichtbarkeit, WO im Ablauf Besucher abspringen. Neuer,
+bewusst minimaler Zähler-Endpunkt (`POST /track-funnel`), rein anonym: nur
+Ereignisname + Zeitstempel, kein Konto-/Geräte-/Sitzungsbezug, keine IP,
+keine Cookies (Datenschutzerklärung entsprechend ergänzt). Drei Ereignisse:
+`kurzcheck_completed` (Gratis-Ergebnis fertig), `unlock_clicked`
+("Vollanalyse ansehen" geklickt), `checkout_started` (Weiterleitung zu
+Stripe). Playwright-getestet: alle drei feuern an der richtigen Stelle,
+genau einmal pro Vorgang (nicht doppelt bei internen Re-Renders).
+
+**Vor dem Live-Gang in der D1-Console einmalig ausführen** (siehe
+`worker/schema.sql`, Kommentare dort):
+```sql
+CREATE TABLE IF NOT EXISTS funnel_events (
+  id TEXT PRIMARY KEY,
+  event_name TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_funnel_events_name_time ON funnel_events(event_name, created_at);
+```
+
+**Auswerten** (D1-Console, z. B. letzte 7 Tage):
+```sql
+SELECT event_name, COUNT(*) FROM funnel_events
+WHERE created_at > (strftime('%s','now') - 7*24*3600) * 1000
+GROUP BY event_name;
+```
+Damit lässt sich z. B. sehen, wie viele Kurzchecks abgeschlossen werden,
+wie viele davon "Vollanalyse ansehen" klicken, und wie viele davon bis zum
+Checkout kommen – jeweils im Vergleich zu den 958 Seitenaufrufen und den
+tatsächlichen Neu-Konten/Käufen aus der `users`-Tabelle.
 
 ## ✅ NEU (11.08.): Vier Markt-/Retention-Features (Genre-Vergleich, Verlaufs-Trend, PDF-Export, Referenz-Vergleich)
 Auf Wunsch als Antwort auf die Frage "welche Features helfen bei der

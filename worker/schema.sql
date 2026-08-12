@@ -140,3 +140,16 @@ CREATE TABLE IF NOT EXISTS genre_stats (
   track_count INTEGER NOT NULL,
   stats_json TEXT NOT NULL -- JSON: Median/Perzentile je Messwert, Anteil auffaelliger Tracks je Kategorie, haeufigstes Problem
 );
+
+-- Anonyme Trichter-Ereignisse (Kurzcheck fertig / Vollanalyse angeklickt / Checkout gestartet) -
+-- reine Zaehler mit Zeitstempel, bewusst OHNE Kennung pro Person/Geraet/Sitzung (keine Cookies,
+-- keine IP, kein user_id). Zweck: sehen, an welcher Stelle im Trichter Besucher abspringen, ohne
+-- dafuer personenbezogene Daten zu speichern. Auswertung per SQL in der D1-Console, z.B.:
+-- SELECT event_name, COUNT(*) FROM funnel_events WHERE created_at > (strftime('%s','now') - 7*24*3600) * 1000 GROUP BY event_name;
+CREATE TABLE IF NOT EXISTS funnel_events (
+  id TEXT PRIMARY KEY,
+  event_name TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_funnel_events_name_time ON funnel_events(event_name, created_at);

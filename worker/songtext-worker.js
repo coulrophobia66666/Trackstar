@@ -631,6 +631,31 @@ async function handleTrackMetrics(request, env, cors) {
   return jsonResponse({ ok: true }, 200, cors);
 }
 
+/* ---------- Anonyme Trichter-Ereignisse ----------
+   Oeffentlicher, nicht authentifizierter Endpunkt - zaehlt nur, wie oft ein bekanntes Ereignis
+   auftritt (Kurzcheck fertig / Vollanalyse angeklickt / Checkout gestartet), OHNE user_id, IP oder
+   sonstige Kennung. Zweck: sehen, wo im Trichter Besucher abspringen, um z.B. Preisfragen von
+   Trichter-Problemen unterscheiden zu koennen - siehe schema.sql fuer eine Auswerte-Abfrage. */
+
+const FUNNEL_EVENT_NAMES = new Set(["kurzcheck_completed", "unlock_clicked", "checkout_started"]);
+
+async function handleTrackFunnel(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const body = await safeJson(request);
+  const eventName = typeof body.event === "string" ? body.event : "";
+  if (!FUNNEL_EVENT_NAMES.has(eventName)) {
+    return jsonResponse({ error: "Ungueltiges Ereignis." }, 400, cors);
+  }
+
+  await env.DB.prepare("INSERT INTO funnel_events (id, event_name, created_at) VALUES (?, ?, ?)")
+    .bind(crypto.randomUUID(), eventName, Date.now())
+    .run();
+
+  return jsonResponse({ ok: true }, 200, cors);
+}
+
 /* ---------- Genre-Kennzahlen-Aggregation ----------
    Trennt Sammeln von Auswerten: check_results wird nur beschrieben, nie live bei einem
    Seitenaufruf ausgewertet. Diese Funktion liest die Rohwerte, berechnet Median/Perzentile und
@@ -1388,6 +1413,9 @@ export default {
     }
     if (url.pathname === "/track-metrics" && request.method === "POST") {
       return withRateLimit(env, "trackmetrics:" + clientIp, cors, () => handleTrackMetrics(request, env, cors));
+    }
+    if (url.pathname === "/track-funnel" && request.method === "POST") {
+      return withRateLimit(env, "trackfunnel:" + clientIp, cors, () => handleTrackFunnel(request, env, cors));
     }
     if (url.pathname === "/admin/aggregate-genres" && request.method === "POST") {
       return handleAggregateGenres(request, env, cors);
