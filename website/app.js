@@ -39,6 +39,7 @@ const I18N = {
     pricingHeading: "Preise",
     pricingHint: "Der Kurzcheck (Ampel-Urteil + größtes Problem) ist immer kostenlos. Für die Tiefenanalyse:",
     planCreditsTitle: "Credits",
+    planCreditsPromoBadge: "Heute -50%",
     planCreditsUnit: "einmalig",
     planCreditsDesc: "5 Tiefenanalysen, kein Abo",
     planSelectBtn: "Auswählen",
@@ -464,6 +465,7 @@ const I18N = {
     pricingHeading: "Pricing",
     pricingHint: "The quick check (traffic-light verdict + biggest problem) is always free. For the in-depth analysis:",
     planCreditsTitle: "Credits",
+    planCreditsPromoBadge: "Today -50%",
     planCreditsUnit: "one-time",
     planCreditsDesc: "5 in-depth analyses, no subscription",
     planSelectBtn: "Select",
@@ -914,6 +916,27 @@ function applyStaticTranslations() {
   document.querySelectorAll(".lang-btn").forEach((btn) => {
     btn.setAttribute("aria-pressed", String(btn.dataset.lang === currentLang));
   });
+  applyCreditsFlashSale();
+}
+
+// Eintages-Rabattaktion auf den Credits-Plan (13.08.2026, 50%) - bewusst als einmaliger,
+// hart einprogrammierter Zeitraum statt eines generischen Rabatt-Systems, das es (noch) nicht
+// braucht. Die eigentliche Preisreduktion passiert serverseitig ueber einen Stripe-Coupon
+// (siehe handleCreateCheckoutSession im Worker) - hier wird nur die Anzeige angepasst, der
+// tatsaechlich abgerechnete Preis kommt immer von Stripe.
+const CREDITS_FLASH_SALE_START = Date.parse("2026-08-12T22:00:00Z"); // 13.08. 00:00 MESZ
+const CREDITS_FLASH_SALE_END = Date.parse("2026-08-13T22:00:00Z"); // 14.08. 00:00 MESZ
+
+function applyCreditsFlashSale() {
+  const badge = document.getElementById("credits-promo-badge");
+  const priceEl = document.getElementById("credits-plan-price");
+  if (!badge || !priceEl) return;
+  const active = Date.now() >= CREDITS_FLASH_SALE_START && Date.now() < CREDITS_FLASH_SALE_END;
+  badge.hidden = !active;
+  const unit = escapeHtml(t("planCreditsUnit"));
+  priceEl.innerHTML = active
+    ? `<span class="plan-price-old">7&nbsp;€</span> 3,50&nbsp;€ <span>${unit}</span>`
+    : `7&nbsp;€ <span>${unit}</span>`;
 }
 
 function setLang(lang) {

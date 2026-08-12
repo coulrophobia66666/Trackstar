@@ -2110,6 +2110,27 @@ button#vocals-check-btn:disabled {
   margin: 0 0 0.5rem;
 }
 
+.plan-price-old {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: line-through;
+  margin-right: 0.3rem;
+}
+
+.plan-promo-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #241d10;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  margin: 0 0 0.5rem;
+}
+
 .plan-price span {
   font-size: 0.75rem;
   font-weight: 500;
