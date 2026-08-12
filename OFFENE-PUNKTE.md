@@ -4,6 +4,31 @@ Stand: 12.08.2026. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ ERLEDIGT (12.08.): Root Cause für "niemand kauft" gefunden und live behoben
+Auslöser: Instagram-Post brachte 60 Follower, aber keinen einzigen Kauf. Die
+neuen Trichter-Ereignisse (siehe Eintrag oben) und D1-Abfragen zeigten zwar
+958 Seitenaufrufe/7 Tage, aber 0 Käufe insgesamt, jemals. Ursache war kein
+Preis- oder Trichter-Problem, sondern eine reine Konfigurationslücke:
+
+- Die drei Stripe-Preis-Variablen (`STRIPE_PRICE_CREDITS`,
+  `STRIPE_PRICE_PRO_MONTHLY`, `STRIPE_PRICE_PRO_ANNUAL`) fehlten im
+  Cloudflare Worker komplett – jeder Checkout-Versuch, für jeden Plan, ist
+  seit jeher mit "Ungültiger oder noch nicht eingerichteter Plan"
+  abgebrochen.
+- Nach dem Eintragen waren `STRIPE_PRICE_CREDITS` und
+  `STRIPE_PRICE_PRO_MONTHLY` zusätzlich vertauscht (Stripe gab dadurch
+  "payment mode but recurring price" bzw. "subscription mode needs
+  recurring price" zurück).
+- Cloudflare deployt Variablen-Änderungen aus dem Dashboard nicht
+  automatisch – nach jeder Änderung muss man unter "Einsätze" die neue
+  Version explizit über "Promo-Version" auf 100% Traffic schalten, sonst
+  bleibt die alte Version (ohne die neuen Werte) aktiv.
+
+Live getestet und bestätigt: Checkout funktioniert jetzt für alle drei
+Pläne. Nebenbei aufgefallen und noch offen: `RESEND_FROM_EMAIL` fehlt in
+derselben Variablen-Liste ebenfalls (siehe E-Mail-Verifizierungs-Eintrag
+weiter unten) – noch nicht behoben.
+
 ## ⚠️ NEU (12.08.): Anonyme Trichter-Ereignisse – manueller D1-Schritt noch offen
 Hintergrund: Instagram-Post brachte 60 Follower, aber keinen einzigen Kauf.
 D1-Abfragen zeigten 958 Seitenaufrufe/7 Tage, aber nur 4 echte Neu-Konten und
