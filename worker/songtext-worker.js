@@ -85,7 +85,49 @@ function requireDb(env, cors) {
   return null;
 }
 
-/* ---------- E-Mail (Resend, fuer Passwort-Reset) ---------- */
+/* ---------- E-Mail (Resend, fuer Passwort-Reset & E-Mail-Verifizierung) ---------- */
+
+// Einheitliches HTML-Geruest fuer alle Transaktions-Mails - bewusst Tabellen-Layout und
+// Inline-Styles statt <style>-Block/Flexbox/Grid, weil viele Mail-Clients (allen voran Outlook)
+// modernes CSS und externe/interne Stylesheets ignorieren oder falsch darstellen. Das war bisher
+// nackter <p>-Text ohne jedes Branding - sah in vielen Postfaechern nach Spam aus.
+function buildEmailHtml(bodyHtml) {
+  return `<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Overhertz</title></head>
+<body style="margin:0; padding:0; background-color:#f4f1ea;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f1ea; padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px; background-color:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #e5ddc9;">
+        <tr>
+          <td style="padding:28px 32px; text-align:center; border-bottom:1px solid #eee6d2;">
+            <span style="font-family:Georgia, 'Times New Roman', serif; font-size:22px; font-weight:700; letter-spacing:0.03em; color:#8a6a35;">Overhertz</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px; font-family:Helvetica, Arial, sans-serif; color:#241d10;">
+            ${bodyHtml}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:18px 32px; background-color:#faf8f2; text-align:center;">
+            <p style="margin:0; font-size:12px; line-height:1.5; color:#9a9484; font-family:Helvetica, Arial, sans-serif;">Overhertz &middot; KI-Songcheck</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+function emailButtonHtml(url, label) {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+    <tr><td style="border-radius:999px; background-color:#cda86b;">
+      <a href="${url}" style="display:inline-block; padding:14px 32px; font-family:Helvetica, Arial, sans-serif; font-size:15px; font-weight:700; color:#241d10; text-decoration:none; border-radius:999px;">${label}</a>
+    </td></tr>
+  </table>`;
+}
 
 async function sendEmail(env, { to, subject, html, text }) {
   if (!env.RESEND_API_KEY || !env.RESEND_FROM_EMAIL) return false;
@@ -188,10 +230,18 @@ async function sendVerificationEmail(env, request, user) {
       "Hallo,\n\nbitte bestaetige deine E-Mail-Adresse fuer dein Overhertz-Konto (Link 48 Stunden gueltig):\n" +
       verifyUrl +
       "\n\nHast du dich nicht bei Overhertz registriert, kannst du diese E-Mail ignorieren.",
-    html:
-      "<p>Hallo,</p><p>bitte bestätige deine E-Mail-Adresse für dein Overhertz-Konto (Link 48 Stunden gültig):</p>" +
-      '<p><a href="' + verifyUrl + '">' + verifyUrl + "</a></p>" +
-      "<p>Hast du dich nicht bei Overhertz registriert, kannst du diese E-Mail ignorieren.</p>",
+    html: buildEmailHtml(
+      '<p style="margin:0 0 16px; font-size:16px; line-height:1.6;">Hallo,</p>' +
+        '<p style="margin:0 0 24px; font-size:16px; line-height:1.6;">bitte bestätige deine E-Mail-Adresse, um dein Overhertz-Konto vollständig zu nutzen. Der Link ist 48 Stunden gültig.</p>' +
+        emailButtonHtml(verifyUrl, "E-Mail bestätigen") +
+        '<p style="margin:0 0 8px; font-size:13px; line-height:1.5; color:#7d7869;">Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:</p>' +
+        '<p style="margin:0 0 24px; font-size:13px; line-height:1.5; word-break:break-all;"><a href="' +
+        verifyUrl +
+        '" style="color:#8a6a35;">' +
+        verifyUrl +
+        "</a></p>" +
+        '<p style="margin:0; font-size:13px; line-height:1.5; color:#9a9484;">Hast du dich nicht bei Overhertz registriert, kannst du diese E-Mail ignorieren.</p>'
+    ),
   });
   if (!sent) {
     console.error("E-Mail-Verifizierung: Mailversand fehlgeschlagen oder RESEND_API_KEY/RESEND_FROM_EMAIL nicht gesetzt.");
@@ -337,10 +387,18 @@ async function handleRequestPasswordReset(request, env, cors) {
         "Hallo,\n\nhier ist dein Link zum Zuruecksetzen deines Overhertz-Passworts (1 Stunde gueltig):\n" +
         resetUrl +
         "\n\nHast du das nicht angefordert, kannst du diese E-Mail ignorieren.",
-      html:
-        '<p>Hallo,</p><p>hier ist dein Link zum Zurücksetzen deines Overhertz-Passworts (1 Stunde gültig):</p>' +
-        '<p><a href="' + resetUrl + '">' + resetUrl + "</a></p>" +
-        "<p>Hast du das nicht angefordert, kannst du diese E-Mail ignorieren.</p>",
+      html: buildEmailHtml(
+        '<p style="margin:0 0 16px; font-size:16px; line-height:1.6;">Hallo,</p>' +
+          '<p style="margin:0 0 24px; font-size:16px; line-height:1.6;">hier ist dein Link zum Zurücksetzen deines Overhertz-Passworts. Der Link ist 1 Stunde gültig.</p>' +
+          emailButtonHtml(resetUrl, "Passwort zurücksetzen") +
+          '<p style="margin:0 0 8px; font-size:13px; line-height:1.5; color:#7d7869;">Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:</p>' +
+          '<p style="margin:0 0 24px; font-size:13px; line-height:1.5; word-break:break-all;"><a href="' +
+          resetUrl +
+          '" style="color:#8a6a35;">' +
+          resetUrl +
+          "</a></p>" +
+          '<p style="margin:0; font-size:13px; line-height:1.5; color:#9a9484;">Hast du das nicht angefordert, kannst du diese E-Mail ignorieren.</p>'
+      ),
     });
     if (!sent) {
       console.error("Passwort-Reset: E-Mail-Versand fehlgeschlagen oder RESEND_API_KEY/RESEND_FROM_EMAIL nicht gesetzt.");
