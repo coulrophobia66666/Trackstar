@@ -153,3 +153,11 @@ CREATE TABLE IF NOT EXISTS funnel_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_funnel_events_name_time ON funnel_events(event_name, created_at);
+
+-- Verarbeitete Stripe-Webhook-Ereignis-IDs - Stripe garantiert nur "mindestens einmal"-Zustellung,
+-- ohne das hier wuerde ein erneut zugestelltes checkout.session.completed-Ereignis Credits/Abo
+-- ein zweites Mal gutschreiben. Siehe handleStripeWebhook in songtext-worker.js.
+CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+  event_id TEXT PRIMARY KEY,
+  processed_at INTEGER NOT NULL
+);

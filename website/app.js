@@ -350,8 +350,10 @@ const I18N = {
     verifyEmailResendSending: "Wird verschickt…",
     verifyEmailResendSuccess: "Neue Bestätigungsmail verschickt.",
     verifyEmailResendFailed: "Konnte nicht verschickt werden. Bitte später erneut versuchen.",
-    verifyEmailLinkSuccess: "E-Mail-Adresse bestätigt!",
     verifyEmailLinkFailed: "Bestätigungslink ist ungültig oder abgelaufen.",
+    verifySuccessHeading: "E-Mail bestätigt",
+    verifySuccessText: "Dein Konto ist jetzt vollständig freigeschaltet. Viel Erfolg mit deinem Track!",
+    verifySuccessContinueBtn: "Weiter zum Login",
     historyToggleBtn: "Meine Checks",
     historyHeading: "Meine Checks",
     historyHint: "Deine bisherigen Tiefenanalysen – nur die Ergebnisse (Tipps, Fazit, Einordnung), nicht die Audiodateien selbst.",
@@ -776,8 +778,10 @@ const I18N = {
     verifyEmailResendSending: "Sending…",
     verifyEmailResendSuccess: "New confirmation email sent.",
     verifyEmailResendFailed: "Couldn't send it. Please try again later.",
-    verifyEmailLinkSuccess: "Email address confirmed!",
     verifyEmailLinkFailed: "Confirmation link is invalid or expired.",
+    verifySuccessHeading: "Email confirmed",
+    verifySuccessText: "Your account is now fully unlocked. Good luck with your track!",
+    verifySuccessContinueBtn: "Continue to login",
     historyToggleBtn: "My checks",
     historyHeading: "My checks",
     historyHint: "Your past deep analyses – results only (tips, summary, assessment), not the audio files themselves.",
@@ -3219,10 +3223,23 @@ if (verifyTokenFromUrl) {
     window.history.replaceState({}, "", cleanUrl);
     await refreshAccount();
     toggleAuthCard(true);
-    showAuthForm(loginForm);
-    authStatus.textContent = ok ? t("verifyEmailLinkSuccess") : data.error || t("verifyEmailLinkFailed");
+    if (ok) {
+      document.getElementById("auth-tabs").hidden = true;
+      document.getElementById("auth-forms").hidden = true;
+      document.getElementById("verify-success-panel").hidden = false;
+    } else {
+      showAuthForm(loginForm);
+      authStatus.textContent = data.error || t("verifyEmailLinkFailed");
+    }
   })();
 }
+
+document.getElementById("verify-success-continue-btn")?.addEventListener("click", () => {
+  document.getElementById("verify-success-panel").hidden = true;
+  document.getElementById("auth-tabs").hidden = false;
+  document.getElementById("auth-forms").hidden = false;
+  showAuthForm(loginForm);
+});
 
 document.querySelectorAll(".plan-select-btn").forEach((btn) => {
   btn.addEventListener("click", async () => {

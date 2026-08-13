@@ -1140,6 +1140,19 @@ async function handleStripeWebhook(request, env) {
   } catch {
     return new Response("Invalid payload", { status: 400 });
   }
+
+  // Stripe garantiert nur "mindestens einmal"-Zustellung (Retries bei Timeout/Netzwerkfehlern) -
+  // ohne diese Sperre wuerde ein zweites Mal zugestelltes checkout.session.completed Credits/Abo
+  // erneut gutschreiben. Der INSERT schlaegt dank PRIMARY KEY fehl, wenn die Event-ID schon
+  // verarbeitet wurde, dann hier abbrechen statt die Logik unten nochmal auszufuehren.
+  try {
+    await env.DB.prepare("INSERT INTO stripe_webhook_events (event_id, processed_at) VALUES (?, ?)")
+      .bind(event.id, Date.now())
+      .run();
+  } catch {
+    return new Response("ok (duplicate)", { status: 200 });
+  }
+
   const obj = event.data && event.data.object;
 
   if (event.type === "checkout.session.completed" && obj) {

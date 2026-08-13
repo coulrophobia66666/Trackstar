@@ -57,11 +57,19 @@
     </div>
 
     <section class="card auth-card" id="auth-card" hidden>
-      <div class="auth-tabs">
+      <div class="verify-success-panel" id="verify-success-panel" hidden>
+        <div class="verify-success-icon" aria-hidden="true">
+          <svg width="30" height="30" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.3"/><path d="M5 8.2l2 2 4-4.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h2 data-i18n="verifySuccessHeading">E-Mail bestätigt</h2>
+        <p class="hint" data-i18n="verifySuccessText">Dein Konto ist jetzt vollständig freigeschaltet. Viel Erfolg mit deinem Track!</p>
+        <button type="button" id="verify-success-continue-btn" class="account-btn account-btn-primary" data-i18n="verifySuccessContinueBtn">Weiter zum Login</button>
+      </div>
+      <div class="auth-tabs" id="auth-tabs">
         <h2 data-i18n="authHeading">Konto</h2>
         <p class="hint" data-i18n="authHint">Login oder neues Konto anlegen, um Credits/Pro-Abo zu nutzen.</p>
       </div>
-      <div class="auth-forms">
+      <div class="auth-forms" id="auth-forms">
         <form id="login-form" class="auth-form">
           <h3 data-i18n="loginHeading">Login</h3>
           <div class="field">
