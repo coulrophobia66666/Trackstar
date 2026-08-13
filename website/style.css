@@ -24,8 +24,18 @@
 
 * { box-sizing: border-box; }
 
+/* Ohne das hier laesst sich die Seite auf dem Handy (v.a. iOS Safari) bei minimalstem horizontalem
+   Overflow seitlich wegziehen/wegschieben - dabei bleibt der fixe Canvas-Hintergrund (.bg-waves)
+   stehen, waehrend body mitscrollt, wodurch links/rechts leerer Hintergrund sichtbar wird. */
+html {
+  overflow-x: hidden;
+  background: var(--bg-deep);
+}
+
 body {
   margin: 0;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
   font-family: var(--font-body);
   background:
     radial-gradient(circle at 50% -8%, rgba(205, 168, 107, 0.11), transparent 55%),
@@ -565,7 +575,8 @@ button#analyze-btn:disabled {
   line-height: 1.5;
 }
 
-button#unlock-btn {
+button#unlock-btn,
+.unlock-cta-btn {
   font: inherit;
   font-weight: 700;
   letter-spacing: 0.02em;

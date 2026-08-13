@@ -92,6 +92,9 @@ const I18N = {
     unlockDesc: "Frequenzkurve im Detail, alle Verbesserungstipps und wohin du den Track am besten einreichst.",
     unlockBtn: "Vollanalyse ansehen",
     unlockNote: "5 Credits für 7 € oder Pro-Abo ab 9,50 €/Monat",
+    premiumTeaserTitle: "Die Tiefenanalyse: das steckt drin",
+    premiumTeaserDesc: "Frequenzkurve im Detail, alle Verbesserungstipps zu Sound, Hook & Songtext, KI-Einordnung, Titel-Ideen und wohin du den Track am besten einreichst.",
+    premiumTeaserBtn: "Preise ansehen",
     premiumHeading: "Die Tiefenanalyse",
     exportPdfBtn: "Als PDF exportieren",
     zoneFacts: "Die Fakten — objektiv gemessen",
@@ -520,6 +523,9 @@ const I18N = {
     unlockDesc: "Detailed frequency curve, all improvement tips, and where best to submit your track.",
     unlockBtn: "View full analysis",
     unlockNote: "5 credits for €7 or Pro plan from €9.50/month",
+    premiumTeaserTitle: "The deep analysis: what's included",
+    premiumTeaserDesc: "Detailed frequency curve, all improvement tips for sound, hook & lyrics, AI classification, title ideas, and where best to submit your track.",
+    premiumTeaserBtn: "View pricing",
     premiumHeading: "The in-depth analysis",
     exportPdfBtn: "Export as PDF",
     zoneFacts: "The facts — objectively measured",
@@ -3283,6 +3289,9 @@ const analyzeBtn = document.getElementById("analyze-btn");
 const freeResultsEl = document.getElementById("free-results");
 const premiumResultsEl = document.getElementById("premium-results");
 const unlockBtn = document.getElementById("unlock-btn");
+const premiumTeaserEl = document.getElementById("premium-teaser");
+const premiumTeaserBtn = document.getElementById("premium-teaser-btn");
+premiumTeaserBtn?.addEventListener("click", () => openPricing());
 const rewriteBlock = document.getElementById("rewrite-block");
 const rewriteBtn = document.getElementById("rewrite-btn");
 const rewriteStatus = document.getElementById("rewrite-status");
@@ -3477,6 +3486,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { u
   renderSubmissions(document.getElementById("submit-list"), document.getElementById("submit-hint"), submissions);
 
   freeResultsEl.hidden = false;
+  if (premiumTeaserEl) premiumTeaserEl.hidden = true;
 }
 
 const rewriteReconstructionBlock = document.getElementById("rewrite-reconstruction-block");
