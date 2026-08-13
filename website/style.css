@@ -1702,6 +1702,53 @@ button#vocals-check-btn:disabled {
   display: none;
 }
 
+.menu-meta-links {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--gridline);
+}
+
+.menu-meta-link {
+  font: inherit;
+  font-size: 0.86rem;
+  text-align: left;
+  padding: 0.45rem 0.2rem;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.menu-meta-link:hover {
+  color: var(--gold-bright);
+}
+
+.whats-new-list {
+  margin: 0 0 1.4rem;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.whats-new-list li {
+  font-size: 0.91rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.whats-new-list li::marker {
+  color: var(--gold);
+}
+
+.whats-new-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .lang-btn {
   font: inherit;
   font-weight: 700;

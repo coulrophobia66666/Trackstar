@@ -48,6 +48,13 @@
         </button>
         <div class="account-menu-panel" id="account-menu-panel" hidden>
           <div class="account-bar" id="account-bar"></div>
+          <div class="menu-meta-links">
+            <button type="button" id="invite-friends-btn" class="menu-meta-link" data-i18n="menuInviteFriends">Freunde einladen</button>
+            <button type="button" id="whats-new-btn" class="menu-meta-link" data-i18n="menuWhatsNew">Was ist neu?</button>
+            <button type="button" id="feedback-menu-btn" class="menu-meta-link" data-i18n="menuFeedback">Rückmeldung</button>
+            <a href="agb.html" class="menu-meta-link" data-i18n="menuTerms">Nutzungsbedingungen</a>
+            <a href="datenschutz.html" class="menu-meta-link" data-i18n="menuPrivacy">Datenschutzrichtlinie</a>
+          </div>
         </div>
       </div>
     </div>
@@ -558,7 +565,7 @@
     <div class="modal-overlay" id="rating-modal-overlay" hidden>
       <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="rating-modal-heading">
         <h2 id="rating-modal-heading" data-i18n="ratingModalHeading">Wie zufrieden bist du mit dem Ergebnis?</h2>
-        <p class="hint" data-i18n="ratingModalHint">Dein Feedback hilft uns, Overhertz zu verbessern.</p>
+        <p class="hint" id="rating-modal-hint" data-i18n="ratingModalHint">Dein Feedback hilft uns, Overhertz zu verbessern.</p>
         <div class="rating-stars" id="rating-stars" role="radiogroup" aria-label="Bewertung in Sternen">
           <button type="button" class="rating-star" data-value="1" aria-label="1 Stern">★</button>
           <button type="button" class="rating-star" data-value="2" aria-label="2 Sterne">★</button>
@@ -572,6 +579,21 @@
           <button type="button" id="rating-submit-btn" class="account-btn account-btn-primary" data-i18n="ratingSubmitBtn" disabled>Absenden</button>
         </div>
         <p class="status-line" id="rating-status" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="whats-new-modal-overlay" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="whats-new-modal-heading">
+        <h2 id="whats-new-modal-heading" data-i18n="whatsNewHeading">Was ist neu bei Overhertz</h2>
+        <ul class="whats-new-list">
+          <li data-i18n="whatsNewItem1">PDF-Export der Tiefenanalyse – dein Ergebnis als Datei zum Aufheben oder Weiterleiten.</li>
+          <li data-i18n="whatsNewItem2">Verlaufs-Trend in „Meine Checks“ – auf einen Blick sehen, ob sich dein Score verbessert.</li>
+          <li data-i18n="whatsNewItem3">Referenz-Track-Vergleich – deine Frequenzkurve direkt neben einem Track deiner Wahl.</li>
+          <li data-i18n="whatsNewItem4">Neu gestaltete Bestätigungs- und Reset-Mails – seriöser Look direkt im Postfach.</li>
+        </ul>
+        <div class="whats-new-actions">
+          <button type="button" id="whats-new-close-btn" class="account-btn account-btn-primary" data-i18n="whatsNewCloseBtn">Verstanden</button>
+        </div>
       </div>
     </div>
   </div>

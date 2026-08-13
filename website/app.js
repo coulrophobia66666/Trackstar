@@ -408,6 +408,20 @@ const I18N = {
     ratingCommentPlaceholder: "Optional: was können wir besser machen? (freiwillig)",
     ratingSkipBtn: "Später",
     ratingSubmitBtn: "Absenden",
+    menuInviteFriends: "Freunde einladen",
+    menuWhatsNew: "Was ist neu?",
+    menuFeedback: "Rückmeldung",
+    menuTerms: "Nutzungsbedingungen",
+    menuPrivacy: "Datenschutzrichtlinie",
+    ratingModalHeadingGeneric: "Wie zufrieden bist du mit Overhertz?",
+    ratingModalHintGeneric: "Kurzes Feedback oder ein Fehler, der dir aufgefallen ist – hilft uns direkt weiter.",
+    whatsNewHeading: "Was ist neu bei Overhertz",
+    whatsNewItem1: "PDF-Export der Tiefenanalyse – dein Ergebnis als Datei zum Aufheben oder Weiterleiten.",
+    whatsNewItem2: "Verlaufs-Trend in „Meine Checks“ – auf einen Blick sehen, ob sich dein Score verbessert.",
+    whatsNewItem3: "Referenz-Track-Vergleich – deine Frequenzkurve direkt neben einem Track deiner Wahl.",
+    whatsNewItem4: "Neu gestaltete Bestätigungs- und Reset-Mails – seriöser Look direkt im Postfach.",
+    whatsNewCloseBtn: "Verstanden",
+    inviteFriendsText: "Ich nutze Overhertz für den KI-Songcheck meiner Tracks – der Kurzcheck ist kostenlos:",
     ratingSubmitting: "Wird gesendet…",
     ratingThanks: "Danke für dein Feedback!",
     ratingFailed: "Konnte nicht gesendet werden: {msg}",
@@ -839,6 +853,20 @@ const I18N = {
     ratingCommentPlaceholder: "Optional: what could we do better? (not required)",
     ratingSkipBtn: "Later",
     ratingSubmitBtn: "Submit",
+    menuInviteFriends: "Invite friends",
+    menuWhatsNew: "What's new?",
+    menuFeedback: "Feedback",
+    menuTerms: "Terms of use",
+    menuPrivacy: "Privacy policy",
+    ratingModalHeadingGeneric: "How happy are you with Overhertz?",
+    ratingModalHintGeneric: "Quick feedback or a bug you noticed – helps us a lot.",
+    whatsNewHeading: "What's new on Overhertz",
+    whatsNewItem1: "PDF export of the in-depth analysis – save or forward your result as a file.",
+    whatsNewItem2: "Score trend in \"My checks\" – see at a glance whether your score is improving.",
+    whatsNewItem3: "Reference track comparison – your frequency curve right next to a track of your choice.",
+    whatsNewItem4: "Redesigned confirmation and reset emails – a more professional look in your inbox.",
+    whatsNewCloseBtn: "Got it",
+    inviteFriendsText: "I use Overhertz for an AI check of my tracks – the quick check is free:",
     ratingSubmitting: "Sending…",
     ratingThanks: "Thanks for your feedback!",
     ratingFailed: "Couldn't send: {msg}",
@@ -2865,6 +2893,54 @@ if (accountMenuToggle && accountMenuPanel) {
       closeAccountMenu();
     }
   });
+
+  // Eigene stopPropagation, weil der "Kopiert!"-Hinweis auf dem Button sonst nie zu sehen waere -
+  // der Klick wuerde sofort an accountMenuPanel durchbubbeln und das Menue (samt Button) verstecken.
+  const inviteFriendsBtn = document.getElementById("invite-friends-btn");
+  if (inviteFriendsBtn) {
+    inviteFriendsBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const shareText = t("inviteFriendsText");
+      const shareUrl = window.location.origin + window.location.pathname;
+      const combined = `${shareText} ${shareUrl}`;
+      const originalLabel = inviteFriendsBtn.textContent;
+      try {
+        if (navigator.share) {
+          await navigator.share({ text: combined });
+          closeAccountMenu();
+          return;
+        }
+        await navigator.clipboard.writeText(combined);
+        inviteFriendsBtn.textContent = t("shareCopied");
+        setTimeout(() => {
+          inviteFriendsBtn.textContent = originalLabel;
+          closeAccountMenu();
+        }, 1800);
+      } catch {
+        // Abbruch durch Nutzer (Share-Dialog geschlossen) oder Clipboard nicht verfuegbar - kein
+        // Fehler-Status noetig, kein kritischer Vorgang.
+        closeAccountMenu();
+      }
+    });
+  }
+
+  const whatsNewBtn = document.getElementById("whats-new-btn");
+  const whatsNewModalOverlay = document.getElementById("whats-new-modal-overlay");
+  const whatsNewCloseBtn = document.getElementById("whats-new-close-btn");
+  if (whatsNewBtn && whatsNewModalOverlay) {
+    whatsNewBtn.addEventListener("click", () => (whatsNewModalOverlay.hidden = false));
+  }
+  if (whatsNewCloseBtn && whatsNewModalOverlay) {
+    whatsNewCloseBtn.addEventListener("click", () => (whatsNewModalOverlay.hidden = true));
+    whatsNewModalOverlay.addEventListener("click", (e) => {
+      if (e.target === whatsNewModalOverlay) whatsNewModalOverlay.hidden = true;
+    });
+  }
+
+  const feedbackMenuBtn = document.getElementById("feedback-menu-btn");
+  if (feedbackMenuBtn) {
+    feedbackMenuBtn.addEventListener("click", () => showRatingModal(true));
+  }
 }
 
 async function refreshAccount() {
@@ -5121,6 +5197,8 @@ if (eqDownloadBtn) {
 /* ---------- Bewertungs-Pop-up nach dem Download der bearbeiteten Version ---------- */
 
 const ratingModalOverlay = document.getElementById("rating-modal-overlay");
+const ratingModalHeadingEl = document.getElementById("rating-modal-heading");
+const ratingModalHintEl = document.getElementById("rating-modal-hint");
 const ratingStarsEl = document.getElementById("rating-stars");
 const ratingCommentEl = document.getElementById("rating-comment");
 const ratingSubmitBtn = document.getElementById("rating-submit-btn");
@@ -5128,12 +5206,16 @@ const ratingSkipBtn = document.getElementById("rating-skip-btn");
 const ratingStatusEl = document.getElementById("rating-status");
 let ratingSelectedStars = 0;
 
-function showRatingModal() {
+// generic=true: Aufruf ueber "Rueckmeldung" im Konto-Menue (jederzeit, ohne Ergebnis-Kontext) -
+// gleiches Formular/gleicher Endpunkt wie nach dem EQ-Download, nur mit allgemeinerem Text.
+function showRatingModal(generic) {
   if (!ratingModalOverlay) return;
   ratingSelectedStars = 0;
   if (ratingCommentEl) ratingCommentEl.value = "";
   if (ratingStatusEl) ratingStatusEl.textContent = "";
   if (ratingSubmitBtn) ratingSubmitBtn.disabled = true;
+  if (ratingModalHeadingEl) ratingModalHeadingEl.textContent = t(generic ? "ratingModalHeadingGeneric" : "ratingModalHeading");
+  if (ratingModalHintEl) ratingModalHintEl.textContent = t(generic ? "ratingModalHintGeneric" : "ratingModalHint");
   renderRatingStars();
   ratingModalOverlay.hidden = false;
 }
