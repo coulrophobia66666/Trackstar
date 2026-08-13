@@ -95,6 +95,7 @@ const I18N = {
     premiumTeaserTitle: "Die Tiefenanalyse: das steckt drin",
     premiumTeaserDesc: "Frequenzkurve im Detail, alle Verbesserungstipps zu Sound, Hook & Songtext, KI-Einordnung, Titel-Ideen und wohin du den Track am besten einreichst.",
     premiumTeaserBtn: "Preise ansehen",
+    planPriceUsdApprox: "ca. {amount}",
     premiumHeading: "Die Tiefenanalyse",
     exportPdfBtn: "Als PDF exportieren",
     zoneFacts: "Die Fakten — objektiv gemessen",
@@ -540,6 +541,7 @@ const I18N = {
     premiumTeaserTitle: "The deep analysis: what's included",
     premiumTeaserDesc: "Detailed frequency curve, all improvement tips for sound, hook & lyrics, AI classification, title ideas, and where best to submit your track.",
     premiumTeaserBtn: "View pricing",
+    planPriceUsdApprox: "approx. {amount}",
     premiumHeading: "The in-depth analysis",
     exportPdfBtn: "Export as PDF",
     zoneFacts: "The facts — objectively measured",
@@ -962,8 +964,8 @@ function applyStaticTranslations() {
 // braucht. Die eigentliche Preisreduktion passiert serverseitig ueber einen Stripe-Coupon
 // (siehe handleCreateCheckoutSession im Worker) - hier wird nur die Anzeige angepasst, der
 // tatsaechlich abgerechnete Preis kommt immer von Stripe.
-const CREDITS_FLASH_SALE_START = Date.parse("2026-08-12T22:00:00Z"); // 13.08. 00:00 MESZ
-const CREDITS_FLASH_SALE_END = Date.parse("2026-08-13T22:00:00Z"); // 14.08. 00:00 MESZ
+const CREDITS_FLASH_SALE_START = Date.parse("2026-08-13T22:00:00Z"); // 14.08. 00:00 MESZ
+const CREDITS_FLASH_SALE_END = Date.parse("2026-08-14T22:00:00Z"); // 15.08. 00:00 MESZ
 
 function applyCreditsFlashSale() {
   const badge = document.getElementById("credits-promo-badge");
@@ -975,6 +977,25 @@ function applyCreditsFlashSale() {
   priceEl.innerHTML = active
     ? `<span class="plan-price-old">7&nbsp;€</span> 3,50&nbsp;€ <span>${unit}</span>`
     : `7&nbsp;€ <span>${unit}</span>`;
+  updatePlanPricesUsd(active);
+}
+
+// Grobe Naeherung, keine Live-Kurs-Abfrage - nur zur Orientierung fuer Kaeufer aus Nicht-Euro-
+// Laendern (z.B. USA), abgerechnet wird bei Stripe immer in Euro (die Bank des Kaeufers rechnet
+// beim Zahlen automatisch um). Kein Blocker fuer den Kauf selbst, siehe Chat vom 14.08.
+const EUR_TO_USD_APPROX = 1.1;
+
+function usdApprox(eur) {
+  return `$${(eur * EUR_TO_USD_APPROX).toFixed(2)}`;
+}
+
+function updatePlanPricesUsd(creditsFlashSaleActive) {
+  const creditsUsdEl = document.getElementById("credits-plan-price-usd");
+  const proUsdEl = document.getElementById("pro-plan-price-usd");
+  const proAnnualUsdEl = document.getElementById("pro-annual-plan-price-usd");
+  if (creditsUsdEl) creditsUsdEl.textContent = t("planPriceUsdApprox", { amount: usdApprox(creditsFlashSaleActive ? 3.5 : 7) });
+  if (proUsdEl) proUsdEl.textContent = t("planPriceUsdApprox", { amount: usdApprox(9.5) });
+  if (proAnnualUsdEl) proAnnualUsdEl.textContent = t("planPriceUsdApprox", { amount: usdApprox(79) });
 }
 
 function setLang(lang) {

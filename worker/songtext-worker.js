@@ -1103,8 +1103,8 @@ async function handleCreateCheckoutSession(request, env, cors) {
     // Zeitraum statt eines generischen Rabatt-Systems fuer eine einmalige Aktion. Der eigentliche
     // Preis kommt immer von Stripe (ueber den Coupon), das Frontend zeigt den reduzierten Preis
     // nur zur Info an - siehe applyCreditsFlashSale() in app.js fuer denselben Zeitraum.
-    const CREDITS_FLASH_SALE_START = Date.parse("2026-08-12T22:00:00Z"); // 13.08. 00:00 MESZ
-    const CREDITS_FLASH_SALE_END = Date.parse("2026-08-13T22:00:00Z"); // 14.08. 00:00 MESZ
+    const CREDITS_FLASH_SALE_START = Date.parse("2026-08-13T22:00:00Z"); // 14.08. 00:00 MESZ
+    const CREDITS_FLASH_SALE_END = Date.parse("2026-08-14T22:00:00Z"); // 15.08. 00:00 MESZ
     const flashSaleActive = Date.now() >= CREDITS_FLASH_SALE_START && Date.now() < CREDITS_FLASH_SALE_END;
     if (planType === "credits" && flashSaleActive && env.STRIPE_COUPON_FLASH_SALE_CREDITS) {
       sessionParams.discounts = [{ coupon: env.STRIPE_COUPON_FLASH_SALE_CREDITS }];
