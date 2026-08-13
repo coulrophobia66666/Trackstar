@@ -13,15 +13,18 @@ enabled = true
 invocation_logs = true
 head_sampling_rate = 1
 
-# Nicht geheime Klartext-Variablen (Stripe Price-/Coupon-IDs). Im Repo statt nur im Dashboard,
-# weil ein im Dashboard gesetzter Wert sonst beim naechsten Git-Deploy zurueckgesetzt wird -
-# gleiches Problem wie bei [observability] oben (siehe OFFENE-PUNKTE.md, 12./13.08.). Bei neuen
-# oder geaenderten Stripe-Preisen/Coupons hier UND im Stripe-Dashboard synchron halten.
+# Nicht geheime Klartext-Variablen (Stripe Price-/Coupon-IDs, Absenderadresse). Im Repo statt nur
+# im Dashboard, weil ein im Dashboard gesetzter Wert sonst beim naechsten Git-Deploy zurueckgesetzt
+# wird - gleiches Problem wie bei [observability] oben (siehe OFFENE-PUNKTE.md, 12./13.08.). Vermutlich
+# auch die Ursache dafuer, dass RESEND_FROM_EMAIL bei der E-Mail-Verifizierungs-Diagnose immer wieder
+# als fehlend auffiel, obwohl es schon mal gesetzt wurde. Bei Aenderungen hier UND im jeweiligen
+# Dienst (Stripe-Dashboard bzw. Resend) synchron halten.
 [vars]
 STRIPE_PRICE_CREDITS = "price_1U0PoMGeogeSlSp37IWIonF2"
 STRIPE_PRICE_PRO_MONTHLY = "price_1U0QPvGeogeSlSp3nGg6Ex5Y"
 STRIPE_PRICE_PRO_ANNUAL = "price_1U0QShGeogeSlSp3mVIfFEv7"
 STRIPE_COUPON_FLASH_SALE_CREDITS = "FLASH50CREDITS"
+RESEND_FROM_EMAIL = "Overhertz <noreply@overhertz.app>"
 
 [[ratelimits]]
 name = "RATE_LIMITER"
