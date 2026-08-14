@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<title>Overhertz – Admin: Plan freischalten</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0b0e14; color: #f5f0e6; max-width: 480px; margin: 3rem auto; padding: 0 1.25rem; }
+  h1 { font-size: 1.3rem; }
+  .hint { color: #b7b2a6; font-size: 0.88rem; line-height: 1.5; margin-bottom: 1.5rem; }
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin: 1rem 0 0.35rem; }
+  input, select { width: 100%; box-sizing: border-box; padding: 0.6rem 0.75rem; border-radius: 8px; border: 1px solid #333; background: #151a24; color: #f5f0e6; font: inherit; }
+  button { margin-top: 1.5rem; width: 100%; padding: 0.75rem; border-radius: 999px; border: none; background: #cda86b; color: #241d10; font-weight: 700; font-size: 1rem; cursor: pointer; }
+  button:disabled { opacity: 0.6; cursor: progress; }
+  #status { margin-top: 1rem; font-size: 0.9rem; white-space: pre-wrap; }
+  .field-extra[hidden] { display: none; }
+</style>
+</head>
+<body>
+  <h1>Plan manuell freischalten</h1>
+  <p class="hint">
+    Nur fuer Kooperationen/Tester (z.B. Creator im Austausch fuer Feedback). Die Person muss vorher
+    schon ein normales, kostenloses Konto auf Overhertz angelegt haben. Diese Datei ist lokal - nicht
+    Teil der deployten Website, einfach im Browser oeffnen und ausfuellen.
+  </p>
+
+  <label for="worker-url">Worker-URL</label>
+  <input id="worker-url" value="https://trackstar.coulrophobia66666.workers.dev" />
+
+  <label for="admin-secret">Admin-Secret</label>
+  <input id="admin-secret" type="password" placeholder="ADMIN_SECRET aus Cloudflare" />
+
+  <label for="email">E-Mail der Person</label>
+  <input id="email" type="email" placeholder="name@beispiel.de" />
+
+  <label for="plan">Was freischalten?</label>
+  <select id="plan">
+    <option value="pro">Pro (zeitlich befristet)</option>
+    <option value="pro_annual">Pro jaehrlich (zeitlich befristet)</option>
+    <option value="credits">Credits (einmalig dazugeben)</option>
+    <option value="free">Zuruecknehmen (auf Free setzen)</option>
+  </select>
+
+  <div class="field-extra" id="days-field">
+    <label for="days">Fuer wie viele Tage? (nur Info-Anzeige im Konto, laeuft nicht automatisch ab)</label>
+    <input id="days" type="number" value="30" min="1" />
+  </div>
+
+  <div class="field-extra" id="amount-field" hidden>
+    <label for="amount">Wie viele Credits?</label>
+    <input id="amount" type="number" value="5" min="1" />
+  </div>
+
+  <button id="submit-btn">Freischalten</button>
+  <p id="status"></p>
+
+  <script>
+    const planSelect = document.getElementById("plan");
+    const daysField = document.getElementById("days-field");
+    const amountField = document.getElementById("amount-field");
+
+    function syncFields() {
+      const plan = planSelect.value;
+      daysField.hidden = plan !== "pro" && plan !== "pro_annual";
+      amountField.hidden = plan !== "credits";
+    }
+    planSelect.addEventListener("change", syncFields);
+    syncFields();
+
+    document.getElementById("submit-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("status");
+      const btn = document.getElementById("submit-btn");
+      const workerUrl = document.getElementById("worker-url").value.trim().replace(/\/$/, "");
+      const adminSecret = document.getElementById("admin-secret").value;
+      const email = document.getElementById("email").value.trim();
+      const plan = planSelect.value;
+      const days = Number(document.getElementById("days").value);
+      const amount = Number(document.getElementById("amount").value);
+
+      if (!workerUrl || !adminSecret || !email) {
+        statusEl.textContent = "Bitte Worker-URL, Admin-Secret und E-Mail ausfuellen.";
+        return;
+      }
+
+      const body = { email, plan };
+      if (plan === "pro" || plan === "pro_annual") body.days = days;
+      if (plan === "credits") body.amount = amount;
+
+      btn.disabled = true;
+      statusEl.textContent = "Sende...";
+      try {
+        const res = await fetch(workerUrl + "/admin/grant-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-admin-secret": adminSecret },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        statusEl.textContent = res.ok
+          ? "Erledigt: " + JSON.stringify(data)
+          : "Fehler (" + res.status + "): " + (data.error || "unbekannt");
+      } catch (err) {
+        statusEl.textContent = "Netzwerkfehler: " + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
