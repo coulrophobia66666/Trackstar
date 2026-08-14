@@ -805,6 +805,48 @@ async function handleAggregateGenres(request, env, cors) {
   return jsonResponse({ ok: true, ...result }, 200, cors);
 }
 
+// Manuelles Freischalten fuer Kooperationen/Tester (z.B. Creator, die im Austausch fuer Feedback
+// einen Pro-Zugang bekommen) - ohne echten Stripe-Kauf, ohne stripe_subscription_id. Deswegen
+// laeuft das nicht automatisch ab: plan_renews_at ist hier rein informativ fuer die Konto-Anzeige,
+// nichts widerruft die Freischaltung von selbst. Zum Zuruecknehmen denselben Aufruf nochmal mit
+// plan: "free" machen. Person muss vorher schon ein normales (kostenloses) Konto angelegt haben.
+async function handleAdminGrantPlan(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+  if (!env.ADMIN_SECRET || request.headers.get("x-admin-secret") !== env.ADMIN_SECRET) {
+    return jsonResponse({ error: "Nicht autorisiert." }, 401, cors);
+  }
+  const body = await safeJson(request);
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const plan = typeof body.plan === "string" ? body.plan : "";
+  if (!email || !["pro", "pro_annual", "credits", "free"].includes(plan)) {
+    return jsonResponse({ error: "email und plan (pro|pro_annual|credits|free) erforderlich." }, 400, cors);
+  }
+
+  const user = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first();
+  if (!user) {
+    return jsonResponse({ error: "Kein Konto mit dieser E-Mail gefunden - Person muss sich erst selbst registrieren." }, 404, cors);
+  }
+
+  if (plan === "credits") {
+    const amount = Number.isFinite(body.amount) && body.amount > 0 ? Math.floor(body.amount) : 5;
+    await env.DB.prepare("UPDATE users SET credits = credits + ? WHERE id = ?").bind(amount, user.id).run();
+    return jsonResponse({ ok: true, granted: "credits", amount }, 200, cors);
+  }
+
+  if (plan === "free") {
+    await env.DB.prepare("UPDATE users SET plan = 'free', plan_renews_at = NULL WHERE id = ?").bind(user.id).run();
+    return jsonResponse({ ok: true, granted: "free" }, 200, cors);
+  }
+
+  const days = Number.isFinite(body.days) && body.days > 0 ? Math.floor(body.days) : 30;
+  const renewsAt = Date.now() + days * 24 * 60 * 60 * 1000;
+  await env.DB.prepare("UPDATE users SET plan = ?, checks_used_period = 0, plan_renews_at = ? WHERE id = ?")
+    .bind(plan, renewsAt, user.id)
+    .run();
+  return jsonResponse({ ok: true, granted: plan, renewsAt }, 200, cors);
+}
+
 /* ---------- Genre-Statistik-Seiten (/check/:slug) ----------
    Server-seitig gerendert direkt aus genre_stats - kein Build-Step noetig, passt zur bestehenden
    "Website ist statisches HTML ohne Build-Pipeline"-Architektur. Neues Genre = neuer Eintrag in
@@ -1498,6 +1540,9 @@ export default {
     }
     if (url.pathname === "/track-funnel" && request.method === "POST") {
       return withRateLimit(env, "trackfunnel:" + clientIp, cors, () => handleTrackFunnel(request, env, cors));
+    }
+    if (url.pathname === "/admin/grant-plan" && request.method === "POST") {
+      return handleAdminGrantPlan(request, env, cors);
     }
     if (url.pathname === "/admin/aggregate-genres" && request.method === "POST") {
       return handleAggregateGenres(request, env, cors);
