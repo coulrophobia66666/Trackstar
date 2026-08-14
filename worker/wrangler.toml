@@ -19,10 +19,14 @@ head_sampling_rate = 1
 # auch die Ursache dafuer, dass RESEND_FROM_EMAIL bei der E-Mail-Verifizierungs-Diagnose immer wieder
 # als fehlend auffiel, obwohl es schon mal gesetzt wurde. Bei Aenderungen hier UND im jeweiligen
 # Dienst (Stripe-Dashboard bzw. Resend) synchron halten.
+# STRIPE_PRICE_* wurden am 14.08. neu angelegt (tax_behavior "inclusive" statt "exclusive") - die
+# alten IDs haben bei Stripes automatischer Steuerberechnung zusaetzlich ~19% MwSt. ON TOP des auf
+# der Seite angezeigten Preises berechnet, ohne dass das im Frontend sichtbar war. tax_behavior
+# laesst sich bei Stripe nachtraeglich nicht mehr aendern, deshalb neue Price-Objekte statt Update.
 [vars]
-STRIPE_PRICE_CREDITS = "price_1U0PoMGeogeSlSp37IWIonF2"
-STRIPE_PRICE_PRO_MONTHLY = "price_1U0QPvGeogeSlSp3nGg6Ex5Y"
-STRIPE_PRICE_PRO_ANNUAL = "price_1U0QShGeogeSlSp3mVIfFEv7"
+STRIPE_PRICE_CREDITS = "price_1U4IvHGeogeSlSp3kKbjnKlg"
+STRIPE_PRICE_PRO_MONTHLY = "price_1U4IvMGeogeSlSp3WZZvDzXF"
+STRIPE_PRICE_PRO_ANNUAL = "price_1U4IvQGeogeSlSp3WW45ZWa8"
 STRIPE_COUPON_FLASH_SALE_CREDITS = "FLASH50CREDITS"
 RESEND_FROM_EMAIL = "Overhertz <noreply@overhertz.app>"
 
