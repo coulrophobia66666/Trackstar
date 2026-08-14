@@ -1131,6 +1131,11 @@ async function handleCreateCheckoutSession(request, env, cors) {
       success_url: siteOrigin + "/?checkout=success",
       cancel_url: siteOrigin + "/?checkout=cancel",
       metadata: { user_id: user.id, plan: planType },
+      // Zeigt bei Stripe Checkout ein Feld "Rabattcode hinzufuegen" an - fuer manuell im Stripe-
+      // Dashboard erstellte Einmal-Codes (z.B. eigener Testkauf), ohne dass ein serverseitig
+      // automatisch angewandter Rabatt (wie die Flash-Sale) noetig ist und ohne dass andere Kunden
+      // davon etwas mitbekommen.
+      allow_promotion_codes: true,
     };
 
     // Wer schon mal Credits gekauft hat und jetzt erstmals auf Pro upgraden will, bekommt einen
@@ -1151,6 +1156,11 @@ async function handleCreateCheckoutSession(request, env, cors) {
     if (planType === "credits" && flashSaleActive && env.STRIPE_COUPON_FLASH_SALE_CREDITS) {
       sessionParams.discounts = [{ coupon: env.STRIPE_COUPON_FLASH_SALE_CREDITS }];
     }
+
+    // Stripe erlaubt "discounts" und "allow_promotion_codes" nicht gleichzeitig in derselben
+    // Checkout Session - falls oben schon ein automatischer Rabatt gesetzt wurde, muss das
+    // manuelle Rabattcode-Feld wieder raus.
+    if (sessionParams.discounts) delete sessionParams.allow_promotion_codes;
 
     let session;
     try {
