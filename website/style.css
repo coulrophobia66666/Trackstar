@@ -1425,6 +1425,27 @@ button#rewrite-btn:disabled {
   font-size: 0.85rem;
 }
 
+.next-prompt-block .hint {
+  margin: 0 0 0.7rem;
+}
+
+.next-prompt-text {
+  margin: 0 0 0.7rem;
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(205, 168, 107, 0.28);
+  background: var(--gold-wash);
+  color: var(--gold-bright);
+  font-family: monospace;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.next-prompt-text:empty {
+  display: none;
+}
+
 .rewrite-output {
   margin: 0;
   padding: 1.1rem 1.2rem;

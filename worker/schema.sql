@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS checks (
   title_ideas TEXT, -- JSON-Array als Text
   improved_lyrics TEXT,
   tips TEXT, -- JSON-Array als Text
-  fazit TEXT
+  fazit TEXT,
+  next_prompt TEXT -- Stichwort-Zusatz fuers naechste KI-Musik-Prompt (Suno/Udio), siehe ###PROMPT### in songtext-worker.js
 );
 
 CREATE INDEX IF NOT EXISTS idx_checks_user ON checks(user_id);
@@ -91,6 +92,7 @@ CREATE INDEX IF NOT EXISTS idx_checks_user ON checks(user_id);
 -- ALTER TABLE checks ADD COLUMN improved_lyrics TEXT;
 -- ALTER TABLE checks ADD COLUMN tips TEXT;
 -- ALTER TABLE checks ADD COLUMN fazit TEXT;
+-- ALTER TABLE checks ADD COLUMN next_prompt TEXT;
 
 -- Anonyme Rohmesswerte je Check, bewusst getrennt von der user-gebundenen "checks"-Tabelle:
 -- kein user_id, kein Songtitel, keine Audiodatei - nur Zahlen + Genre-Slug. Grundlage fuer die

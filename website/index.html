@@ -202,6 +202,10 @@
           <h4 data-i18n="rewriteOutputHeading">Verbesserter Songtext</h4>
           <pre class="rewrite-output" id="history-detail-lyrics"></pre>
         </div>
+        <div class="rewrite-sub next-prompt-block" id="history-detail-nextprompt-block">
+          <h4 data-i18n="rewriteNextPromptHeading">Prompt-Tipp für deinen nächsten Track</h4>
+          <p class="next-prompt-text" id="history-detail-nextprompt"></p>
+        </div>
       </div>
     </section>
 
@@ -512,6 +516,12 @@
             <div class="rewrite-sub" id="rewrite-pronunciation-block" hidden>
               <h4 data-i18n="rewritePronunciationHeading">Aussprache-Einschätzung</h4>
               <p id="rewrite-pronunciation"></p>
+            </div>
+            <div class="rewrite-sub next-prompt-block">
+              <h4 data-i18n="rewriteNextPromptHeading">Prompt-Tipp für deinen nächsten Track</h4>
+              <p class="hint" data-i18n="rewriteNextPromptHint">Diese Stichwörter kannst du bei Suno, Udio &amp; Co. zusätzlich in deinen nächsten Prompt einfügen, um die größten hier gemessenen Probleme direkt zu vermeiden.</p>
+              <p class="next-prompt-text" id="rewrite-next-prompt"></p>
+              <button type="button" id="rewrite-next-prompt-copy-btn" class="link-btn" data-i18n="rewriteNextPromptCopyBtn">Kopieren</button>
             </div>
           </div>
         </div>

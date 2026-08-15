@@ -547,11 +547,12 @@ async function handleSaveCheckResult(request, env, cors) {
   const improvedLyrics = typeof body.improvedLyrics === "string" ? body.improvedLyrics.slice(0, 6000) : "";
   const tips = Array.isArray(body.tips) ? JSON.stringify(body.tips.slice(0, 20).map((s) => String(s).slice(0, 500))) : null;
   const fazit = typeof body.fazit === "string" ? body.fazit.slice(0, 2000) : "";
+  const nextPrompt = typeof body.nextPrompt === "string" ? body.nextPrompt.slice(0, 500) : "";
 
   await env.DB.prepare(
-    "UPDATE checks SET title = ?, genre = ?, overall_score = ?, classification = ?, title_ideas = ?, improved_lyrics = ?, tips = ?, fazit = ? WHERE id = ?"
+    "UPDATE checks SET title = ?, genre = ?, overall_score = ?, classification = ?, title_ideas = ?, improved_lyrics = ?, tips = ?, fazit = ?, next_prompt = ? WHERE id = ?"
   )
-    .bind(title || null, genre || null, overallScore, classification || null, titleIdeas, improvedLyrics || null, tips, fazit || null, checkId)
+    .bind(title || null, genre || null, overallScore, classification || null, titleIdeas, improvedLyrics || null, tips, fazit || null, nextPrompt || null, checkId)
     .run();
 
   return jsonResponse({ ok: true }, 200, cors);
@@ -594,7 +595,7 @@ async function handleCheckDetail(request, env, cors, checkId) {
   if (!checkId) return jsonResponse({ error: "checkId fehlt." }, 400, cors);
 
   const row = await env.DB.prepare(
-    "SELECT id, title, genre, overall_score, classification, title_ideas, improved_lyrics, tips, fazit, created_at FROM checks WHERE id = ? AND user_id = ?"
+    "SELECT id, title, genre, overall_score, classification, title_ideas, improved_lyrics, tips, fazit, next_prompt, created_at FROM checks WHERE id = ? AND user_id = ?"
   )
     .bind(checkId, user.id)
     .first();
@@ -611,6 +612,7 @@ async function handleCheckDetail(request, env, cors, checkId) {
       improvedLyrics: row.improved_lyrics,
       tips: row.tips ? JSON.parse(row.tips) : [],
       fazit: row.fazit,
+      nextPrompt: row.next_prompt,
       createdAt: row.created_at,
     },
     200,
@@ -1379,6 +1381,10 @@ async function handleKiEinschaetzung(request, env, cors) {
       "2-3 Saetze: Vergleiche den echten Songtext mit dem automatischen Vocals-Transkript (unten beigefuegt) und schaetze ein, ob Abweichungen eher auf Aussprache-/Diktionsprobleme beim Gesang, auf typische KI-Gesangs-Artefakte (z.B. Suno/Udio) oder schlicht auf Fehler der automatischen Spracherkennung selbst zurueckgehen. Wenn kaum Abweichungen bestehen, sag das kurz und positiv."
     );
   }
+  promptLines.push(
+    "###PROMPT###",
+    "Ein einziger konkreter Stichwort-Zusatz (KEIN ganzer Satz, sondern kurze kommagetrennte Stil-Deskriptoren, wie in Prompts fuer KI-Musik-Generatoren wie Suno/Udio ueblich, auf Englisch, da diese Tools englische Stil-Begriffe am zuverlaessigsten umsetzen), den der Nutzer beim NAECHSTEN Generierungsversuch zusaetzlich in seinen Prompt einfuegen kann, um gezielt die groessten hier gemessenen technischen Probleme zu vermeiden (z.B. bei duennem/matschigem Bass: \"tight punchy sub-bass, clean low-end\"; bei harschen Zischlauten: \"smooth warm vocals, no sibilance\"; bei zu leise/dynamikarm: \"loud modern mix, punchy dynamics\"). Passe die Deskriptoren an Genre und gemessene Kennzahlen an. Falls die technischen Werte schon gut sind, nenne stattdessen 1-2 Deskriptoren, die die vorhandenen Staerken weiter verstaerken. Antworte NUR mit dem fertigen Stichwort-Zusatz selbst, ohne Einleitung/Erklaerung - direkt copy-paste-fertig fuer ein Prompt-Feld."
+  );
   promptLines.push("");
   if (title) promptLines.push('Aktueller Songtitel: "' + title + '"');
   if (genre) promptLines.push("Genre (vom Nutzer angegeben/erkannt): " + genre);

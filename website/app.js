@@ -87,6 +87,7 @@ const I18N = {
     shareBtn: "Ergebnis teilen",
     shareText: "Mein Track hat auf Overhertz {stars}/5 Sterne erreicht – „{title}“ ({score}/100). Check deinen Track auch kostenlos:",
     shareCopied: "Link kopiert!",
+    genericCopied: "Kopiert!",
     shareCardCta: "Kostenlosen Kurzcheck auf overhertz.app",
     unlockTitle: "Willst du wissen, woran's genau liegt – und wie du's behebst?",
     unlockDesc: "Frequenzkurve im Detail, alle Verbesserungstipps und wohin du den Track am besten einreichst.",
@@ -164,6 +165,9 @@ const I18N = {
     rewriteTitleIdeasHeading: "Titel-Ideen",
     rewriteOutputHeading: "Verbesserter Songtext",
     rewritePronunciationHeading: "Aussprache-Einschätzung",
+    rewriteNextPromptHeading: "Prompt-Tipp für deinen nächsten Track",
+    rewriteNextPromptHint: "Diese Stichwörter kannst du bei Suno, Udio & Co. zusätzlich in deinen nächsten Prompt einfügen, um die größten hier gemessenen Probleme direkt zu vermeiden.",
+    rewriteNextPromptCopyBtn: "Kopieren",
     vocalsHeading: "Vocals-Check",
     vocalsIntro: "Transkribiert die gesungenen Vocals automatisch per KI direkt in deinem Browser (Audio verlässt dabei nie dein Gerät) und vergleicht sie mit deinem Songtext (oder, falls keiner eingegeben wurde, mit einer KI-Schätzung des Texts) – praktisch, um Aussprache-/Text-Artefakte von KI-Gesang (z. B. Suno, Udio) aufzuspüren. Automatische Spracherkennung von Gesang ist selbst fehleranfällig (Autotune, Beat im Hintergrund, Slang) – als Hinweis lesen, nicht als harten Fakt. Lädt einmalig ein KI-Modell (~140 MB) herunter – auf dem Handy kann das Datenvolumen/Akku kosten.",
     vocalsCancelBtn: "Abbrechen",
@@ -533,6 +537,7 @@ const I18N = {
     shareBtn: "Share result",
     shareText: "My track scored {stars}/5 stars on Overhertz – “{title}” ({score}/100). Check your track for free too:",
     shareCopied: "Link copied!",
+    genericCopied: "Copied!",
     shareCardCta: "Free short check at overhertz.app",
     unlockTitle: "Want to know exactly what's wrong – and how to fix it?",
     unlockDesc: "Detailed frequency curve, all improvement tips, and where best to submit your track.",
@@ -610,6 +615,9 @@ const I18N = {
     rewriteTitleIdeasHeading: "Title ideas",
     rewriteOutputHeading: "Improved lyrics",
     rewritePronunciationHeading: "Pronunciation assessment",
+    rewriteNextPromptHeading: "Prompt tip for your next track",
+    rewriteNextPromptHint: "Add these keywords to your next Suno, Udio & co. prompt to avoid the biggest issues found here.",
+    rewriteNextPromptCopyBtn: "Copy",
     vocalsHeading: "Vocals check",
     vocalsIntro: "Automatically transcribes the sung vocals via AI directly in your browser (audio never leaves your device) and compares them with your lyrics (or, if none were entered, with an AI estimate of the text) – useful for spotting pronunciation/text artifacts from AI vocals (e.g. Suno, Udio). Automatic speech recognition on singing is itself error-prone (autotune, background beat, slang) – read it as a hint, not a hard fact. Downloads an AI model (~140 MB) once – on mobile this can cost data/battery.",
     vocalsCancelBtn: "Cancel",
@@ -2681,12 +2689,14 @@ function parseKiStream(raw) {
   const MARK_TITEL = "###TITEL###";
   const MARK_TEXT = "###TEXT###";
   const MARK_AUSSPRACHE = "###AUSSPRACHE###";
+  const MARK_PROMPT = "###PROMPT###";
 
   const rekonstruktionStart = raw.indexOf(MARK_REKONSTRUKTION);
   const einordnungStart = raw.indexOf(MARK_EINORDNUNG);
   const titelStart = raw.indexOf(MARK_TITEL);
   const textStart = raw.indexOf(MARK_TEXT);
   const ausspracheStart = raw.indexOf(MARK_AUSSPRACHE);
+  const promptStart = raw.indexOf(MARK_PROMPT);
 
   let reconstruction = "";
   if (rekonstruktionStart !== -1) {
@@ -2713,13 +2723,19 @@ function parseKiStream(raw) {
 
   let improved = "";
   if (textStart !== -1) {
-    const end = ausspracheStart !== -1 ? ausspracheStart : raw.length;
+    const end = ausspracheStart !== -1 ? ausspracheStart : promptStart !== -1 ? promptStart : raw.length;
     improved = raw.slice(textStart + MARK_TEXT.length, end).trim();
   }
 
-  const pronunciation = ausspracheStart !== -1 ? raw.slice(ausspracheStart + MARK_AUSSPRACHE.length).trim() : "";
+  let pronunciation = "";
+  if (ausspracheStart !== -1) {
+    const end = promptStart !== -1 ? promptStart : raw.length;
+    pronunciation = raw.slice(ausspracheStart + MARK_AUSSPRACHE.length, end).trim();
+  }
 
-  return { reconstruction, classification, titleIdeas, improved, pronunciation };
+  const nextPrompt = promptStart !== -1 ? raw.slice(promptStart + MARK_PROMPT.length).trim() : "";
+
+  return { reconstruction, classification, titleIdeas, improved, pronunciation, nextPrompt };
 }
 
 async function streamKiEinschaetzung(title, lyrics, metrics, genre, transcript, onUpdate) {
@@ -3188,6 +3204,10 @@ async function showHistoryDetail(checkId) {
   const lyricsBlock = document.getElementById("history-detail-lyrics-block");
   lyricsBlock.hidden = !data.improvedLyrics;
   document.getElementById("history-detail-lyrics").textContent = data.improvedLyrics || "";
+
+  const nextPromptBlock = document.getElementById("history-detail-nextprompt-block");
+  nextPromptBlock.hidden = !data.nextPrompt;
+  document.getElementById("history-detail-nextprompt").textContent = data.nextPrompt || "";
 }
 
 if (historyBackBtn) {
@@ -3590,6 +3610,23 @@ const rewriteReconstructionBlock = document.getElementById("rewrite-reconstructi
 const rewriteReconstruction = document.getElementById("rewrite-reconstruction");
 const rewritePronunciationBlock = document.getElementById("rewrite-pronunciation-block");
 const rewritePronunciation = document.getElementById("rewrite-pronunciation");
+const rewriteNextPrompt = document.getElementById("rewrite-next-prompt");
+const rewriteNextPromptCopyBtn = document.getElementById("rewrite-next-prompt-copy-btn");
+
+if (rewriteNextPromptCopyBtn) {
+  rewriteNextPromptCopyBtn.addEventListener("click", async () => {
+    const text = rewriteNextPrompt ? rewriteNextPrompt.textContent : "";
+    if (!text) return;
+    const originalLabel = rewriteNextPromptCopyBtn.textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      rewriteNextPromptCopyBtn.textContent = t("genericCopied");
+      setTimeout(() => (rewriteNextPromptCopyBtn.textContent = originalLabel), 2000);
+    } catch {
+      // Clipboard nicht verfuegbar - kein kritischer Vorgang, der Text steht ja sichtbar da.
+    }
+  });
+}
 
 let lastKiResult = null;
 
@@ -3620,6 +3657,7 @@ async function runKiEinschaetzung() {
   rewriteOutput.textContent = "";
   rewritePronunciationBlock.hidden = true;
   rewritePronunciation.textContent = "";
+  if (rewriteNextPrompt) rewriteNextPrompt.textContent = "";
 
   const renderTitleIdeas = (ideas) => {
     rewriteTitleIdeas.innerHTML = "";
@@ -3649,6 +3687,7 @@ async function runKiEinschaetzung() {
           rewritePronunciationBlock.hidden = false;
           rewritePronunciation.textContent = partial.pronunciation;
         }
+        if (partial.nextPrompt && rewriteNextPrompt) rewriteNextPrompt.textContent = partial.nextPrompt;
       }
     );
     if (!result.classification) rewriteClassification.textContent = t("rewriteNoClassification");
@@ -3740,6 +3779,7 @@ async function saveCheckResult(kiResult) {
       improvedLyrics: kiResult ? kiResult.improved : "",
       tips: lastAnalysis ? lastAnalysis.topIssues : [],
       fazit: lastFazitText,
+      nextPrompt: kiResult ? kiResult.nextPrompt : "",
     }),
   });
 }
