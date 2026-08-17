@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Battle-Rap-Contest – Overhertz</title>
+  <meta name="description" content="Der Overhertz Battle-Rap-Contest: 32 Teilnehmer, Single-Elimination, das Publikum entscheidet. Presented by Nachtfahrt Records." />
+  <meta name="robots" content="noindex" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="logo.svg" type="image/svg+xml" />
+  <style>
+    .battle-page { max-width: 960px; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+    .battle-page .back { display: inline-block; margin-bottom: 1.5rem; color: var(--gold-bright); text-decoration: none; font-weight: 600; }
+    .battle-page h1 { font-family: var(--font-display); font-size: 2rem; margin: 0.5rem 0; }
+    .battle-sub { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.6; margin-bottom: 2rem; max-width: 640px; }
+    .battle-sponsor { display: inline-block; background: var(--gold-wash); color: var(--gold-bright); border-radius: 999px; padding: 0.3rem 0.9rem; font-size: 0.8rem; font-weight: 600; }
+    .battle-status-bar { background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px; padding: 1.2rem 1.4rem; margin-bottom: 2rem; font-size: 0.9rem; color: var(--text-secondary); }
+    .battle-status-bar strong { color: var(--text-primary); }
+    .battle-register { background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px; padding: 1.4rem; margin-bottom: 2rem; }
+    .battle-register label, .battle-submit-block label { display: block; font-size: 0.82rem; font-weight: 600; margin: 0.6rem 0 0.3rem; }
+    .battle-register input, .battle-submit-block input {
+      width: 100%; box-sizing: border-box; padding: 0.65rem 0.9rem; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface-2); color: var(--text-primary);
+      font: inherit; margin-bottom: 0.6rem;
+    }
+    .battle-register button, .battle-vote-btn, .battle-submit-btn {
+      background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: #241d10; border: none;
+      border-radius: 999px; padding: 0.6rem 1.4rem; font-weight: 700; cursor: pointer; font-size: 0.88rem;
+    }
+    .battle-register button:disabled, .battle-vote-btn:disabled, .battle-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .battle-msg { font-size: 0.85rem; margin-top: 0.6rem; color: var(--text-secondary); }
+    .battle-msg.error { color: var(--status-critical); }
+    .battle-msg.success { color: var(--status-good); }
+    .battle-matchups { display: flex; flex-direction: column; gap: 1.5rem; }
+    .battle-matchup { background: var(--surface-1); border: 1px solid var(--border); border-radius: 18px; padding: 1.4rem; }
+    .battle-matchup-vs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: start; }
+    .battle-side { text-align: center; }
+    .battle-side img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 12px; background: var(--surface-2); margin-bottom: 0.6rem; }
+    .battle-side .name { font-weight: 700; margin: 0 0 0.4rem; }
+    .battle-side audio { width: 100%; margin-bottom: 0.6rem; }
+    .battle-vs-label { font-family: var(--font-display); color: var(--gold-bright); font-size: 1.3rem; align-self: center; }
+    .battle-deadline { font-size: 0.8rem; color: var(--text-muted); text-align: center; margin: 0.9rem 0 0; }
+    .battle-submit-block { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+    .battle-votes { font-size: 0.8rem; color: var(--text-muted); margin: 0.2rem 0 0; }
+    .battle-winner { color: var(--status-good); font-weight: 700; }
+    @media (max-width: 640px) {
+      .battle-matchup-vs { grid-template-columns: 1fr; }
+      .battle-vs-label { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="battle-page">
+    <a class="back" href="index.html">← Zurück zu Overhertz</a>
+    <div><span class="battle-sponsor">Presented by Nachtfahrt Records</span></div>
+    <h1>Overhertz Battle-Rap-Contest</h1>
+    <p class="battle-sub">
+      32 Teilnehmer, Single-Elimination, das Publikum entscheidet. Pro Runde bekommst du deinen
+      Gegner bekanntgegeben und hast 3 Tage Zeit, einen neuen Diss-Track (plus Bild) einzureichen –
+      danach stimmt das Publikum ab. Preisgeld im Finale: 50&nbsp;€.
+    </p>
+
+    <div id="battle-status-bar" class="battle-status-bar" hidden></div>
+
+    <p id="battle-login-hint" class="battle-msg" hidden>
+      Bitte zuerst <a href="index.html">auf der Hauptseite einloggen</a>, um teilzunehmen – abstimmen kannst du auch ohne Login.
+    </p>
+
+    <div id="battle-register-block" class="battle-register" hidden>
+      <p>Melde dich mit deinem Overhertz-Konto für den Contest an:</p>
+      <label for="battle-artist-name">Künstlername</label>
+      <input id="battle-artist-name" type="text" maxlength="60" placeholder="Dein Rap-Name" />
+      <button id="battle-register-btn" type="button">Jetzt anmelden</button>
+      <p id="battle-register-msg" class="battle-msg"></p>
+    </div>
+
+    <div id="battle-matchups" class="battle-matchups"></div>
+    <p id="battle-empty-msg" class="battle-msg" hidden></p>
+  </div>
+
+  <script src="battle.js"></script>
+</body>
+</html>
