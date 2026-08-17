@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<title>Overhertz – Admin: Battle-Rap-Contest</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0b0e14; color: #f5f0e6; max-width: 560px; margin: 3rem auto; padding: 0 1.25rem; }
+  h1 { font-size: 1.3rem; }
+  h2 { font-size: 1rem; margin-top: 2.5rem; border-top: 1px solid #333; padding-top: 1.5rem; }
+  .hint { color: #b7b2a6; font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.25rem; }
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin: 1rem 0 0.35rem; }
+  input { width: 100%; box-sizing: border-box; padding: 0.6rem 0.75rem; border-radius: 8px; border: 1px solid #333; background: #151a24; color: #f5f0e6; font: inherit; }
+  button { margin-top: 1.25rem; width: 100%; padding: 0.75rem; border-radius: 999px; border: none; background: #cda86b; color: #241d10; font-weight: 700; font-size: 1rem; cursor: pointer; }
+  button:disabled { opacity: 0.6; cursor: progress; }
+  .status { margin-top: 1rem; font-size: 0.85rem; white-space: pre-wrap; }
+  #overrides-wrap { margin-top: 1rem; }
+  .override-row { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .override-row input[type="text"] { flex: 1; margin: 0; }
+</style>
+</head>
+<body>
+  <h1>Battle-Rap-Contest verwalten</h1>
+  <p class="hint">
+    Lokales Admin-Tool, nicht Teil der deployten Website. Ablauf: erst "Battle anlegen" (einmalig),
+    Teilnehmer melden sich dann selbst auf der Website an, dann "Losverfahren starten" sobald die
+    Anmeldephase vorbei ist, danach nach jeder Runde "Runde abschließen" - schließt die aktuelle
+    Abstimmung und legt automatisch die nächste Runde an (oder beendet das Battle beim Finale).
+  </p>
+
+  <label for="worker-url">Worker-URL</label>
+  <input id="worker-url" value="https://trackstar.coulrophobia66666.workers.dev" />
+
+  <label for="admin-secret">Admin-Secret</label>
+  <input id="admin-secret" type="password" placeholder="ADMIN_SECRET aus Cloudflare" />
+
+  <label for="battle-id">Battle-ID</label>
+  <input id="battle-id" placeholder="Nach dem Anlegen hier eintragen, fuer alle weiteren Schritte" />
+
+  <h2>1. Battle anlegen</h2>
+  <label for="battle-slug">Slug (Teil der URL, z.B. battle-rap-contest)</label>
+  <input id="battle-slug" value="battle-rap-contest" />
+  <label for="battle-title">Titel</label>
+  <input id="battle-title" value="Overhertz Battle-Rap-Contest" />
+  <label for="battle-max">Max. Teilnehmer</label>
+  <input id="battle-max" type="number" value="32" min="2" />
+  <button id="create-btn" type="button">Battle anlegen</button>
+  <p id="create-status" class="status"></p>
+
+  <h2>2. Losverfahren starten (Runde 1)</h2>
+  <p class="hint">Mischt alle bis dahin angemeldeten Teilnehmer zufällig in Runde-1-Matchups, setzt die 3-Tage-Einreichungsfrist.</p>
+  <button id="draw-btn" type="button">Losverfahren starten</button>
+  <p id="draw-status" class="status"></p>
+
+  <h2>3. Runde abschließen / nächste Runde</h2>
+  <p class="hint">
+    Ermittelt pro Matchup den Sieger (mehr Stimmen gewinnt) und legt die nächste Runde an. Bei
+    Gleichstand oder strittigen Fällen kann hier manuell übersteuert werden (Matchup-ID + a/b).
+  </p>
+  <div id="overrides-wrap">
+    <div class="override-row">
+      <input type="text" placeholder="Matchup-ID (optional)" class="override-matchup" />
+      <input type="text" placeholder="a oder b" class="override-side" style="max-width: 70px;" />
+    </div>
+  </div>
+  <button id="add-override-btn" type="button" style="background:#333; color:#f5f0e6; margin-top:0.5rem;">+ weiterer Override</button>
+  <button id="advance-btn" type="button">Runde abschließen</button>
+  <p id="advance-status" class="status"></p>
+
+  <script>
+    function headers() {
+      return { "Content-Type": "application/json", "x-admin-secret": document.getElementById("admin-secret").value };
+    }
+    function workerUrl() {
+      return document.getElementById("worker-url").value.trim().replace(/\/$/, "");
+    }
+
+    document.getElementById("create-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("create-status");
+      const btn = document.getElementById("create-btn");
+      btn.disabled = true;
+      statusEl.textContent = "Sende...";
+      try {
+        const res = await fetch(workerUrl() + "/admin/battle/create", {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify({
+            slug: document.getElementById("battle-slug").value.trim(),
+            title: document.getElementById("battle-title").value.trim(),
+            maxParticipants: Number(document.getElementById("battle-max").value),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.battleId) document.getElementById("battle-id").value = data.battleId;
+        statusEl.textContent = res.ok ? "Erledigt: " + JSON.stringify(data) : "Fehler (" + res.status + "): " + (data.error || "unbekannt");
+      } catch (err) {
+        statusEl.textContent = "Netzwerkfehler: " + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("draw-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("draw-status");
+      const btn = document.getElementById("draw-btn");
+      btn.disabled = true;
+      statusEl.textContent = "Sende...";
+      try {
+        const res = await fetch(workerUrl() + "/admin/battle/draw", {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify({ battleId: document.getElementById("battle-id").value.trim() }),
+        });
+        const data = await res.json().catch(() => ({}));
+        statusEl.textContent = res.ok ? "Erledigt: " + JSON.stringify(data) : "Fehler (" + res.status + "): " + (data.error || "unbekannt");
+      } catch (err) {
+        statusEl.textContent = "Netzwerkfehler: " + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("add-override-btn").addEventListener("click", () => {
+      const wrap = document.getElementById("overrides-wrap");
+      const row = document.createElement("div");
+      row.className = "override-row";
+      row.innerHTML = '<input type="text" placeholder="Matchup-ID (optional)" class="override-matchup" /><input type="text" placeholder="a oder b" class="override-side" style="max-width: 70px;" />';
+      wrap.appendChild(row);
+    });
+
+    document.getElementById("advance-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("advance-status");
+      const btn = document.getElementById("advance-btn");
+      const overrides = {};
+      document.querySelectorAll(".override-row").forEach((row) => {
+        const id = row.querySelector(".override-matchup").value.trim();
+        const side = row.querySelector(".override-side").value.trim();
+        if (id && (side === "a" || side === "b")) overrides[id] = side;
+      });
+      btn.disabled = true;
+      statusEl.textContent = "Sende...";
+      try {
+        const res = await fetch(workerUrl() + "/admin/battle/advance", {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify({ battleId: document.getElementById("battle-id").value.trim(), overrides }),
+        });
+        const data = await res.json().catch(() => ({}));
+        statusEl.textContent = res.ok ? "Erledigt: " + JSON.stringify(data) : "Fehler (" + res.status + "): " + (data.error || "unbekannt");
+      } catch (err) {
+        statusEl.textContent = "Netzwerkfehler: " + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
