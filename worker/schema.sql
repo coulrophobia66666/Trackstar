@@ -163,3 +163,66 @@ CREATE TABLE IF NOT EXISTS stripe_webhook_events (
   event_id TEXT PRIMARY KEY,
   processed_at INTEGER NOT NULL
 );
+
+-- Battle-Rap-Wettbewerb (Turnierbaum mit Publikumsabstimmung, Preisgeld gesponsert von
+-- Nachtfahrt Records). Ein Konto = ein Startplatz pro Battle (UNIQUE-Index unten). Medien (Track +
+-- Bild je Einreichung) liegen in R2 (Binding BATTLE_MEDIA), hier nur die Objekt-Keys.
+CREATE TABLE IF NOT EXISTS battles (
+  id TEXT PRIMARY KEY,
+  slug TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'registration', -- registration | active | finished
+  max_participants INTEGER NOT NULL DEFAULT 32,
+  round_number INTEGER NOT NULL DEFAULT 0, -- 0 = noch keine Runde gestartet (Anmeldephase)
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS battle_participants (
+  id TEXT PRIMARY KEY,
+  battle_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  artist_name TEXT NOT NULL,
+  registered_at INTEGER NOT NULL,
+  eliminated_round INTEGER -- NULL solange noch im Turnier
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_battle_participant_unique ON battle_participants(battle_id, user_id);
+
+-- Ein Matchup pro Duell/Runde. participant_b_id NULL = Freilos (zieht automatisch weiter, kein
+-- Einreichungs-/Abstimm-Zyklus noetig fuer dieses Matchup).
+CREATE TABLE IF NOT EXISTS battle_matchups (
+  id TEXT PRIMARY KEY,
+  battle_id TEXT NOT NULL,
+  round_number INTEGER NOT NULL,
+  participant_a_id TEXT NOT NULL,
+  participant_b_id TEXT,
+  submission_a_key TEXT, -- R2-Objekt-Key Audio
+  submission_b_key TEXT,
+  photo_a_key TEXT, -- R2-Objekt-Key Bild
+  photo_b_key TEXT,
+  votes_a INTEGER NOT NULL DEFAULT 0,
+  votes_b INTEGER NOT NULL DEFAULT 0,
+  winner_participant_id TEXT,
+  submission_deadline INTEGER NOT NULL,
+  vote_deadline INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_battle_matchups_battle_round ON battle_matchups(battle_id, round_number);
+
+-- voter_fingerprint: zufaellige, client-seitig per crypto.randomUUID() erzeugte ID aus
+-- localStorage - keine IP/kein Personenbezug, verhindert nur technisch Mehrfachstimmen vom
+-- selben Browser (siehe Teilnahmebedingungen).
+CREATE TABLE IF NOT EXISTS battle_votes (
+  id TEXT PRIMARY KEY,
+  matchup_id TEXT NOT NULL,
+  voter_fingerprint TEXT NOT NULL,
+  voted_for TEXT NOT NULL, -- 'a' | 'b'
+  created_at INTEGER NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_battle_votes_unique ON battle_votes(matchup_id, voter_fingerprint);
+
+-- Falls die obigen Battle-Tabellen erst nachtraeglich zu einer bestehenden Datenbank
+-- hinzugefuegt wurden: CREATE TABLE IF NOT EXISTS erfasst das automatisch beim naechsten
+-- Schema-Lauf, hier ist (anders als bei den anderen Tabellen oben) keine manuelle ALTER TABLE
+-- noetig, da alle Spalten von Anfang an Teil der Tabellendefinition sind.
