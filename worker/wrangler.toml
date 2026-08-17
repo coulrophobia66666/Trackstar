@@ -44,6 +44,13 @@ binding = "DB"
 database_name = "overhertz-db"
 database_id = "9b018ec9-57cc-4410-a69d-492bfd160611"
 
+# Objektspeicher fuer Battle-Rap-Contest-Einreichungen (Track + Bild je Teilnehmer/Runde) - der
+# Bucket muss einmalig manuell angelegt werden (Cloudflare-Dashboard -> R2, oder per
+# Cloudflare-Konnektor), bevor der Worker damit deployt wird, siehe OFFENE-PUNKTE.md.
+[[r2_buckets]]
+binding = "BATTLE_MEDIA"
+bucket_name = "overhertz-battle-media"
+
 # Nachts um 3 Uhr UTC: Genre-Kennzahlen aus check_results neu berechnen (siehe scheduled-Handler
 # in songtext-worker.js). Manuell zusaetzlich ueber POST /admin/aggregate-genres anstossbar
 # (braucht den Secret ADMIN_SECRET, einmalig im Cloudflare-Dashboard unter Settings setzen).

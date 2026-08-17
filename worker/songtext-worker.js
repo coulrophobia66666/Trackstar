@@ -10,6 +10,8 @@
 //             (Stripe Price-IDs, z.B. "price_...", sind nicht geheim), RESEND_FROM_EMAIL
 //             (Absenderadresse fuer Passwort-Reset-Mails, z.B. "Overhertz <noreply@overhertz.app>")
 //   D1-Binding: DB (siehe wrangler.toml + schema.sql)
+//   R2-Binding: BATTLE_MEDIA (Track+Bild-Uploads fuer den Battle-Rap-Contest, Bucket muss einmalig
+//               manuell im Cloudflare-Dashboard angelegt werden, siehe wrangler.toml)
 //   Rate-Limit-Binding RATE_LIMITER wird beim Deploy automatisch angelegt.
 //   Cron Trigger (siehe wrangler.toml [triggers]): laeuft nachts automatisch, kein Setup noetig.
 
@@ -1484,6 +1486,421 @@ function anthropicTextDeltaStream(anthropicBody) {
   });
 }
 
+/* ---------- Battle-Rap-Contest ---------- */
+// Turnierbaum mit Publikumsabstimmung. Ablauf pro Runde: Matchup wird per Losverfahren/Sieger-
+// Fortschaltung angelegt (Admin) -> Teilnehmer haben bis submission_deadline Zeit, Track+Bild
+// hochzuladen -> zwischen submission_deadline und vote_deadline stimmt das Publikum ab -> Admin
+// schaltet die naechste Runde frei. Keine automatische Zeitsteuerung (siehe Kommentare unten) -
+// der Admin loest jeden Schritt bewusst manuell aus, analog zu /admin/aggregate-genres.
+
+const BATTLE_SUBMISSION_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3 Tage zum Einreichen des Diss-Tracks
+const BATTLE_VOTE_WINDOW_MS = 4 * 24 * 60 * 60 * 1000; // danach 4 Tage Abstimmzeit
+const MAX_BATTLE_AUDIO_BYTES = 25 * 1024 * 1024; // 25 MB - Diss-Track, kein ganzes Album
+const MAX_BATTLE_PHOTO_BYTES = 8 * 1024 * 1024; // 8 MB
+const ALLOWED_BATTLE_AUDIO_TYPES = new Set(["audio/mpeg", "audio/mp4", "audio/wav", "audio/x-wav", "audio/ogg", "audio/flac"]);
+const ALLOWED_BATTLE_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+function battleAudioExtension(mimeType) {
+  if (mimeType === "audio/wav" || mimeType === "audio/x-wav") return "wav";
+  if (mimeType === "audio/flac") return "flac";
+  if (mimeType === "audio/ogg") return "ogg";
+  return "mp3";
+}
+
+function battlePhotoExtension(mimeType) {
+  if (mimeType === "image/png") return "png";
+  if (mimeType === "image/webp") return "webp";
+  return "jpg";
+}
+
+async function handleBattleRegister(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+  const user = await getUserFromRequest(request, env);
+  if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
+
+  const body = await safeJson(request);
+  const battleId = typeof body.battleId === "string" ? body.battleId : "";
+  const artistName = typeof body.artistName === "string" ? body.artistName.trim().slice(0, 60) : "";
+  if (!battleId || !artistName) {
+    return jsonResponse({ error: "battleId und artistName erforderlich." }, 400, cors);
+  }
+
+  const battle = await env.DB.prepare("SELECT * FROM battles WHERE id = ?").bind(battleId).first();
+  if (!battle) return jsonResponse({ error: "Battle nicht gefunden." }, 404, cors);
+  if (battle.status !== "registration") {
+    return jsonResponse({ error: "Die Anmeldephase ist bereits vorbei." }, 400, cors);
+  }
+
+  const existing = await env.DB.prepare("SELECT id FROM battle_participants WHERE battle_id = ? AND user_id = ?")
+    .bind(battleId, user.id)
+    .first();
+  if (existing) return jsonResponse({ error: "Du bist schon fuer dieses Battle angemeldet." }, 400, cors);
+
+  const countRow = await env.DB.prepare("SELECT COUNT(*) as count FROM battle_participants WHERE battle_id = ?")
+    .bind(battleId)
+    .first();
+  if (countRow.count >= battle.max_participants) {
+    return jsonResponse({ error: "Die Teilnehmerplaetze sind schon voll." }, 400, cors);
+  }
+
+  const id = crypto.randomUUID();
+  await env.DB.prepare("INSERT INTO battle_participants (id, battle_id, user_id, artist_name, registered_at) VALUES (?, ?, ?, ?, ?)")
+    .bind(id, battleId, user.id, artistName, Date.now())
+    .run();
+
+  return jsonResponse({ ok: true, participantId: id }, 200, cors);
+}
+
+async function handleBattleSubmit(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+  if (!env.BATTLE_MEDIA) {
+    return jsonResponse({ error: "Der Media-Speicher ist noch nicht eingerichtet." }, 501, cors);
+  }
+  const user = await getUserFromRequest(request, env);
+  if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
+
+  let formData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return jsonResponse({ error: "Ungueltige Anfrage." }, 400, cors);
+  }
+
+  const matchupId = formData.get("matchupId");
+  const audio = formData.get("audio");
+  const photo = formData.get("photo");
+  if (typeof matchupId !== "string" || !matchupId) {
+    return jsonResponse({ error: "matchupId erforderlich." }, 400, cors);
+  }
+  if (!(audio instanceof File) || !(photo instanceof File)) {
+    return jsonResponse({ error: "Track und Bild sind beide erforderlich." }, 400, cors);
+  }
+  if (!ALLOWED_BATTLE_AUDIO_TYPES.has(audio.type)) {
+    return jsonResponse({ error: "Nicht unterstuetztes Audioformat." }, 400, cors);
+  }
+  if (audio.size > MAX_BATTLE_AUDIO_BYTES) {
+    return jsonResponse({ error: "Track ist zu gross (max. 25 MB)." }, 400, cors);
+  }
+  if (!ALLOWED_BATTLE_PHOTO_TYPES.has(photo.type)) {
+    return jsonResponse({ error: "Nicht unterstuetztes Bildformat (JPG/PNG/WebP)." }, 400, cors);
+  }
+  if (photo.size > MAX_BATTLE_PHOTO_BYTES) {
+    return jsonResponse({ error: "Bild ist zu gross (max. 8 MB)." }, 400, cors);
+  }
+
+  const matchup = await env.DB.prepare("SELECT * FROM battle_matchups WHERE id = ?").bind(matchupId).first();
+  if (!matchup) return jsonResponse({ error: "Matchup nicht gefunden." }, 404, cors);
+  if (Date.now() > matchup.submission_deadline) {
+    return jsonResponse({ error: "Die Einreichungsfrist ist abgelaufen." }, 400, cors);
+  }
+
+  const participantA = await env.DB.prepare("SELECT * FROM battle_participants WHERE id = ?")
+    .bind(matchup.participant_a_id)
+    .first();
+  const participantB = matchup.participant_b_id
+    ? await env.DB.prepare("SELECT * FROM battle_participants WHERE id = ?").bind(matchup.participant_b_id).first()
+    : null;
+
+  let side = null;
+  if (participantA && participantA.user_id === user.id) side = "a";
+  else if (participantB && participantB.user_id === user.id) side = "b";
+  if (!side) return jsonResponse({ error: "Du bist kein Teilnehmer dieses Matchups." }, 403, cors);
+
+  const audioKey = `battles/${matchup.battle_id}/${matchupId}/${side}-track.${battleAudioExtension(audio.type)}`;
+  const photoKey = `battles/${matchup.battle_id}/${matchupId}/${side}-photo.${battlePhotoExtension(photo.type)}`;
+
+  await env.BATTLE_MEDIA.put(audioKey, await audio.arrayBuffer(), { httpMetadata: { contentType: audio.type } });
+  await env.BATTLE_MEDIA.put(photoKey, await photo.arrayBuffer(), { httpMetadata: { contentType: photo.type } });
+
+  const audioColumn = side === "a" ? "submission_a_key" : "submission_b_key";
+  const photoColumn = side === "a" ? "photo_a_key" : "photo_b_key";
+  await env.DB.prepare(`UPDATE battle_matchups SET ${audioColumn} = ?, ${photoColumn} = ? WHERE id = ?`)
+    .bind(audioKey, photoKey, matchupId)
+    .run();
+
+  return jsonResponse({ ok: true }, 200, cors);
+}
+
+async function handleBattleVote(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const body = await safeJson(request);
+  const matchupId = typeof body.matchupId === "string" ? body.matchupId : "";
+  const side = body.side === "a" || body.side === "b" ? body.side : "";
+  const voterFingerprint = typeof body.voterFingerprint === "string" ? body.voterFingerprint.slice(0, 100) : "";
+  if (!matchupId || !side || !voterFingerprint) {
+    return jsonResponse({ error: "matchupId, side und voterFingerprint erforderlich." }, 400, cors);
+  }
+
+  const matchup = await env.DB.prepare("SELECT * FROM battle_matchups WHERE id = ?").bind(matchupId).first();
+  if (!matchup) return jsonResponse({ error: "Matchup nicht gefunden." }, 404, cors);
+  if (!matchup.participant_b_id) {
+    return jsonResponse({ error: "Bei diesem Matchup gibt es nichts abzustimmen (Freilos)." }, 400, cors);
+  }
+  if (Date.now() < matchup.submission_deadline) {
+    return jsonResponse({ error: "Die Abstimmung hat noch nicht begonnen." }, 400, cors);
+  }
+  if (Date.now() > matchup.vote_deadline) {
+    return jsonResponse({ error: "Die Abstimmung ist schon beendet." }, 400, cors);
+  }
+
+  try {
+    await env.DB.prepare("INSERT INTO battle_votes (id, matchup_id, voter_fingerprint, voted_for, created_at) VALUES (?, ?, ?, ?, ?)")
+      .bind(crypto.randomUUID(), matchupId, voterFingerprint, side, Date.now())
+      .run();
+  } catch {
+    return jsonResponse({ error: "Du hast bei diesem Matchup schon abgestimmt." }, 400, cors);
+  }
+
+  const column = side === "a" ? "votes_a" : "votes_b";
+  await env.DB.prepare(`UPDATE battle_matchups SET ${column} = ${column} + 1 WHERE id = ?`).bind(matchupId).run();
+
+  return jsonResponse({ ok: true }, 200, cors);
+}
+
+async function handleBattleState(env, cors, slug) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+
+  const battle = await env.DB.prepare("SELECT * FROM battles WHERE slug = ?").bind(slug).first();
+  if (!battle) return jsonResponse({ error: "Battle nicht gefunden." }, 404, cors);
+
+  const { results: matchups } = await env.DB.prepare("SELECT * FROM battle_matchups WHERE battle_id = ? AND round_number = ?")
+    .bind(battle.id, battle.round_number)
+    .all();
+
+  const participantIds = new Set();
+  for (const m of matchups) {
+    participantIds.add(m.participant_a_id);
+    if (m.participant_b_id) participantIds.add(m.participant_b_id);
+  }
+  const participantNames = {};
+  if (participantIds.size) {
+    const idList = [...participantIds];
+    const placeholders = idList.map(() => "?").join(",");
+    const { results } = await env.DB.prepare(`SELECT id, artist_name FROM battle_participants WHERE id IN (${placeholders})`)
+      .bind(...idList)
+      .all();
+    for (const p of results) participantNames[p.id] = p.artist_name;
+  }
+
+  const now = Date.now();
+  const matchupsOut = matchups.map((m) => {
+    const votingOpen = Boolean(m.participant_b_id) && now >= m.submission_deadline && now < m.vote_deadline;
+    const votingClosed = now >= m.vote_deadline;
+    return {
+      id: m.id,
+      participantA: { id: m.participant_a_id, name: participantNames[m.participant_a_id] || "?" },
+      participantB: m.participant_b_id
+        ? { id: m.participant_b_id, name: participantNames[m.participant_b_id] || "?" }
+        : null,
+      audioA: m.submission_a_key ? "/battle-media/" + m.submission_a_key : null,
+      audioB: m.submission_b_key ? "/battle-media/" + m.submission_b_key : null,
+      photoA: m.photo_a_key ? "/battle-media/" + m.photo_a_key : null,
+      photoB: m.photo_b_key ? "/battle-media/" + m.photo_b_key : null,
+      submissionDeadline: m.submission_deadline,
+      voteDeadline: m.vote_deadline,
+      votingOpen,
+      // Zwischenstand bewusst erst nach Ablauf der Abstimmung sichtbar, gegen Bandwagon-Effekte.
+      votesA: votingClosed ? m.votes_a : null,
+      votesB: votingClosed ? m.votes_b : null,
+      winnerParticipantId: m.winner_participant_id,
+    };
+  });
+
+  return jsonResponse(
+    {
+      battle: {
+        id: battle.id,
+        slug: battle.slug,
+        title: battle.title,
+        status: battle.status,
+        roundNumber: battle.round_number,
+        maxParticipants: battle.max_participants,
+      },
+      matchups: matchupsOut,
+    },
+    200,
+    cors
+  );
+}
+
+async function handleBattleMedia(env, key) {
+  if (!env.BATTLE_MEDIA) return new Response("Media-Speicher ist noch nicht eingerichtet.", { status: 501 });
+  const object = await env.BATTLE_MEDIA.get(key);
+  if (!object) return new Response("Nicht gefunden.", { status: 404 });
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("cache-control", "public, max-age=31536000, immutable");
+  return new Response(object.body, { headers });
+}
+
+async function handleAdminBattleCreate(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+  if (!env.ADMIN_SECRET || request.headers.get("x-admin-secret") !== env.ADMIN_SECRET) {
+    return jsonResponse({ error: "Nicht autorisiert." }, 401, cors);
+  }
+
+  const body = await safeJson(request);
+  const slug = typeof body.slug === "string" ? body.slug.trim() : "";
+  const title = typeof body.title === "string" ? body.title.trim() : "";
+  const maxParticipants =
+    Number.isFinite(body.maxParticipants) && body.maxParticipants > 0 ? Math.floor(body.maxParticipants) : 32;
+  if (!slug || !title) {
+    return jsonResponse({ error: "slug und title erforderlich." }, 400, cors);
+  }
+
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    "INSERT INTO battles (id, slug, title, status, max_participants, round_number, created_at) VALUES (?, ?, ?, 'registration', ?, 0, ?)"
+  )
+    .bind(id, slug, title, maxParticipants, Date.now())
+    .run();
+
+  return jsonResponse({ ok: true, battleId: id, slug }, 200, cors);
+}
+
+// Erstellt aus den bestaetigten Teilnehmern per Zufall die Runde-1-Matchups (Fisher-Yates-Shuffle).
+// Bei ungerader Teilnehmerzahl bekommt die/der letzte im Shuffle ein Freilos (zieht ohne Abstimmung
+// direkt weiter) - bei den geplanten 32 Teilnehmern kommt das nicht vor, macht die Funktion aber
+// robust fuer abweichende Anmeldezahlen.
+async function handleAdminBattleDraw(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+  if (!env.ADMIN_SECRET || request.headers.get("x-admin-secret") !== env.ADMIN_SECRET) {
+    return jsonResponse({ error: "Nicht autorisiert." }, 401, cors);
+  }
+
+  const body = await safeJson(request);
+  const battleId = typeof body.battleId === "string" ? body.battleId : "";
+  if (!battleId) return jsonResponse({ error: "battleId erforderlich." }, 400, cors);
+
+  const battle = await env.DB.prepare("SELECT * FROM battles WHERE id = ?").bind(battleId).first();
+  if (!battle) return jsonResponse({ error: "Battle nicht gefunden." }, 404, cors);
+  if (battle.status !== "registration") {
+    return jsonResponse({ error: "Das Losverfahren wurde fuer dieses Battle schon durchgefuehrt." }, 400, cors);
+  }
+
+  const { results: participants } = await env.DB.prepare("SELECT id FROM battle_participants WHERE battle_id = ?")
+    .bind(battleId)
+    .all();
+  if (participants.length < 2) {
+    return jsonResponse({ error: "Mindestens 2 Teilnehmer noetig." }, 400, cors);
+  }
+
+  const shuffled = participants.map((p) => p.id);
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  const now = Date.now();
+  const submissionDeadline = now + BATTLE_SUBMISSION_WINDOW_MS;
+  const voteDeadline = submissionDeadline + BATTLE_VOTE_WINDOW_MS;
+
+  let matchupCount = 0;
+  for (let i = 0; i < shuffled.length; i += 2) {
+    const a = shuffled[i];
+    const b = shuffled[i + 1] || null;
+    const matchupId = crypto.randomUUID();
+    await env.DB.prepare(
+      "INSERT INTO battle_matchups (id, battle_id, round_number, participant_a_id, participant_b_id, votes_a, votes_b, submission_deadline, vote_deadline) VALUES (?, ?, 1, ?, ?, 0, 0, ?, ?)"
+    )
+      .bind(matchupId, battleId, a, b, submissionDeadline, voteDeadline)
+      .run();
+    if (!b) {
+      await env.DB.prepare("UPDATE battle_matchups SET winner_participant_id = ? WHERE id = ?").bind(a, matchupId).run();
+    }
+    matchupCount++;
+  }
+
+  await env.DB.prepare("UPDATE battles SET status = 'active', round_number = 1 WHERE id = ?").bind(battleId).run();
+
+  return jsonResponse({ ok: true, matchupCount }, 200, cors);
+}
+
+// Schliesst die aktuelle Runde ab (Sieger = mehr Stimmen, oder manueller Override bei Gleichstand/
+// Streitfall ueber overrides: { matchupId: 'a'|'b' }) und legt die naechste Runde an. Bei nur noch
+// einem Sieger ist das Finale entschieden, Battle wird auf 'finished' gesetzt.
+async function handleAdminBattleAdvance(request, env, cors) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+  if (!env.ADMIN_SECRET || request.headers.get("x-admin-secret") !== env.ADMIN_SECRET) {
+    return jsonResponse({ error: "Nicht autorisiert." }, 401, cors);
+  }
+
+  const body = await safeJson(request);
+  const battleId = typeof body.battleId === "string" ? body.battleId : "";
+  const overrides = body.overrides && typeof body.overrides === "object" ? body.overrides : {};
+  if (!battleId) return jsonResponse({ error: "battleId erforderlich." }, 400, cors);
+
+  const battle = await env.DB.prepare("SELECT * FROM battles WHERE id = ?").bind(battleId).first();
+  if (!battle) return jsonResponse({ error: "Battle nicht gefunden." }, 404, cors);
+  if (battle.status !== "active") {
+    return jsonResponse({ error: "Battle ist nicht aktiv." }, 400, cors);
+  }
+
+  const { results: matchups } = await env.DB.prepare("SELECT * FROM battle_matchups WHERE battle_id = ? AND round_number = ?")
+    .bind(battleId, battle.round_number)
+    .all();
+
+  const winners = [];
+  for (const m of matchups) {
+    let winnerId = m.winner_participant_id;
+    if (!winnerId) {
+      const overrideSide = overrides[m.id];
+      if (overrideSide === "a") winnerId = m.participant_a_id;
+      else if (overrideSide === "b") winnerId = m.participant_b_id;
+      else winnerId = m.votes_b > m.votes_a ? m.participant_b_id : m.participant_a_id;
+
+      await env.DB.prepare("UPDATE battle_matchups SET winner_participant_id = ? WHERE id = ?").bind(winnerId, m.id).run();
+
+      const loserId = winnerId === m.participant_a_id ? m.participant_b_id : m.participant_a_id;
+      if (loserId) {
+        await env.DB.prepare("UPDATE battle_participants SET eliminated_round = ? WHERE id = ?")
+          .bind(battle.round_number, loserId)
+          .run();
+      }
+    }
+    winners.push(winnerId);
+  }
+
+  if (winners.length <= 1) {
+    await env.DB.prepare("UPDATE battles SET status = 'finished' WHERE id = ?").bind(battleId).run();
+    return jsonResponse({ ok: true, finished: true, winnerParticipantId: winners[0] || null }, 200, cors);
+  }
+
+  const nextRound = battle.round_number + 1;
+  const now = Date.now();
+  const submissionDeadline = now + BATTLE_SUBMISSION_WINDOW_MS;
+  const voteDeadline = submissionDeadline + BATTLE_VOTE_WINDOW_MS;
+
+  let matchupCount = 0;
+  for (let i = 0; i < winners.length; i += 2) {
+    const a = winners[i];
+    const b = winners[i + 1] || null;
+    const matchupId = crypto.randomUUID();
+    await env.DB.prepare(
+      "INSERT INTO battle_matchups (id, battle_id, round_number, participant_a_id, participant_b_id, votes_a, votes_b, submission_deadline, vote_deadline) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?)"
+    )
+      .bind(matchupId, battleId, nextRound, a, b, submissionDeadline, voteDeadline)
+      .run();
+    if (!b) {
+      await env.DB.prepare("UPDATE battle_matchups SET winner_participant_id = ? WHERE id = ?").bind(a, matchupId).run();
+    }
+    matchupCount++;
+  }
+
+  await env.DB.prepare("UPDATE battles SET round_number = ? WHERE id = ?").bind(nextRound, battleId).run();
+
+  return jsonResponse({ ok: true, finished: false, nextRound, matchupCount }, 200, cors);
+}
+
 /* ---------- Routing ---------- */
 
 export default {
@@ -1572,6 +1989,32 @@ export default {
     }
     if (url.pathname === "/sitemap-genres.xml" && request.method === "GET") {
       return handleSitemapGenres(env);
+    }
+    if (url.pathname === "/battle/register" && request.method === "POST") {
+      return handleBattleRegister(request, env, cors);
+    }
+    if (url.pathname === "/battle/submit" && request.method === "POST") {
+      return handleBattleSubmit(request, env, cors);
+    }
+    if (url.pathname === "/battle/vote" && request.method === "POST") {
+      return withRateLimit(env, "battlevote:" + clientIp, cors, () => handleBattleVote(request, env, cors));
+    }
+    if (url.pathname.startsWith("/battle/") && url.pathname.endsWith("/state") && request.method === "GET") {
+      const slug = url.pathname.slice("/battle/".length, -"/state".length);
+      return handleBattleState(env, cors, slug);
+    }
+    if (url.pathname.startsWith("/battle-media/") && request.method === "GET") {
+      const key = url.pathname.slice("/battle-media/".length);
+      return handleBattleMedia(env, key);
+    }
+    if (url.pathname === "/admin/battle/create" && request.method === "POST") {
+      return handleAdminBattleCreate(request, env, cors);
+    }
+    if (url.pathname === "/admin/battle/draw" && request.method === "POST") {
+      return handleAdminBattleDraw(request, env, cors);
+    }
+    if (url.pathname === "/admin/battle/advance" && request.method === "POST") {
+      return handleAdminBattleAdvance(request, env, cors);
     }
 
     if (request.method !== "POST") {
