@@ -47,6 +47,14 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+// Die vom Worker gelieferten Media-Pfade (z.B. "/battle-media/...") sind relativ zur
+// Worker-Domain, nicht zur Website-Domain, auf der diese Seite laeuft - deshalb hier explizit
+// mit WORKER_BASE zusammensetzen statt den Pfad direkt als src zu verwenden.
+function mediaUrl(path) {
+  if (!path) return "";
+  return WORKER_BASE.replace(/\/$/, "") + path;
+}
+
 const ROUND_NAMES = { 0: "Anmeldephase", 1: "Runde der 32", 2: "Achtelfinale", 3: "Viertelfinale", 4: "Halbfinale", 5: "Finale" };
 
 let currentState = null;
@@ -105,9 +113,9 @@ function sideHtml(matchup, side, participant, audioUrl, photoUrl) {
 
   return `
     <div class="battle-side">
-      ${photoUrl ? `<img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(participant.name)}" />` : ""}
+      ${photoUrl ? `<img src="${escapeHtml(mediaUrl(photoUrl))}" alt="${escapeHtml(participant.name)}" />` : ""}
       <p class="name">${escapeHtml(participant.name)}${isWinner ? ' <span class="battle-winner">Sieger</span>' : ""}</p>
-      ${audioUrl ? `<audio controls src="${escapeHtml(audioUrl)}"></audio>` : '<p class="battle-msg">Noch kein Track eingereicht</p>'}
+      ${audioUrl ? `<audio controls src="${escapeHtml(mediaUrl(audioUrl))}"></audio>` : '<p class="battle-msg">Noch kein Track eingereicht</p>'}
       ${canVote ? `<button type="button" class="battle-vote-btn" data-matchup="${matchup.id}" data-side="${side}">Für ${escapeHtml(participant.name)} stimmen</button>` : ""}
       ${votes !== null && votes !== undefined ? `<p class="battle-votes">${votes} Stimmen</p>` : ""}
     </div>`;

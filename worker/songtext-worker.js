@@ -1661,12 +1661,28 @@ async function handleBattleVote(request, env, cors) {
   return jsonResponse({ ok: true }, 200, cors);
 }
 
-async function handleBattleState(env, cors, slug) {
+async function handleBattleState(request, env, cors, slug) {
   const dbErr = requireDb(env, cors);
   if (dbErr) return dbErr;
 
   const battle = await env.DB.prepare("SELECT * FROM battles WHERE slug = ?").bind(slug).first();
   if (!battle) return jsonResponse({ error: "Battle nicht gefunden." }, 404, cors);
+
+  // Optionaler Auth-Check: nur um dem eingeloggten Nutzer seine eigene Teilnehmer-ID
+  // mitzugeben (fuers Einblenden des Einreichungsformulars) - liefert sonst nichts Zusaetzliches
+  // ueber andere Teilnehmer preis.
+  let myParticipantId = null;
+  let myRegistered = false;
+  const user = await getUserFromRequest(request, env);
+  if (user) {
+    const mine = await env.DB.prepare("SELECT id FROM battle_participants WHERE battle_id = ? AND user_id = ?")
+      .bind(battle.id, user.id)
+      .first();
+    if (mine) {
+      myParticipantId = mine.id;
+      myRegistered = true;
+    }
+  }
 
   const { results: matchups } = await env.DB.prepare("SELECT * FROM battle_matchups WHERE battle_id = ? AND round_number = ?")
     .bind(battle.id, battle.round_number)
@@ -1722,6 +1738,8 @@ async function handleBattleState(env, cors, slug) {
         maxParticipants: battle.max_participants,
       },
       matchups: matchupsOut,
+      myParticipantId,
+      myRegistered,
     },
     200,
     cors
@@ -2001,7 +2019,7 @@ export default {
     }
     if (url.pathname.startsWith("/battle/") && url.pathname.endsWith("/state") && request.method === "GET") {
       const slug = url.pathname.slice("/battle/".length, -"/state".length);
-      return handleBattleState(env, cors, slug);
+      return handleBattleState(request, env, cors, slug);
     }
     if (url.pathname.startsWith("/battle-media/") && request.method === "GET") {
       const key = url.pathname.slice("/battle-media/".length);
