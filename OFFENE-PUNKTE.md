@@ -4,6 +4,40 @@ Stand: 12.08.2026. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ⚠️ NEU (17.08.): Battle-Rap-Contest – manuelle Einrichtungsschritte noch offen
+Neues Marketing-Feature: öffentlicher Battle-Rap-Wettbewerb (32 Teilnehmer,
+Single-Elimination, Publikumsabstimmung, 50 € Preisgeld gesponsert von
+Nachtfahrt Records als reiner "Presented by"-Sponsor, kein inhaltliches
+Cross-Branding). Ablauf: Anmeldung nur mit bestehendem Overhertz-Konto →
+Losverfahren → pro Runde 3 Tage Zeit für einen neuen, auf den konkreten
+Gegner reagierenden Diss-Track plus Bild → Abstimmung → nächste Runde. Neue
+Seite `website/battle.html`/`battle.js`, neue Worker-Endpunkte
+(`/battle/register`, `/battle/submit`, `/battle/vote`,
+`/battle/:slug/state`, `/battle-media/:key`,
+`/admin/battle/create|draw|advance`), lokales Admin-Tool
+`scripts/admin-battle.html`. Komplett Playwright- und curl-E2E-getestet
+gegen `wrangler dev --local` (Registrierung inkl. Mehrfachanmeldungs-Sperre,
+Losverfahren, Einreichung inkl. Zugriffs-/Format-/Größenprüfung, Abstimmung
+inkl. Mehrfachstimmen-Sperre und Fristprüfung, Rundenabschluss inkl.
+manuellem Sieger-Override, Admin-Auth) – dabei einen echten Bug gefunden und
+behoben (Track-/Bild-URLs zeigten relativ zur Website- statt zur
+Worker-Domain).
+
+**Vor dem Live-Gang noch nötig:**
+- **R2-Bucket manuell anlegen** (Cloudflare-Dashboard → R2 → Bucket
+  `overhertz-battle-media` erstellen, Binding `BATTLE_MEDIA` steht schon in
+  `worker/wrangler.toml`) – ohne das schlagen Einreichungen mit 501 fehl.
+- **D1-Migration**: die vier neuen Tabellen (`battles`, `battle_participants`,
+  `battle_matchups`, `battle_votes`) einmalig in der D1-Console anlegen,
+  siehe `worker/schema.sql` (Definitionen am Dateiende, `CREATE TABLE IF NOT
+  EXISTS` – kann direkt aus der Datei kopiert werden).
+- **Battle anlegen**: über `scripts/admin-battle.html` einmalig ein Battle
+  mit Slug `battle-rap-contest` erstellen (dieser Slug ist in `battle.js`
+  fest hinterlegt) – erst danach zeigt die Seite überhaupt etwas an.
+- Teilnahmebedingungen-Entwurf wurde im Gespräch erstellt, noch nicht in
+  eine eigene `.html`-Seite/Verlinkung überführt und **nicht rechtlich
+  geprüft** – vor dem öffentlichen Start durch Carla gegenchecken lassen.
+
 ## ✅ ERLEDIGT (12.08.): Root Cause für "niemand kauft" gefunden und live behoben
 Auslöser: Instagram-Post brachte 60 Follower, aber keinen einzigen Kauf. Die
 neuen Trichter-Ereignisse (siehe Eintrag oben) und D1-Abfragen zeigten zwar
