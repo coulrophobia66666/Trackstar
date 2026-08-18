@@ -23,6 +23,16 @@ manuellem Sieger-Override, Admin-Auth) – dabei einen echten Bug gefunden und
 behoben (Track-/Bild-URLs zeigten relativ zur Website- statt zur
 Worker-Domain).
 
+**Update (18.08.):** Zugriffsregeln geklärt und umgesetzt – Kurzcheck bleibt
+komplett offen (kein Login nötig), Tiefenanalyse/Kauf braucht wie bisher ein
+Overhertz-Konto, zusätzlich jetzt aber eine **bestätigte E-Mail-Adresse**
+(gleiche Regel wie für die Battle-Contest-Anmeldung). `handleConsumeCredit`
+im Worker prüft `user.email_verified_at` und liefert bei fehlender
+Bestätigung `needsVerification: true`; das Frontend zeigt dazu eine eigene
+Meldung und scrollt zum bestehenden Verify-E-Mail-Banner. Reine
+Codeprüfung/Analogie zum bereits getesteten Battle-Contest-Pfad, noch kein
+frischer Playwright-Durchlauf gegen dieses konkrete Diff.
+
 **Vor dem Live-Gang noch nötig:**
 - **R2-Bucket manuell anlegen** (Cloudflare-Dashboard → R2 → Bucket
   `overhertz-battle-media` erstellen, Binding `BATTLE_MEDIA` steht schon in
