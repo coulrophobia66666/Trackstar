@@ -1773,6 +1773,11 @@ async function handleAdminBattleCreate(request, env, cors) {
     return jsonResponse({ error: "slug und title erforderlich." }, 400, cors);
   }
 
+  const existing = await env.DB.prepare("SELECT id FROM battles WHERE slug = ?").bind(slug).first();
+  if (existing) {
+    return jsonResponse({ error: "Ein Battle mit diesem Slug existiert schon.", battleId: existing.id }, 400, cors);
+  }
+
   const id = crypto.randomUUID();
   await env.DB.prepare(
     "INSERT INTO battles (id, slug, title, status, max_participants, round_number, created_at) VALUES (?, ?, ?, 'registration', ?, 0, ?)"
