@@ -478,6 +478,13 @@ async function handleConsumeCredit(request, env, cors) {
 
   const user = await getUserFromRequest(request, env);
   if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
+  if (!user.email_verified_at) {
+    return jsonResponse(
+      { error: "Bitte bestaetige zuerst deine E-Mail-Adresse, bevor du die Tiefenanalyse nutzt.", needsVerification: true },
+      403,
+      cors
+    );
+  }
 
   if ((user.plan === "pro" || user.plan === "pro_annual") && user.checks_used_period < PRO_MONTHLY_QUOTA) {
     const checkId = crypto.randomUUID();

@@ -337,6 +337,7 @@ const I18N = {
 
     unlockNeedLogin: "Bitte zuerst einloggen oder registrieren, um die Vollanalyse freizuschalten.",
     unlockNoCredits: "Keine Credits mehr übrig – wähle ein Paket, um die Vollanalyse freizuschalten.",
+    unlockNeedVerification: "Bitte bestätige zuerst deine E-Mail-Adresse (Banner oben), um die Vollanalyse freizuschalten.",
 
     statusLoadingAudio: "Lade Audio…",
     fileTooLarge: "Datei ist zu groß ({size} MB) – maximal 100 MB erlaubt.",
@@ -788,6 +789,7 @@ const I18N = {
 
     unlockNeedLogin: "Please log in or register first to unlock the full analysis.",
     unlockNoCredits: "No credits left – choose a plan to unlock the full analysis.",
+    unlockNeedVerification: "Please confirm your email address first (banner above) to unlock the full analysis.",
 
     statusLoadingAudio: "Loading audio…",
     fileTooLarge: "File is too large ({size} MB) – 100 MB maximum.",
@@ -3804,6 +3806,10 @@ unlockBtn.addEventListener("click", async () => {
     renderStreakNote(incrementCheckCount());
     premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
     startAutoPremiumFlow(data.checkId);
+  } else if (data.needsVerification) {
+    statusLine.textContent = t("unlockNeedVerification");
+    const banner = document.getElementById("verify-email-banner");
+    if (banner) banner.scrollIntoView({ behavior: "smooth", block: "start" });
   } else {
     openPricing(t("unlockNoCredits"));
   }
