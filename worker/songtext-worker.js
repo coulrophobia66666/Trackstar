@@ -1518,6 +1518,13 @@ async function handleBattleRegister(request, env, cors) {
   if (dbErr) return dbErr;
   const user = await getUserFromRequest(request, env);
   if (!user) return jsonResponse({ error: "Bitte zuerst einloggen." }, 401, cors);
+  if (!user.email_verified_at) {
+    return jsonResponse(
+      { error: "Bitte bestaetige zuerst deine E-Mail-Adresse, bevor du dich fuer den Battle-Contest anmeldest.", needsVerification: true },
+      403,
+      cors
+    );
+  }
 
   const body = await safeJson(request);
   const battleId = typeof body.battleId === "string" ? body.battleId : "";
