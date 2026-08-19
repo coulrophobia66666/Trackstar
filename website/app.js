@@ -2852,6 +2852,7 @@ const pricingStatus = document.getElementById("pricing-status");
 
 function renderAccountBar() {
   if (!accountBar) return;
+  if (authHeaderBtns) authHeaderBtns.hidden = !!currentUser;
   accountBar.innerHTML = "";
   if (currentUser) {
     const quotaText =
@@ -2911,8 +2912,14 @@ function toggleAuthCard(forceOpen) {
   if (!authCard.hidden) authCard.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// Login/Registrieren-Button bzw. Konto-Infos stecken hinter einem Zahnrad-Symbol statt direkt im
-// Header zu stehen - raeumt die Seite fuer neue Besucher auf (nur noch DE/EN direkt sichtbar).
+// Login/Registrieren stehen direkt im Header (wie DE/EN), damit neue Besucher sie sofort sehen -
+// verschwinden, sobald ein Konto eingeloggt ist (dann gibt's nichts mehr einzuloggen/anzulegen).
+const authHeaderBtns = document.getElementById("auth-header-btns");
+document.getElementById("header-login-btn")?.addEventListener("click", () => toggleAuthCard(true));
+document.getElementById("header-register-btn")?.addEventListener("click", () => toggleAuthCard(true));
+
+// Konto-Infos stecken hinter einem Zahnrad-Symbol statt direkt im Header zu stehen - raeumt die
+// Seite fuer eingeloggte Nutzer auf.
 const accountMenuToggle = document.getElementById("account-menu-toggle");
 const accountMenuPanel = document.getElementById("account-menu-panel");
 if (accountMenuToggle && accountMenuPanel) {
