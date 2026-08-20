@@ -4,6 +4,52 @@ Stand: 12.08.2026. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ⚠️ NEU (20.08.): Battle-Contest Sound-Score + Share-Karte – manueller D1-Schritt noch offen
+Wachstums-Feature für den Battle-Rap-Contest: Teilnehmer sehen beim
+Einreichen sofort einen echten **Sound-Score** (0–100) zu ihrem Track statt
+nur die Stimmenzahl, plus einen "Teilen"-Button, der eine Canvas-Share-Karte
+(Name, Gegner, Score, CTA "Jetzt für mich abstimmen!") über die Web-Share-API
+(Zwischenablage/Download-Fallback) erzeugt – Grundlage für den viralen Loop
+aus dem geteilten Grok-Chat (Vote → selbst mitmachen → Track bauen → checken
+→ einreichen + teilen → nächste Runde).
+
+Technisch: der Worker kann Audio inhaltlich nicht auswerten (keine
+Web-Audio-API in der Workers-Runtime), deshalb wird der Score **lokal im
+Browser der einreichenden Person** berechnet, im selben Moment wie der
+Upload. Dafür wurden die reinen Analyse-/Bewertungsfunktionen
+(`analyzeAudioBuffer`, `computeAllScores`, `analyzeLyrics`, FFT, Scoring
+usw. – insgesamt ~680 Zeilen) aus `app.js` in eine neue, DOM-freie Datei
+`website/audio-core.js` ausgelagert, die jetzt sowohl `app.js` (Hauptseite)
+als auch `battle.js` (bleibt weiterhin bewusst sonst eigenständig) per
+`<script>`-Tag laden. Battle-Einreichungen haben keinen Songtext/Genre,
+deshalb Allgemein-Profil + leere Lyrics (Hook-/Titel-Teilscore automatisch
+ausgeklammert) – Score = `combineScores([technik, frequenz, lautheit])`.
+Schlägt die lokale Analyse fehl (z. B. Format, das der Browser nicht
+dekodieren kann), wird einfach kein Score mitgeschickt statt die Einreichung
+zu blockieren.
+
+Anders als `votesA`/`votesB` ist der Score bewusst **sofort** sichtbar, nicht
+erst nach Abstimmungsende – er ist Teil dessen, was Teilnehmer direkt teilen
+sollen, kein Abstimmungsergebnis, das Bandwagon-Effekte auslösen könnte.
+
+Getestet: `node --check` auf beiden geänderten Worker-/Battle-Dateien, plus
+Playwright gegen eine lokal servierte `battle.html` mit gemocktem
+`/battle/:slug/state` – `audio-core.js`-Globals stehen zur Verfügung, Score
+wird korrekt als "Sound-Score: 76/100" angezeigt, Teilen-Button erscheint,
+`buildBattleShareCardBlob` erzeugt ein valides PNG. Nach der `audio-core.js`-
+Auslagerung zusätzlich ein voller Regressionstest der Hauptseite
+(Kurzcheck, Tiefenanalyse inkl. EQ-Editor) – keine Abweichungen gefunden.
+
+**Vor dem Live-Gang noch nötig:**
+- **D1-Migration**: `battle_matchups` bekommt zwei neue Spalten – `CREATE
+  TABLE IF NOT EXISTS` erfasst das bei einer schon angelegten Tabelle nicht,
+  deshalb einmalig manuell in der D1-Console ausführen (siehe auch Kommentar
+  am Ende von `worker/schema.sql`):
+  ```sql
+  ALTER TABLE battle_matchups ADD COLUMN score_a REAL;
+  ALTER TABLE battle_matchups ADD COLUMN score_b REAL;
+  ```
+
 ## ⚠️ NEU (17.08.): Battle-Rap-Contest – manuelle Einrichtungsschritte noch offen
 Neues Marketing-Feature: öffentlicher Battle-Rap-Wettbewerb (32 Teilnehmer,
 Single-Elimination, Publikumsabstimmung, 50 € Preisgeld gesponsert von
