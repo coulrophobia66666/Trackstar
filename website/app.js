@@ -3382,7 +3382,14 @@ async function saveCheckResult(kiResult) {
 unlockBtn.addEventListener("click", async () => {
   if (!currentAnalysisSnapshot) return;
   if (currentAnalysisSnapshot.isDemo) {
-    openPricing(t("unlockDemoNotice"));
+    // Beim Beispiel-Track keinen echten Credit verbrauchen/keine echten Backend-Aufrufe ausloesen
+    // (kein startAutoPremiumFlow!) - stattdessen direkt die Tiefenanalyse-Tabs mit den
+    // Demo-Messwerten zeigen, damit "Vollanalyse ansehen" auch beim Beispiel-Track haelt, was der
+    // Button verspricht. Der EQ-Editor (Pro-exklusiv) bleibt dabei automatisch ueber seine eigene
+    // isPro-Pruefung gesperrt, solange kein eingeloggter Pro-Nutzer aktiv ist - "nur der Teil bis
+    // zum Pro-Abo".
+    renderAnalysis(currentAnalysisSnapshot, { unlockedPremium: true });
+    premiumResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
   reportFunnelEvent("unlock_clicked");
