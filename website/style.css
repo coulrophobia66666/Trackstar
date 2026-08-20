@@ -281,6 +281,198 @@ button#analyze-btn:disabled {
   text-align: center;
 }
 
+.dropzone {
+  position: relative;
+  border: 1.5px dashed var(--gridline);
+  border-radius: 18px;
+  padding: 2.2rem 1.5rem;
+  text-align: center;
+  margin-bottom: 1rem;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.dropzone.dragover {
+  border-color: var(--gold);
+  background: var(--gold-wash);
+}
+
+.dropzone-icon {
+  color: var(--gold);
+  margin-bottom: 0.6rem;
+}
+
+.dropzone-title {
+  font-weight: 700;
+  font-size: 1rem;
+  margin: 0 0 0.3rem;
+}
+
+.dropzone-sub {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin: 0 0 0.2rem;
+}
+
+.dropzone-formats {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  margin: 0;
+}
+
+.dropzone-filename {
+  margin: 0.6rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gold-bright);
+}
+
+.dropzone-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.details-toggle-btn {
+  display: block;
+  margin: 0 auto 1.2rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.details-toggle-btn:hover {
+  color: var(--gold-bright);
+}
+
+.sample-track-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.7rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--gridline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.sample-track-btn:hover {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+}
+
+.trust-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem 1rem;
+  margin: 0 0 1.6rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.how-it-works-heading {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-align: center;
+  margin: 0 0 1.1rem;
+}
+
+.how-it-works {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.how-it-works-step {
+  flex: 1 1 220px;
+  min-width: 220px;
+  border: 1px solid var(--gridline);
+  border-radius: 18px;
+  padding: 1.2rem 1.3rem;
+  background: var(--surface-1);
+}
+
+.how-it-works-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  background: var(--gold-wash);
+  color: var(--gold-bright);
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-bottom: 0.7rem;
+}
+
+.how-it-works-step h3 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  margin: 0 0 0.4rem;
+}
+
+.how-it-works-step p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.battle-teaser-card {
+  display: block;
+}
+
+.battle-teaser-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  background: var(--gold-wash);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.battle-teaser-title {
+  font-weight: 700;
+  font-size: 1rem;
+  margin: 0 0 0.4rem;
+}
+
+.battle-teaser-desc {
+  color: var(--text-secondary);
+  font-size: 0.87rem;
+  margin: 0 0 0.7rem;
+}
+
+.battle-teaser-link {
+  color: var(--gold-bright);
+  font-weight: 600;
+  font-size: 0.87rem;
+  text-decoration: none;
+}
+
+.battle-teaser-link:hover {
+  text-decoration: underline;
+}
+
 /* Free result: hero */
 .hero-tile {
   position: relative;
@@ -661,6 +853,16 @@ button#unlock-btn,
     display: none !important;
   }
 
+  /* Tab-Leiste ausblenden, aber alle drei Panels trotz hidden-Attribut zeigen - sonst wuerde der
+     Druck/PDF nur den gerade aktiven Tab enthalten statt der vollstaendigen Analyse. */
+  .premium-tabs {
+    display: none !important;
+  }
+
+  .premium-tab-panel {
+    display: block !important;
+  }
+
   .pdf-print-header { display: block; }
   .pdf-header-brand {
     font-family: var(--font-display);
@@ -700,6 +902,37 @@ button#unlock-btn,
   border-radius: 18px;
   border: 1px solid var(--gridline);
   background: var(--surface-2);
+}
+
+.premium-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.2rem;
+  margin: 0 0 1.5rem;
+  border-bottom: 1px solid var(--gridline);
+}
+
+.premium-tab-btn {
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.6rem 0.1rem;
+  margin-bottom: -1px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.premium-tab-btn[aria-selected="true"] {
+  color: var(--gold-bright);
+  border-bottom-color: var(--gold);
+}
+
+.premium-tab-btn:hover {
+  color: var(--text-primary);
 }
 
 .zone .meters,
@@ -1672,34 +1905,49 @@ button#vocals-check-btn:disabled {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem 0.6rem;
+  justify-content: space-between;
+  gap: 0.5rem 1.2rem;
   padding-top: 1rem;
 }
 
-.battle-header-btn {
-  margin-right: auto;
-  display: inline-flex;
+.site-nav-left {
+  display: flex;
   align-items: center;
-  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
-  color: #241d10;
-  border-radius: 999px;
-  padding: 0.4rem 0.9rem;
-  font-size: 0.8rem;
-  font-weight: 700;
+  flex-wrap: wrap;
+  gap: 1.1rem;
+}
+
+.site-wordmark {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.site-nav-link {
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
 }
 
-.battle-header-btn:hover {
-  filter: brightness(1.05);
+.site-nav-link:hover {
+  color: var(--gold-bright);
 }
 
-@media (max-width: 480px) {
-  .battle-header-btn {
-    padding: 0.35rem 0.6rem;
-    font-size: 0.72rem;
-  }
+.site-nav-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem 0.6rem;
 }
 
 .lang-switch {

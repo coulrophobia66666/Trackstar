@@ -30,6 +30,8 @@ const I18N = {
     registerBtn: "Konto erstellen",
     forgotPasswordLink: "Passwort vergessen?",
     backToLoginLink: "Zurück zum Login",
+    goToRegisterLink: "Noch kein Konto? Registrieren",
+    goToLoginLink: "Schon ein Konto? Login",
     resetRequestHeading: "Passwort zurücksetzen",
     resetRequestHint: "Gib deine E-Mail ein, wir schicken dir einen Link zum Zurücksetzen.",
     resetRequestBtn: "Link anfordern",
@@ -79,6 +81,28 @@ const I18N = {
     genrePhonk: "Phonk",
     genreCountry: "Country",
     analyzeBtn: "Analyse starten",
+    dropzoneTitle: "Track hierher ziehen",
+    dropzoneSub: "oder Datei wählen",
+    dropzoneFormats: "MP3, WAV, M4A, FLAC · max. 100 MB",
+    detailsToggleShow: "Titel, Text & Genre (optional)",
+    detailsToggleHide: "Details einklappen",
+    sampleTrackBtn: "Mit Beispiel-Track testen",
+    trustBadgeLocal: "Datei bleibt im Browser",
+    trustBadgeNoAccount: "Kein Konto für den Kurzcheck",
+    trustBadgeFast: "Ergebnis in unter 60 Sekunden",
+    sampleTrackTitle: "Natriumlicht (Beispiel)",
+    unlockDemoNotice: "Das ist nur ein Beispiel – lad deinen eigenen Track hoch, um die Tiefenanalyse zu nutzen.",
+    howItWorksHeading: "So läuft der Check",
+    howItWorksStep1Title: "Track fallen lassen",
+    howItWorksStep1Desc: "Kein Account. Kein Upload auf unsere Server – die Messung läuft lokal.",
+    howItWorksStep2Title: "Kurzcheck in einer Minute",
+    howItWorksStep2Desc: "Score, Sterne, und das eine größte Problem – klar formuliert.",
+    howItWorksStep3Title: "Reparatur, wenn du willst",
+    howItWorksStep3Desc: "Tiefenanalyse mit Korrektur, Frequenzkurve und Einreich-Plan. Optional.",
+    battleTeaserBadge: "Live",
+    battleTeaserTitle: "Live: Battle-Rap-Contest · 50 €",
+    battleTeaserDesc: "32 Plätze, 5 Wochen. Einschreibung offen – Konto ist Pflicht zum Mitmachen.",
+    battleTeaserLink: "Zum Contest",
     albumHeading: "Album-Check",
     albumHint: "Mehrere Tracks auf einmal prüfen (Kurz-Check: Klangqualität, Lautheit, Frequenzbalance). Teil des Pro-Plans – jeder Track zählt als ein Check von deinem Monats-Kontingent.",
     albumFilesLabel: "Tracks auswählen",
@@ -99,6 +123,9 @@ const I18N = {
     planPriceUsdApprox: "ca. {amount}",
     premiumHeading: "Die Tiefenanalyse",
     exportPdfBtn: "Als PDF exportieren",
+    tabFacts: "Fakten",
+    tabImprove: "Verbessern",
+    tabAi: "KI & Einreichen",
     zoneFacts: "Die Fakten — objektiv gemessen",
     freqBlockHeading: "Frequenzbalance",
     freqBlockHint: "Anteil der Energie je Frequenzband. Grün = im Referenzbereich, Gelb/Rot = spürbar drüber oder drunter.",
@@ -420,6 +447,8 @@ const I18N = {
     menuBattle: "Battle-Rap-Contest",
     menuTerms: "Nutzungsbedingungen",
     menuPrivacy: "Datenschutzrichtlinie",
+    navPricing: "Preise",
+    navContest: "Contest",
     ratingModalHeadingGeneric: "Wie zufrieden bist du mit Overhertz?",
     ratingModalHintGeneric: "Kurzes Feedback oder ein Fehler, der dir aufgefallen ist – hilft uns direkt weiter.",
     whatsNewHeading: "Was ist neu bei Overhertz",
@@ -482,6 +511,8 @@ const I18N = {
     registerBtn: "Create account",
     forgotPasswordLink: "Forgot password?",
     backToLoginLink: "Back to login",
+    goToRegisterLink: "No account yet? Register",
+    goToLoginLink: "Already have an account? Log in",
     resetRequestHeading: "Reset password",
     resetRequestHint: "Enter your email and we'll send you a reset link.",
     resetRequestBtn: "Request link",
@@ -531,6 +562,28 @@ const I18N = {
     genrePhonk: "Phonk",
     genreCountry: "Country",
     analyzeBtn: "Start analysis",
+    dropzoneTitle: "Drop your track here",
+    dropzoneSub: "or choose a file",
+    dropzoneFormats: "MP3, WAV, M4A, FLAC · 100 MB max",
+    detailsToggleShow: "Title, lyrics & genre (optional)",
+    detailsToggleHide: "Collapse details",
+    sampleTrackBtn: "Try with a sample track",
+    trustBadgeLocal: "File stays in your browser",
+    trustBadgeNoAccount: "No account for the quick check",
+    trustBadgeFast: "Result in under 60 seconds",
+    sampleTrackTitle: "Natriumlicht (sample)",
+    unlockDemoNotice: "This is just a sample – upload your own track to use the full analysis.",
+    howItWorksHeading: "How the check works",
+    howItWorksStep1Title: "Drop your track",
+    howItWorksStep1Desc: "No account. No upload to our servers – the measurement runs locally.",
+    howItWorksStep2Title: "Quick check in a minute",
+    howItWorksStep2Desc: "Score, stars, and the one biggest problem – clearly stated.",
+    howItWorksStep3Title: "Fix it, if you want",
+    howItWorksStep3Desc: "Deep analysis with correction, frequency curve and a submission plan. Optional.",
+    battleTeaserBadge: "Live",
+    battleTeaserTitle: "Live: Battle-Rap Contest · €50",
+    battleTeaserDesc: "32 spots, 5 weeks. Registration open – an account is required to join.",
+    battleTeaserLink: "Go to the contest",
     albumHeading: "Album check",
     albumHint: "Check multiple tracks at once (quick check: sound quality, loudness, frequency balance). Part of the Pro plan – each track counts as one check from your monthly quota.",
     albumFilesLabel: "Select tracks",
@@ -551,6 +604,9 @@ const I18N = {
     planPriceUsdApprox: "approx. {amount}",
     premiumHeading: "The in-depth analysis",
     exportPdfBtn: "Export as PDF",
+    tabFacts: "Facts",
+    tabImprove: "Improve",
+    tabAi: "AI & submit",
     zoneFacts: "The facts — objectively measured",
     freqBlockHeading: "Frequency balance",
     freqBlockHint: "Share of energy per frequency band. Green = within reference range, yellow/red = noticeably above or below.",
@@ -872,6 +928,8 @@ const I18N = {
     menuBattle: "Battle-Rap Contest",
     menuTerms: "Terms of use",
     menuPrivacy: "Privacy policy",
+    navPricing: "Pricing",
+    navContest: "Contest",
     ratingModalHeadingGeneric: "How happy are you with Overhertz?",
     ratingModalHintGeneric: "Quick feedback or a bug you noticed – helps us a lot.",
     whatsNewHeading: "What's new on Overhertz",
@@ -2915,8 +2973,15 @@ function toggleAuthCard(forceOpen) {
 // Login/Registrieren stehen direkt im Header (wie DE/EN), damit neue Besucher sie sofort sehen -
 // verschwinden, sobald ein Konto eingeloggt ist (dann gibt's nichts mehr einzuloggen/anzulegen).
 const authHeaderBtns = document.getElementById("auth-header-btns");
-document.getElementById("header-login-btn")?.addEventListener("click", () => toggleAuthCard(true));
-document.getElementById("header-register-btn")?.addEventListener("click", () => toggleAuthCard(true));
+document.getElementById("header-login-btn")?.addEventListener("click", () => {
+  showAuthForm(loginForm);
+  toggleAuthCard(true);
+});
+document.getElementById("header-register-btn")?.addEventListener("click", () => {
+  showAuthForm(registerForm);
+  toggleAuthCard(true);
+});
+document.getElementById("nav-pricing-btn")?.addEventListener("click", () => openPricing());
 
 // Konto-Infos stecken hinter einem Zahnrad-Symbol statt direkt im Header zu stehen - raeumt die
 // Seite fuer eingeloggte Nutzer auf.
@@ -3298,6 +3363,8 @@ if (forgotPasswordLink) {
 if (backToLoginLink) {
   backToLoginLink.addEventListener("click", () => showAuthForm(loginForm));
 }
+document.getElementById("go-to-register-link")?.addEventListener("click", () => showAuthForm(registerForm));
+document.getElementById("go-to-login-link")?.addEventListener("click", () => showAuthForm(loginForm));
 
 if (requestResetForm) {
   requestResetForm.addEventListener("submit", async (e) => {
@@ -3445,6 +3512,100 @@ trackGenreSelect.addEventListener("change", () => {
   }
 });
 
+/* ---------- Dropzone, einklappbare Details, Beispiel-Track ---------- */
+
+const dropzoneEl = document.getElementById("dropzone");
+const audioFileInput = document.getElementById("audio-file");
+const dropzoneFilenameEl = document.getElementById("dropzone-filename");
+if (dropzoneEl && audioFileInput) {
+  audioFileInput.addEventListener("change", () => {
+    const file = audioFileInput.files[0];
+    if (file && dropzoneFilenameEl) {
+      dropzoneFilenameEl.textContent = file.name;
+      dropzoneFilenameEl.hidden = false;
+    }
+  });
+  ["dragover", "dragenter"].forEach((evt) =>
+    dropzoneEl.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzoneEl.classList.add("dragover");
+    })
+  );
+  ["dragleave", "dragend", "drop"].forEach((evt) =>
+    dropzoneEl.addEventListener(evt, () => dropzoneEl.classList.remove("dragover"))
+  );
+  dropzoneEl.addEventListener("drop", (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    audioFileInput.files = dataTransfer.files;
+    audioFileInput.dispatchEvent(new Event("change"));
+  });
+}
+
+const detailsToggleBtn = document.getElementById("details-toggle-btn");
+const detailsFieldsEl = document.getElementById("details-fields");
+function setDetailsExpanded(expanded) {
+  if (!detailsFieldsEl || !detailsToggleBtn) return;
+  detailsFieldsEl.hidden = !expanded;
+  detailsToggleBtn.textContent = t(expanded ? "detailsToggleHide" : "detailsToggleShow");
+}
+detailsToggleBtn?.addEventListener("click", () => setDetailsExpanded(detailsFieldsEl.hidden));
+
+// Simulierte Beispiel-Analyse - keine echte Datei/kein Web-Audio-Decode, nutzt renderAnalysis()
+// direkt mit fest hinterlegten, plausiblen Messwerten, nur um zu zeigen, wie ein Ergebnis
+// aussieht. currentAnalysisSnapshot.isDemo sorgt dafuer, dass der Freischalten-Button hier keinen
+// echten Credit verbraucht (siehe unlockBtn-Handler).
+document.getElementById("sample-track-btn")?.addEventListener("click", () => {
+  const demoAudioMetrics = {
+    duration: 208,
+    sampleRate: 44100,
+    peak: 0.98,
+    rms: 0.18,
+    clippingRatio: 0,
+    loudnessDb: -13.5,
+    crestFactorDb: 17.5,
+    truePeakDb: -0.6,
+    phaseCorrelation: 0.7,
+    bandPercents: [3, 30, 22, 14, 10, 7, 14],
+    framesUsed: 200,
+    introSilenceMs: 400,
+    outroEndsAbruptly: false,
+    estimatedBpm: 92,
+    estimatedGenre: "hiphop",
+    estimatedGenreLowConfidence: false,
+  };
+  renderAnalysis(
+    {
+      title: t("sampleTrackTitle"),
+      lyricsRaw: "",
+      audioMetrics: demoAudioMetrics,
+      genre: "hiphop",
+      fileInfo: { ext: "mp3", isLossless: false, bitDepth: null },
+    },
+    { unlockedPremium: false }
+  );
+  currentAnalysisSnapshot.isDemo = true;
+  freeResultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+/* ---------- Tiefenanalyse: 3 Tabs statt Scroll-Landschaft ---------- */
+
+const PREMIUM_TAB_NAMES = ["facts", "improve", "ai"];
+function switchPremiumTab(tabName) {
+  PREMIUM_TAB_NAMES.forEach((name) => {
+    const panel = document.getElementById(`premium-tab-${name}`);
+    if (panel) panel.hidden = name !== tabName;
+    const btn = document.querySelector(`.premium-tab-btn[data-tab="${name}"]`);
+    if (btn) btn.setAttribute("aria-selected", String(name === tabName));
+  });
+}
+document.querySelectorAll(".premium-tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => switchPremiumTab(btn.dataset.tab));
+});
+
 // Perzentil-Einordnung (unteres Viertel / mittlerer Bereich / oberes Viertel) im Vergleich zu
 // anderen bereits geprueften Tracks desselben Genres - dieselben genre_stats-Daten wie die
 // oeffentlichen /check/:slug-Seiten, hier direkt im Ergebnis statt auf einer separaten Seite.
@@ -3567,6 +3728,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { u
   if (refFileInputEl) refFileInputEl.value = "";
 
   premiumResultsEl.hidden = !unlockedPremium;
+  switchPremiumTab("facts");
 
   renderMetersInto(document.getElementById("meters"), scores, audioMetrics, lyrics, profile);
 
@@ -3797,6 +3959,10 @@ async function saveCheckResult(kiResult) {
 
 unlockBtn.addEventListener("click", async () => {
   if (!currentAnalysisSnapshot) return;
+  if (currentAnalysisSnapshot.isDemo) {
+    openPricing(t("unlockDemoNotice"));
+    return;
+  }
   reportFunnelEvent("unlock_clicked");
   if (!currentUser) {
     toggleAuthCard(true);
@@ -3924,6 +4090,13 @@ form.addEventListener("submit", async (e) => {
   const fileInput = document.getElementById("audio-file");
   const file = fileInput.files[0];
   if (!file) return;
+
+  const trackTitleInput = document.getElementById("track-title");
+  if (detailsFieldsEl && detailsFieldsEl.hidden && !trackTitleInput.value.trim()) {
+    setDetailsExpanded(true);
+    trackTitleInput.focus();
+    return;
+  }
 
   if (file.size > MAX_UPLOAD_BYTES) {
     statusLine.textContent = t("fileTooLarge", { size: Math.round(file.size / 1024 / 1024) });

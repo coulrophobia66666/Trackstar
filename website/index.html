@@ -35,31 +35,37 @@
   <canvas id="bg-waves" class="bg-waves" aria-hidden="true"></canvas>
   <div class="page">
     <div class="header-top-row">
-      <a href="battle.html" id="battle-header-btn" class="battle-header-btn" data-i18n="menuBattle">Battle-Rap-Contest</a>
-      <div class="lang-switch" id="lang-switch">
-        <button type="button" data-lang="de" class="lang-btn" aria-pressed="true">DE</button>
-        <button type="button" data-lang="en" class="lang-btn" aria-pressed="false">EN</button>
+      <div class="site-nav-left">
+        <span class="site-wordmark">Overhertz</span>
+        <button type="button" id="nav-pricing-btn" class="site-nav-link" data-i18n="navPricing">Preise</button>
+        <a href="battle.html" id="battle-header-btn" class="site-nav-link" data-i18n="navContest">Contest</a>
       </div>
-      <div class="auth-header-btns" id="auth-header-btns">
-        <button type="button" id="header-login-btn" class="lang-btn" data-i18n="loginHeading">Login</button>
-        <button type="button" id="header-register-btn" class="lang-btn" data-i18n="registerHeading">Registrieren</button>
-      </div>
-      <div class="account-menu">
-        <button type="button" id="account-menu-toggle" class="account-menu-toggle" aria-haspopup="true" aria-expanded="false" data-i18n-attr="aria-label:accountMenuLabel" aria-label="Konto">
-          <svg width="19" height="19" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" stroke="currentColor" stroke-width="1.3"/>
-            <path d="M16.2 12.4a1.4 1.4 0 0 0 .28 1.55l.05.05a1.7 1.7 0 1 1-2.4 2.4l-.05-.05a1.4 1.4 0 0 0-1.55-.28 1.4 1.4 0 0 0-.85 1.28v.15a1.7 1.7 0 0 1-3.4 0v-.08a1.4 1.4 0 0 0-.92-1.28 1.4 1.4 0 0 0-1.55.28l-.05.05a1.7 1.7 0 1 1-2.4-2.4l.05-.05a1.4 1.4 0 0 0 .28-1.55 1.4 1.4 0 0 0-1.28-.85h-.15a1.7 1.7 0 0 1 0-3.4h.08a1.4 1.4 0 0 0 1.28-.92 1.4 1.4 0 0 0-.28-1.55l-.05-.05a1.7 1.7 0 1 1 2.4-2.4l.05.05a1.4 1.4 0 0 0 1.55.28h.07a1.4 1.4 0 0 0 .85-1.28v-.15a1.7 1.7 0 0 1 3.4 0v.08a1.4 1.4 0 0 0 .85 1.28h.07a1.4 1.4 0 0 0 1.55-.28l.05-.05a1.7 1.7 0 1 1 2.4 2.4l-.05.05a1.4 1.4 0 0 0-.28 1.55v.07a1.4 1.4 0 0 0 1.28.85h.15a1.7 1.7 0 0 1 0 3.4h-.08a1.4 1.4 0 0 0-1.28.85Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <div class="account-menu-panel" id="account-menu-panel" hidden>
-          <div class="account-bar" id="account-bar"></div>
-          <div class="menu-meta-links">
-            <button type="button" id="invite-friends-btn" class="menu-meta-link" data-i18n="menuInviteFriends">Freunde einladen</button>
-            <button type="button" id="whats-new-btn" class="menu-meta-link" data-i18n="menuWhatsNew">Was ist neu?</button>
-            <button type="button" id="feedback-menu-btn" class="menu-meta-link" data-i18n="menuFeedback">Rückmeldung</button>
-            <a href="battle.html" class="menu-meta-link" data-i18n="menuBattle">Battle-Rap-Contest</a>
-            <a href="agb.html" class="menu-meta-link" data-i18n="menuTerms">Nutzungsbedingungen</a>
-            <a href="datenschutz.html" class="menu-meta-link" data-i18n="menuPrivacy">Datenschutzrichtlinie</a>
+      <div class="site-nav-right">
+        <div class="lang-switch" id="lang-switch">
+          <button type="button" data-lang="de" class="lang-btn" aria-pressed="true">DE</button>
+          <button type="button" data-lang="en" class="lang-btn" aria-pressed="false">EN</button>
+        </div>
+        <div class="auth-header-btns" id="auth-header-btns">
+          <button type="button" id="header-login-btn" class="lang-btn" data-i18n="loginHeading">Login</button>
+          <button type="button" id="header-register-btn" class="lang-btn" data-i18n="registerHeading">Registrieren</button>
+        </div>
+        <div class="account-menu">
+          <button type="button" id="account-menu-toggle" class="account-menu-toggle" aria-haspopup="true" aria-expanded="false" data-i18n-attr="aria-label:accountMenuLabel" aria-label="Konto">
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M16.2 12.4a1.4 1.4 0 0 0 .28 1.55l.05.05a1.7 1.7 0 1 1-2.4 2.4l-.05-.05a1.4 1.4 0 0 0-1.55-.28 1.4 1.4 0 0 0-.85 1.28v.15a1.7 1.7 0 0 1-3.4 0v-.08a1.4 1.4 0 0 0-.92-1.28 1.4 1.4 0 0 0-1.55.28l-.05.05a1.7 1.7 0 1 1-2.4-2.4l.05-.05a1.4 1.4 0 0 0 .28-1.55 1.4 1.4 0 0 0-1.28-.85h-.15a1.7 1.7 0 0 1 0-3.4h.08a1.4 1.4 0 0 0 1.28-.92 1.4 1.4 0 0 0-.28-1.55l-.05-.05a1.7 1.7 0 1 1 2.4-2.4l.05.05a1.4 1.4 0 0 0 1.55.28h.07a1.4 1.4 0 0 0 .85-1.28v-.15a1.7 1.7 0 0 1 3.4 0v.08a1.4 1.4 0 0 0 .85 1.28h.07a1.4 1.4 0 0 0 1.55-.28l.05-.05a1.7 1.7 0 1 1 2.4 2.4l-.05.05a1.4 1.4 0 0 0-.28 1.55v.07a1.4 1.4 0 0 0 1.28.85h.15a1.7 1.7 0 0 1 0 3.4h-.08a1.4 1.4 0 0 0-1.28.85Z" stroke="currentColor" stroke-width="1.15" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="account-menu-panel" id="account-menu-panel" hidden>
+            <div class="account-bar" id="account-bar"></div>
+            <div class="menu-meta-links">
+              <button type="button" id="invite-friends-btn" class="menu-meta-link" data-i18n="menuInviteFriends">Freunde einladen</button>
+              <button type="button" id="whats-new-btn" class="menu-meta-link" data-i18n="menuWhatsNew">Was ist neu?</button>
+              <button type="button" id="feedback-menu-btn" class="menu-meta-link" data-i18n="menuFeedback">Rückmeldung</button>
+              <a href="battle.html" class="menu-meta-link" data-i18n="menuBattle">Battle-Rap-Contest</a>
+              <a href="agb.html" class="menu-meta-link" data-i18n="menuTerms">Nutzungsbedingungen</a>
+              <a href="datenschutz.html" class="menu-meta-link" data-i18n="menuPrivacy">Datenschutzrichtlinie</a>
+            </div>
           </div>
         </div>
       </div>
@@ -101,6 +107,7 @@
           </div>
           <button type="submit" class="account-btn account-btn-primary" data-i18n="loginBtn">Einloggen</button>
           <button type="button" id="forgot-password-link" class="link-btn" data-i18n="forgotPasswordLink">Passwort vergessen?</button>
+          <button type="button" id="go-to-register-link" class="link-btn" data-i18n="goToRegisterLink">Noch kein Konto? Registrieren</button>
         </form>
         <form id="request-reset-form" class="auth-form" hidden>
           <h3 data-i18n="resetRequestHeading">Passwort zurücksetzen</h3>
@@ -126,7 +133,7 @@
           </div>
           <button type="submit" class="account-btn account-btn-primary" data-i18n="resetPasswordBtn">Passwort setzen</button>
         </form>
-        <form id="register-form" class="auth-form">
+        <form id="register-form" class="auth-form" hidden>
           <h3 data-i18n="registerHeading">Registrieren</h3>
           <div class="field">
             <label for="register-email" data-i18n="emailLabel">E-Mail</label>
@@ -143,6 +150,7 @@
             </div>
           </div>
           <button type="submit" class="account-btn account-btn-primary" data-i18n="registerBtn">Konto erstellen</button>
+          <button type="button" id="go-to-login-link" class="link-btn" data-i18n="goToLoginLink">Schon ein Konto? Login</button>
         </form>
       </div>
       <p class="status-line" id="auth-status" role="status" aria-live="polite"></p>
@@ -227,62 +235,110 @@
     <main>
       <section class="card shine-sweep" id="upload-card">
         <form id="analyze-form">
-          <div class="field">
-            <label for="audio-file">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 12.5a1.8 1.8 0 1 1-1.8-1.8" stroke="currentColor" stroke-width="1.3"/><path d="M6 12.5V3.8L12.5 2v8.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 10.2a1.8 1.8 0 1 1-1.8 1.8" stroke="currentColor" stroke-width="1.3"/></svg>
-              <span data-i18n="trackLabel">Dein Track</span>
-            </label>
-            <input type="file" id="audio-file" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus,.wma" required />
+          <div class="dropzone" id="dropzone">
+            <svg class="dropzone-icon" width="26" height="26" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 13.5V3.5M10 3.5l-4 4M10 3.5l4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.5 14.5v1.2a1.3 1.3 0 0 0 1.3 1.3h10.4a1.3 1.3 0 0 0 1.3-1.3v-1.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <p class="dropzone-title" data-i18n="dropzoneTitle">Track hierher ziehen</p>
+            <p class="dropzone-sub" data-i18n="dropzoneSub">oder Datei wählen</p>
+            <p class="dropzone-formats" data-i18n="dropzoneFormats">MP3, WAV, M4A, FLAC · max. 100 MB</p>
+            <p class="dropzone-filename" id="dropzone-filename" hidden></p>
+            <input type="file" id="audio-file" class="dropzone-input" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus,.wma" required data-i18n-attr="aria-label:trackLabel" aria-label="Dein Track" />
           </div>
 
-          <div class="field">
-            <label for="track-title">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10.5 2.5l3 3-8 8-3.4.6.6-3.4 7.8-8.2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-              <span data-i18n="titleLabel">Songtitel</span>
-            </label>
-            <input type="text" id="track-title" placeholder="z. B. Natriumlicht" data-i18n-placeholder="titlePlaceholder" required />
-          </div>
+          <button type="button" id="details-toggle-btn" class="details-toggle-btn" data-i18n="detailsToggleShow">Titel, Text &amp; Genre (optional)</button>
 
-          <div class="field">
-            <label for="track-lyrics">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 2.5h6l2.5 2.5v8.5H4V2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6 8h4M6 10.5h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
-              <span data-i18n="lyricsLabel">Songtext</span> <span class="optional" data-i18n="lyricsOptional">(optional – für den Hook-Check)</span>
-            </label>
-            <textarea id="track-lyrics" rows="5" placeholder="Songtext eintragen für präzisen Vergleich beim Vocals-Check." data-i18n-placeholder="lyricsPlaceholder"></textarea>
-          </div>
+          <div class="details-fields" id="details-fields" hidden>
+            <div class="field">
+              <label for="track-title">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10.5 2.5l3 3-8 8-3.4.6.6-3.4 7.8-8.2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+                <span data-i18n="titleLabel">Songtitel</span>
+              </label>
+              <input type="text" id="track-title" placeholder="z. B. Natriumlicht" data-i18n-placeholder="titlePlaceholder" required />
+            </div>
 
-          <div class="field">
-            <label for="track-genre">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 12.5V4l7-1.5v8" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="4" cy="12.5" r="1.7" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="10.5" r="1.7" stroke="currentColor" stroke-width="1.3"/></svg>
-              <span data-i18n="genreLabel">Genre</span>
-            </label>
-            <select id="track-genre">
-              <option value="" data-i18n="genreGeneral">Allgemein / kein Genre</option>
-              <option value="hiphop" data-i18n="genreHiphop">Hip-Hop / Rap</option>
-              <option value="deutschrap" data-i18n="genreDeutschrap">Deutschrap</option>
-              <option value="trap" data-i18n="genreTrap">Trap</option>
-              <option value="drill" data-i18n="genreDrill">Drill</option>
-              <option value="pop" data-i18n="genrePop">Pop</option>
-              <option value="rnb" data-i18n="genreRnb">R&amp;B</option>
-              <option value="edm" data-i18n="genreEdm">Electronic / EDM</option>
-              <option value="house" data-i18n="genreHouse">House</option>
-              <option value="phonk" data-i18n="genrePhonk">Phonk</option>
-              <option value="techno" data-i18n="genreTechno">Techno</option>
-              <option value="rock" data-i18n="genreRock">Rock</option>
-              <option value="metal" data-i18n="genreMetal">Metal</option>
-              <option value="acoustic" data-i18n="genreAcoustic">Akustik / Singer-Songwriter</option>
-              <option value="country" data-i18n="genreCountry">Country</option>
-              <option value="reggae" data-i18n="genreReggae">Reggae</option>
-              <option value="latin" data-i18n="genreLatin">Latin</option>
-              <option value="jazz" data-i18n="genreJazz">Jazz</option>
-              <option value="klassik" data-i18n="genreKlassik">Klassik</option>
-              <option value="volksmusik" data-i18n="genreVolksmusik">Volksmusik</option>
-            </select>
+            <div class="field">
+              <label for="track-lyrics">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 2.5h6l2.5 2.5v8.5H4V2.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6 8h4M6 10.5h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+                <span data-i18n="lyricsLabel">Songtext</span> <span class="optional" data-i18n="lyricsOptional">(optional – für den Hook-Check)</span>
+              </label>
+              <textarea id="track-lyrics" rows="5" placeholder="Songtext eintragen für präzisen Vergleich beim Vocals-Check." data-i18n-placeholder="lyricsPlaceholder"></textarea>
+            </div>
+
+            <div class="field">
+              <label for="track-genre">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 12.5V4l7-1.5v8" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="4" cy="12.5" r="1.7" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="10.5" r="1.7" stroke="currentColor" stroke-width="1.3"/></svg>
+                <span data-i18n="genreLabel">Genre</span>
+              </label>
+              <select id="track-genre">
+                <option value="" data-i18n="genreGeneral">Allgemein / kein Genre</option>
+                <option value="hiphop" data-i18n="genreHiphop">Hip-Hop / Rap</option>
+                <option value="deutschrap" data-i18n="genreDeutschrap">Deutschrap</option>
+                <option value="trap" data-i18n="genreTrap">Trap</option>
+                <option value="drill" data-i18n="genreDrill">Drill</option>
+                <option value="pop" data-i18n="genrePop">Pop</option>
+                <option value="rnb" data-i18n="genreRnb">R&amp;B</option>
+                <option value="edm" data-i18n="genreEdm">Electronic / EDM</option>
+                <option value="house" data-i18n="genreHouse">House</option>
+                <option value="phonk" data-i18n="genrePhonk">Phonk</option>
+                <option value="techno" data-i18n="genreTechno">Techno</option>
+                <option value="rock" data-i18n="genreRock">Rock</option>
+                <option value="metal" data-i18n="genreMetal">Metal</option>
+                <option value="acoustic" data-i18n="genreAcoustic">Akustik / Singer-Songwriter</option>
+                <option value="country" data-i18n="genreCountry">Country</option>
+                <option value="reggae" data-i18n="genreReggae">Reggae</option>
+                <option value="latin" data-i18n="genreLatin">Latin</option>
+                <option value="jazz" data-i18n="genreJazz">Jazz</option>
+                <option value="klassik" data-i18n="genreKlassik">Klassik</option>
+                <option value="volksmusik" data-i18n="genreVolksmusik">Volksmusik</option>
+              </select>
+            </div>
           </div>
 
           <button type="submit" id="analyze-btn" data-i18n="analyzeBtn">Analyse starten</button>
+          <button type="button" id="sample-track-btn" class="sample-track-btn" data-i18n="sampleTrackBtn">Mit Beispiel-Track testen</button>
           <p class="status-line" id="status-line" role="status" aria-live="polite"></p>
         </form>
+      </section>
+
+      <p class="trust-badges">
+        <span data-i18n="trustBadgeLocal">Datei bleibt im Browser</span>
+        <span data-i18n="trustBadgeNoAccount">Kein Konto für den Kurzcheck</span>
+        <span data-i18n="trustBadgeFast">Ergebnis in unter 60 Sekunden</span>
+      </p>
+
+      <h2 class="how-it-works-heading" data-i18n="howItWorksHeading">So läuft der Check</h2>
+      <div class="how-it-works">
+        <div class="how-it-works-step">
+          <span class="how-it-works-num">1</span>
+          <h3 data-i18n="howItWorksStep1Title">Track fallen lassen</h3>
+          <p data-i18n="howItWorksStep1Desc">Kein Account. Kein Upload auf unsere Server – die Messung läuft lokal.</p>
+        </div>
+        <div class="how-it-works-step">
+          <span class="how-it-works-num">2</span>
+          <h3 data-i18n="howItWorksStep2Title">Kurzcheck in einer Minute</h3>
+          <p data-i18n="howItWorksStep2Desc">Score, Sterne, und das eine größte Problem – klar formuliert.</p>
+        </div>
+        <div class="how-it-works-step">
+          <span class="how-it-works-num">3</span>
+          <h3 data-i18n="howItWorksStep3Title">Reparatur, wenn du willst</h3>
+          <p data-i18n="howItWorksStep3Desc">Tiefenanalyse mit Korrektur, Frequenzkurve und Einreich-Plan. Optional.</p>
+        </div>
+      </div>
+
+      <section class="card battle-teaser-card">
+        <span class="battle-teaser-badge" data-i18n="battleTeaserBadge">LIVE</span>
+        <p class="battle-teaser-title" data-i18n="battleTeaserTitle">Live: Battle-Rap-Contest · 50 €</p>
+        <p class="battle-teaser-desc" data-i18n="battleTeaserDesc">32 Plätze, 5 Wochen. Einschreibung offen – Konto ist Pflicht zum Mitmachen.</p>
+        <a href="battle.html" class="battle-teaser-link" data-i18n="battleTeaserLink">Zum Contest</a>
+      </section>
+
+      <section class="card unlock-card" id="premium-teaser">
+        <svg class="unlock-mark" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3.5" y="7.5" width="9" height="6" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5" stroke="currentColor" stroke-width="1.3"/></svg>
+        <div class="unlock-title" data-i18n="premiumTeaserTitle">Die Tiefenanalyse: das steckt drin</div>
+        <p class="unlock-desc" data-i18n="premiumTeaserDesc">
+          Frequenzkurve im Detail, alle Verbesserungstipps zu Sound, Hook &amp; Songtext, KI-Einordnung, Titel-Ideen und wohin du den Track am besten einreichst.
+        </p>
+        <button type="button" id="premium-teaser-btn" class="unlock-cta-btn" data-i18n="premiumTeaserBtn">Preise ansehen</button>
+        <p class="unlock-note" data-i18n="unlockNote">5 Credits für 7&nbsp;€ oder Pro-Abo ab 9,50&nbsp;€/Monat</p>
       </section>
 
       <section class="card album-card" id="album-card">
@@ -298,16 +354,6 @@
         <button type="button" id="album-analyze-btn" class="account-btn account-btn-primary" data-i18n="albumAnalyzeBtn">Album analysieren</button>
         <p class="status-line" id="album-status" role="status" aria-live="polite"></p>
         <div class="album-results" id="album-results"></div>
-      </section>
-
-      <section class="card unlock-card" id="premium-teaser">
-        <svg class="unlock-mark" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3.5" y="7.5" width="9" height="6" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5" stroke="currentColor" stroke-width="1.3"/></svg>
-        <div class="unlock-title" data-i18n="premiumTeaserTitle">Die Tiefenanalyse: das steckt drin</div>
-        <p class="unlock-desc" data-i18n="premiumTeaserDesc">
-          Frequenzkurve im Detail, alle Verbesserungstipps zu Sound, Hook &amp; Songtext, KI-Einordnung, Titel-Ideen und wohin du den Track am besten einreichst.
-        </p>
-        <button type="button" id="premium-teaser-btn" class="unlock-cta-btn" data-i18n="premiumTeaserBtn">Preise ansehen</button>
-        <p class="unlock-note" data-i18n="unlockNote">5 Credits für 7&nbsp;€ oder Pro-Abo ab 9,50&nbsp;€/Monat</p>
       </section>
 
       <section class="card free-card" id="free-results" hidden>
@@ -351,6 +397,13 @@
         </h2>
         <p class="streak-note" id="streak-note"></p>
 
+        <div class="premium-tabs" id="premium-tabs" role="tablist">
+          <button type="button" class="premium-tab-btn" data-tab="facts" role="tab" aria-selected="true" data-i18n="tabFacts">Fakten</button>
+          <button type="button" class="premium-tab-btn" data-tab="improve" role="tab" aria-selected="false" data-i18n="tabImprove">Verbessern</button>
+          <button type="button" class="premium-tab-btn" data-tab="ai" role="tab" aria-selected="false" data-i18n="tabAi">KI &amp; Einreichen</button>
+        </div>
+
+        <div class="premium-tab-panel" id="premium-tab-facts" role="tabpanel">
         <div class="zone">
           <p class="zone-label zone-label-facts" data-i18n="zoneFacts">Die Fakten — objektiv gemessen</p>
           <p class="detected-genre" id="detected-genre"></p>
@@ -377,7 +430,9 @@
             <ul class="tips" id="format-check-list"></ul>
           </div>
         </div>
+        </div>
 
+        <div class="premium-tab-panel" id="premium-tab-improve" role="tabpanel" hidden>
         <div class="eq-editor" id="eq-editor">
           <h3><span data-i18n="eqHeading">EQ-Editor</span> <span class="pro-badge">Pro</span> <span class="beta-badge">Beta</span></h3>
           <p class="hint" data-i18n="eqIntro">
@@ -495,6 +550,9 @@
           <div id="fazit-block"></div>
         </div>
 
+        </div>
+
+        <div class="premium-tab-panel" id="premium-tab-ai" role="tabpanel" hidden>
         <div class="rewrite-block" id="rewrite-block" hidden>
           <h3 data-i18n="rewriteHeading">KI-Einschätzung</h3>
           <p class="hint" data-i18n="rewriteHint">Läuft automatisch: Einordnung, Titel-Ideen und ein verfeinerter Songtext von der KI – Stil, Sprache und Aussage bleiben erhalten.</p>
@@ -560,6 +618,7 @@
           <h3 data-i18n="submitHeading">Wo einreichen?</h3>
           <p class="hint" id="submit-hint"></p>
           <ul class="submit-list" id="submit-list"></ul>
+        </div>
         </div>
 
         <p class="disclaimer" data-i18n="disclaimer">
