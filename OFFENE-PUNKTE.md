@@ -4,6 +4,47 @@ Stand: 12.08.2026. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ⚠️ NEU (20.08., dritter Durchgang): Alles auf main gemergt, aber Wartungsseite bewusst noch aktiv
+Auf ausdrücklichen Wunsch des Nutzers wurde diesmal **alles gemergt und
+getestet statt am Ende in einem Rutsch**: Preis-Trennung DE/EN, das
+Tiefenanalyse/EQ-Editor-Redesign, der Battle-Contest-Sound-Score und die
+neue **15-Sekunden-Video-Clip-Funktion** im Battle-Contest sind jetzt alle
+auf `main` und damit technisch live deployed.
+
+**Wichtig**: Die Wartungsseite (self-reverting Overlay auf `index.html` und
+`battle.html`, Zeitfenster bis ca. 21.08. 14:13 MESZ) bleibt trotzdem
+absichtlich aktiv – expliziter Nutzerwunsch: *"Alles live schalten,
+Wartungsarbeiten aber erst raus, wenn ich drüber geschaut habe."* Das
+Entfernen des Overlays ist also kein technischer Blocker mehr, sondern
+wartet auf ein Go des Nutzers nach eigener Durchsicht. Läuft ansonsten nach
+Ablauf des Zeitstempels automatisch von selbst wieder normal an.
+
+**Neu: 15-Sekunden-Video-Clip beim Battle-Contest-Teilen** – Teilnehmer
+(oder wer sonst teilen möchte, wie beim bestehenden Bild-Share auch) wählt
+über einen Wellenform-Regler einen 15-Sekunden-Ausschnitt seines Tracks,
+daraus wird ein kurzes Video (Karten-Optik + Audio kombiniert per
+`MediaRecorder`+`canvas.captureStream()`) erzeugt und geteilt – Story/
+Reel-Format statt roher Audiodatei, weil das auf WhatsApp/Instagram/TikTok
+tatsächlich funktioniert. Live-Kartenvorschau erscheint sofort beim Öffnen,
+noch bevor der Track geladen ist. Der "Video-Clip erstellen"-Button
+erscheint nur nach Feature-Detection (`MediaRecorder`/`captureStream` +
+unterstütztes Video-Format) – auf Geräten ohne Unterstützung (v. a.
+ältere/manche iOS-Safari-Versionen) bleibt der bestehende Bild-"Teilen"-
+Button unverändert als Fallback. Dafür nötig: CORS-Fix in
+`handleBattleMedia` im Worker (Audio-Tags brauchten das bisher nicht, ein
+`fetch()`+`decodeAudioData()` zum erneuten Dekodieren des Tracks wurde ohne
+`Access-Control-Allow-Origin` geblockt).
+
+Getestet: Playwright mit echter Audiodatei – Feature-Detection, Karten-
+Vorschau, Wellenform-Drag, tatsächliche Video-Erzeugung (Blob-Größe/-Typ
+geprüft), Teilen-Flow inkl. Download-Fallback (kein `navigator.share` im
+Test-Chromium), sowie Regression von Registrierung/Abstimmung/bestehendem
+Bild-Share.
+
+Weiterhin offen (siehe Abschnitt unten, unverändert): D1-Migration für
+`battle_matchups.score_a`/`score_b` noch nicht in der D1-Console
+ausgeführt.
+
 ## ✅ NEU (20.08., zweiter Durchgang): Tiefenanalyse/EQ-Editor optisches Refresh
 Visuelles Update der Tiefenanalyse (freigeschaltete Detailanalyse) und des
 EQ-Editors, inspiriert von vier geteilten KI-generierten Mockup-Screenshots.
