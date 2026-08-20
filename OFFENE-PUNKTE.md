@@ -4,6 +4,64 @@ Stand: 12.08.2026. Code für alle Features unten ist geschrieben, committed
 und im Browser client-seitig getestet (Playwright, siehe Testprotokoll
 unten).
 
+## ✅ NEU (20.08., zweiter Durchgang): Tiefenanalyse/EQ-Editor optisches Refresh
+Visuelles Update der Tiefenanalyse (freigeschaltete Detailanalyse) und des
+EQ-Editors, inspiriert von vier geteilten KI-generierten Mockup-Screenshots.
+Die Mockups waren bewusst **keine 1:1-Vorlage** – sie widersprachen sich
+teils (3 vs. 5 Tabs), erfanden nicht gemessene Kennzahlen (Tonart/Energy/
+Komplexität) und zeigten eine komplett andere, fiktive Navigation. Nutzer-
+Vorgabe explizit: *"Gucken das es nicht zu überladen wirkt, auf den Bildern
+ist es bisschen zu voll"* – deshalb bewusst schlanker umgesetzt als die
+Bilder zeigen (bestehende 3-Tab-Struktur behalten, keine neue Navigation,
+keine erfundenen Messwerte, kein neues Hook-Panel).
+
+Umgesetzt:
+- **Score-Ring**: `#star-rating` (Sterne-Anzeige) ersetzt durch einen
+  SVG-Fortschrittsring (`scoreRingSvgMarkup()`), nutzt die bestehende
+  `gradeForScore()`-Farblogik. Dieselbe Ring-Funktion liefert auch einen
+  kleinen Akzent-Ring am Hook-Meter (`renderMeter(..., {variant:"ring"})`).
+- **"Größtes Problem"-Callout**: neue Box oben in der Tiefenanalyse, nutzt
+  den bereits vorhandenen `pickTopTip()` (bisher nur für den Free-Tier-
+  Teaser genutzt), mit "Zum Detail"-Button, der zum passenden, hervor-
+  gehobenen Tipp-Eintrag in der Verbessern-Tab springt.
+- **EQ-Editor**: nummerierte Punkte auf der Frequenzkurve für tatsächlich
+  veränderte Bänder (`drawEqCurveOverlay`), eine Preset-Reihe (4 Chips:
+  "Unsere Empfehlung" + 3 feste Presets, ersetzt den alten Einzelbutton –
+  netto weniger statt mehr Buttons), eine schreibgeschützte "Angewendete
+  Änderungen"-Zusammenfassung als Pill-Liste, und ein A/B-Vergleichs-Toggle
+  (Original vs. bearbeitete Version) – technisch als kompletter
+  Graph-Rebuild über das bereits bestehende `startEqPreview()` gelöst
+  (dasselbe Muster wie beim De-Esser-Umschalten während der Wiedergabe),
+  bewusst kein neues Live-Crossfading-Risiko.
+- **Titelideen**: von Bullet-Liste zu Pill-Chips mit Copy-Button
+  umgestellt (gleiches Copy-Muster wie der bestehende
+  "Prompt kopieren"-Button). Songtext-Verbesserung bekommt ebenfalls einen
+  Copy-Button (ein Button für den ganzen Text, keine Pro-Vers-Buttons – die
+  KI-Antwort ist nicht in Verse segmentiert).
+- Genre-Text (`#detected-genre`) NICHT wie ursprünglich geplant in einen
+  Pill-Chip umgewandelt – der tatsächliche Text ist ein ganzer erklärender
+  Satz (inkl. BPM-Schätzhinweis), kein kurzes Label, ein Chip sah damit
+  falsch aus (volle Breite, kein "Chip"-Look). Stattdessen nur die
+  Kursivschrift entfernt, sonst unverändert – bewusste Entscheidung gegen
+  das eigene Ticket, um keinen visuellen Bug zu produzieren.
+
+Getestet: Playwright gegen eine lokal servierte Kopie von `index.html`, in
+11 einzelnen Schritten (nach jedem Feature-Häppchen ein gezielter Test,
+nicht erst am Ende) – Score-Ring, Callout+Sprung-Link, EQ-Kurvenpunkte,
+Presets (inkl. "is-active" korrekt nur bei passendem State, Reset bei
+manueller Regler-Bedienung), Änderungen-Zusammenfassung, A/B-Toggle **mit
+echtem hochgeladenem Audio** (nicht nur der Demo-Track, der keinen
+`lastAudioBuffer` erzeugt) inkl. Play/Toggle/Toggle-zurück/Stop ohne
+Audio-Graph-Fehler, Hook-Ring, Titelideen-Chips + Copy (inkl.
+Zwischenablage-Inhalt verifiziert) + Songtext-Copy (gemockter
+KI-Worker-Response), Genre-Text/Wo-einreichen-Feinschliff. Abschliessend
+zusätzlich: kompletter Album-Upload-Flow (EQ-Editor wird dort pro
+Track-Expand physisch zwischen Slots verschoben, nicht geklont –
+`expandAlbumTrack()`/`collapseOpenAlbumTrack()`) mit 2 Tracks inkl.
+Presets/A-B-Toggle im Album-Kontext, sowie ein deutschsprachiger
+End-to-End-Durchlauf (Sprachumschaltung, alle 3 Tabs, i18n-Texte) – überall
+keine Konsolenfehler.
+
 ## ⚠️ NEU (20.08.): Battle-Contest Sound-Score + Share-Karte – manueller D1-Schritt noch offen
 Wachstums-Feature für den Battle-Rap-Contest: Teilnehmer sehen beim
 Einreichen sofort einen echten **Sound-Score** (0–100) zu ihrem Track statt

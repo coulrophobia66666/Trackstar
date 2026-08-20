@@ -380,7 +380,7 @@
         <div class="hero-tile">
           <div class="confetti-layer" id="confetti-layer" aria-hidden="true"></div>
           <p class="hero-eyebrow" data-i18n="heroEyebrow">Dein Ergebnis</p>
-          <div class="star-rating" id="star-rating"></div>
+          <div class="score-ring" id="score-ring"></div>
           <div class="hero-title" id="hero-title">–</div>
           <p class="hero-desc" id="hero-desc"></p>
           <button type="button" id="share-result-btn" class="share-btn" hidden>
@@ -416,6 +416,12 @@
           <button type="button" id="export-pdf-btn" class="account-btn pdf-export-btn" data-i18n="exportPdfBtn">Als PDF exportieren</button>
         </h2>
         <p class="streak-note" id="streak-note"></p>
+
+        <div class="top-issue-callout" id="top-issue-callout" hidden>
+          <span class="top-issue-label" id="top-issue-label"></span>
+          <p class="top-issue-text" id="top-issue-text"></p>
+          <button type="button" class="link-btn" id="top-issue-jump-btn" data-i18n="topIssueJumpBtn">Zum Detail →</button>
+        </div>
 
         <div class="premium-tabs" id="premium-tabs" role="tablist">
           <button type="button" class="premium-tab-btn" data-tab="facts" role="tab" aria-selected="true" data-i18n="tabFacts">Fakten</button>
@@ -471,6 +477,7 @@
           <div class="eq-editor-body" id="eq-editor-body">
           <div class="eq-player">
             <button type="button" id="eq-play-btn" class="account-btn account-btn-primary eq-play-btn" data-i18n="eqPlayBtn">▶ Vorschau abspielen</button>
+            <button type="button" id="eq-ab-toggle" class="account-btn eq-ab-toggle" aria-pressed="false" data-i18n="eqAbToggleEdited">A/B: Bearbeitet</button>
             <div class="eq-band-wrap">
               <canvas id="eq-band-canvas" class="eq-band-canvas" aria-hidden="true"></canvas>
             </div>
@@ -488,12 +495,19 @@
           </div>
 
           <div class="eq-editor-controls eq-editor-controls-top">
-            <button type="button" id="eq-suggest-btn" class="account-btn" data-i18n="eqSuggestBtn">Vorschlag übernehmen</button>
             <button type="button" id="eq-reset-btn" class="account-btn" data-i18n="eqResetBtn">Zurücksetzen</button>
             <button type="button" id="eq-download-btn" class="account-btn account-btn-primary" data-i18n="eqDownloadBtn">Bearbeitete Version herunterladen</button>
           </div>
 
+          <div class="eq-presets" id="eq-presets">
+            <button type="button" class="eq-preset-chip" data-preset="suggest" data-i18n="eqPresetSuggest">Unsere Empfehlung</button>
+            <button type="button" class="eq-preset-chip" data-preset="vocal-clear" data-i18n="eqPresetVocalClear">Vocal klar</button>
+            <button type="button" class="eq-preset-chip" data-preset="bass-plus" data-i18n="eqPresetBassPlus">Bass+</button>
+            <button type="button" class="eq-preset-chip" data-preset="warm" data-i18n="eqPresetWarm">Wärmer</button>
+          </div>
+
           <div class="eq-sliders" id="eq-sliders"></div>
+          <div class="eq-changes-summary" id="eq-changes-summary" hidden></div>
 
           <div class="eq-deesser">
             <div class="eq-deesser-head">
@@ -596,6 +610,7 @@
             <div class="rewrite-sub">
               <h4 data-i18n="rewriteOutputHeading">Verbesserter Songtext</h4>
               <pre class="rewrite-output" id="rewrite-output"></pre>
+              <button type="button" id="rewrite-output-copy-btn" class="link-btn" data-i18n="genericCopy">Kopieren</button>
             </div>
             <div class="rewrite-sub" id="rewrite-pronunciation-block" hidden>
               <h4 data-i18n="rewritePronunciationHeading">Aussprache-Einschätzung</h4>

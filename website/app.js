@@ -112,6 +112,7 @@ const I18N = {
     shareText: "Mein Track hat auf Overhertz {stars}/5 Sterne erreicht – „{title}“ ({score}/100). Check deinen Track auch kostenlos:",
     shareCopied: "Link kopiert!",
     genericCopied: "Kopiert!",
+    genericCopy: "Kopieren",
     shareCardCta: "Kostenlosen Kurzcheck auf overhertz.app",
     unlockTitle: "Willst du wissen, woran's genau liegt – und wie du's behebst?",
     unlockDesc: "Frequenzkurve im Detail, alle Verbesserungstipps und wohin du den Track am besten einreichst.",
@@ -178,6 +179,14 @@ const I18N = {
     eqPlayBtn: "▶ Vorschau abspielen",
     eqPlayBtnStop: "⏸ Stop",
     eqDownloadBtn: "Bearbeitete Version herunterladen",
+    eqPresetSuggest: "Unsere Empfehlung",
+    eqPresetVocalClear: "Vocal klar",
+    eqPresetBassPlus: "Bass+",
+    eqPresetWarm: "Wärmer",
+    eqChangesSummaryLabel: "Angewendet:",
+    eqAbToggle: "A/B: Original",
+    eqAbToggleOriginal: "A/B: Original",
+    eqAbToggleEdited: "A/B: Bearbeitet",
     zoneTips: "Tipps dazu — unsere Einschätzung",
     tipsHeading: "Verbesserungsvorschläge",
     fazitHeading: "Fazit — dein Wegweiser",
@@ -341,6 +350,7 @@ const I18N = {
     badgeHook: "Hook",
     teaserProblem: "Größtes Problem",
     teaserStrength: "Stärke",
+    topIssueJumpBtn: "Zum Detail →",
 
     genreCompareTitle: "Im Vergleich zu {n} geprüften {genre}-Tracks",
     genreCompareLoudness: "Lautheit",
@@ -592,6 +602,7 @@ const I18N = {
     shareText: "My track scored {stars}/5 stars on Overhertz – “{title}” ({score}/100). Check your track for free too:",
     shareCopied: "Link copied!",
     genericCopied: "Copied!",
+    genericCopy: "Copy",
     shareCardCta: "Free short check at overhertz.app",
     unlockTitle: "Want to know exactly what's wrong – and how to fix it?",
     unlockDesc: "Detailed frequency curve, all improvement tips, and where best to submit your track.",
@@ -658,6 +669,14 @@ const I18N = {
     eqPlayBtn: "▶ Play preview",
     eqPlayBtnStop: "⏸ Stop",
     eqDownloadBtn: "Download edited version",
+    eqPresetSuggest: "Our recommendation",
+    eqPresetVocalClear: "Clear vocals",
+    eqPresetBassPlus: "Bass+",
+    eqPresetWarm: "Warmer",
+    eqChangesSummaryLabel: "Applied:",
+    eqAbToggle: "A/B: Original",
+    eqAbToggleOriginal: "A/B: Original",
+    eqAbToggleEdited: "A/B: Edited",
     zoneTips: "Tips on this — our assessment",
     tipsHeading: "Improvement suggestions",
     fazitHeading: "Summary — your roadmap",
@@ -821,6 +840,7 @@ const I18N = {
     badgeHook: "Hook",
     teaserProblem: "Biggest problem",
     teaserStrength: "Strength",
+    topIssueJumpBtn: "See detail →",
 
     genreCompareTitle: "Compared to {n} checked {genre} tracks",
     genreCompareLoudness: "Loudness",
@@ -1153,6 +1173,24 @@ function starRatingHtml(stars) {
   return html;
 }
 
+// SVG-Fortschrittsring fuer den Gesamt-Score - wird sowohl fuer die grosse Anzeige im
+// Ergebnis-Hero als auch (kleiner) als Akzent am Hook-Meter genutzt (siehe renderMeter).
+// Farbe per style-Attribut statt bloss als stroke-Attribut gesetzt, damit var(--...) aus
+// gradeForScore() zuverlaessig browseruebergreifend als Farbe aufgeloest wird.
+function scoreRingSvgMarkup(score, { size = 112, stroke = 10 } = {}) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(100, score)) / 100;
+  const color = gradeForScore(score).color;
+  const center = size / 2;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="score-ring-svg">
+    <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke-width="${stroke}"/>
+    <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke-width="${stroke}" stroke-linecap="round"
+      stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - pct)}" transform="rotate(-90 ${center} ${center})"
+      style="stroke:${color}"/>
+  </svg>`;
+}
+
 function badgeTier(score) {
   if (score === null || score === undefined) return { dots: "○ ○ ○", label: t("badgeMissingInfo") };
   if (score >= 75) return { dots: "● ● ●", label: t("badgeStrong") };
@@ -1218,6 +1256,7 @@ function renderMetersInto(metersEl, scores, audioMetrics, lyrics, profile) {
     name: t("meterHook"),
     score: scores.hook,
     statusText: scores.hook === null ? lyricsMissingLabel : "",
+    variant: "ring",
   });
   renderMeter(metersEl, {
     name: t("meterTitel"),
@@ -1525,7 +1564,7 @@ function iconFor(level) {
   return ICONS[level] || ICONS.warning;
 }
 
-function renderMeter(container, { name, score, statusText }) {
+function renderMeter(container, { name, score, statusText, variant }) {
   if (score === null) {
     const el = document.createElement("div");
     el.className = "meter";
@@ -1540,11 +1579,12 @@ function renderMeter(container, { name, score, statusText }) {
     return;
   }
   const status = statusForScore(score);
+  const ringHtml = variant === "ring" ? `<span class="meter-mini-ring">${scoreRingSvgMarkup(score, { size: 30, stroke: 4 })}</span>` : "";
   const el = document.createElement("div");
   el.className = "meter";
   el.innerHTML = `
     <div class="meter-head">
-      <span class="meter-name">${name}</span>
+      <span class="meter-name-group">${ringHtml}<span class="meter-name">${name}</span></span>
       <span class="meter-status" style="color:${status.color}">${iconFor(status.key)} ${status.label} · ${score.toFixed(1)}/100</span>
     </div>
     <div class="meter-track">
@@ -1725,13 +1765,17 @@ function renderRefCompareChart(container, ownPercents, refPercents) {
   `;
 }
 
-function renderTips(container, tips) {
+function renderTips(container, tips, highlightTip) {
   container.innerHTML = "";
   for (const tip of tips) {
     const li = document.createElement("li");
     const color =
       tip.level === "good" ? "var(--status-good)" : tip.level === "critical" ? "var(--status-critical)" : "var(--status-warning)";
     li.innerHTML = `<span style="color:${color}">${iconFor(tip.level)}</span><span>${tip.text}</span>`;
+    if (tip === highlightTip) {
+      li.id = "tips-list-top-issue";
+      li.classList.add("tip-highlighted");
+    }
     container.appendChild(li);
   }
 }
@@ -2926,6 +2970,13 @@ document.querySelectorAll(".premium-tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => switchPremiumTab(btn.dataset.tab));
 });
 
+document.getElementById("top-issue-jump-btn")?.addEventListener("click", () => {
+  switchPremiumTab("improve");
+  requestAnimationFrame(() => {
+    document.getElementById("tips-list-top-issue")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+});
+
 // Perzentil-Einordnung (unteres Viertel / mittlerer Bereich / oberes Viertel) im Vergleich zu
 // anderen bereits geprueften Tracks desselben Genres - dieselben genre_stats-Daten wie die
 // oeffentlichen /check/:slug-Seiten, hier direkt im Ergebnis statt auf einer separaten Seite.
@@ -2990,7 +3041,9 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { u
   const hookScore = combineScores([scores.hook, scores.titel]);
 
   const grade = gradeForScore(overallScore);
-  document.getElementById("star-rating").innerHTML = starRatingHtml(grade.stars);
+  document.getElementById("score-ring").innerHTML =
+    scoreRingSvgMarkup(overallScore) +
+    `<span class="score-ring-label"><span class="score-ring-value">${overallScore}</span><span class="score-ring-max">/100</span></span>`;
   const heroTitleEl = document.getElementById("hero-title");
   heroTitleEl.textContent = grade.title;
   heroTitleEl.style.color = grade.color;
@@ -3026,6 +3079,13 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { u
   document.getElementById("teaser-tip").innerHTML = `<span class="mark">✦ ${teaserLabel}</span> ${topTip.problem}`;
   lastShareInfo.problemLabel = teaserLabel;
   lastShareInfo.problemText = topTip.problem;
+
+  const topIssueCalloutEl = document.getElementById("top-issue-callout");
+  if (topIssueCalloutEl) {
+    topIssueCalloutEl.hidden = false;
+    document.getElementById("top-issue-label").textContent = teaserLabel;
+    document.getElementById("top-issue-text").textContent = topTip.problem;
+  }
   updateGenreCompare(genre, audioMetrics).catch(() => {});
 
   lastAnalysis = {
@@ -3063,7 +3123,7 @@ function renderAnalysis({ title, lyricsRaw, audioMetrics, genre, fileInfo }, { u
   }
 
   renderFreqChart(document.getElementById("freq-chart"), audioMetrics.bandPercents, profile.refs);
-  renderTips(document.getElementById("tips-list"), tips);
+  renderTips(document.getElementById("tips-list"), tips, topTip);
 
   const formatCheckListEl = document.getElementById("format-check-list");
   if (formatCheckListEl) {
@@ -3121,6 +3181,22 @@ if (rewriteNextPromptCopyBtn) {
   });
 }
 
+const rewriteOutputCopyBtn = document.getElementById("rewrite-output-copy-btn");
+if (rewriteOutputCopyBtn) {
+  rewriteOutputCopyBtn.addEventListener("click", async () => {
+    const text = rewriteOutput ? rewriteOutput.textContent : "";
+    if (!text) return;
+    const originalLabel = rewriteOutputCopyBtn.textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      rewriteOutputCopyBtn.textContent = t("genericCopied");
+      setTimeout(() => (rewriteOutputCopyBtn.textContent = originalLabel), 2000);
+    } catch {
+      // Clipboard nicht verfuegbar - kein kritischer Vorgang, der Text steht ja sichtbar da.
+    }
+  });
+}
+
 let lastKiResult = null;
 
 // Laeuft automatisch nach der Freischaltung (startAutoPremiumFlow), rewriteBtn selbst dient nur
@@ -3156,7 +3232,31 @@ async function runKiEinschaetzung() {
     rewriteTitleIdeas.innerHTML = "";
     for (const idea of ideas) {
       const li = document.createElement("li");
-      li.textContent = idea;
+      li.className = "title-idea-chip";
+      const textSpan = document.createElement("span");
+      textSpan.className = "title-idea-text";
+      textSpan.textContent = idea; // textContent statt innerHTML - KI-Ausgabe nicht als Markup interpretieren
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "title-idea-copy-btn";
+      copyBtn.textContent = "⧉";
+      copyBtn.setAttribute("aria-label", t("genericCopy"));
+      copyBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(idea);
+          const original = copyBtn.textContent;
+          copyBtn.textContent = "✓";
+          copyBtn.disabled = true;
+          setTimeout(() => {
+            copyBtn.textContent = original;
+            copyBtn.disabled = false;
+          }, 2000);
+        } catch {
+          // Clipboard nicht verfuegbar - kein kritischer Vorgang, der Text steht ja sichtbar da.
+        }
+      });
+      li.appendChild(textSpan);
+      li.appendChild(copyBtn);
       rewriteTitleIdeas.appendChild(li);
     }
   };
@@ -3757,11 +3857,26 @@ function suggestedDeEsserAmount(metrics, profile) {
 let bgWavesPaused = false;
 
 const EQ_BAND_Q = 1;
+
+// Feste Start-Presets fuer die Preset-Reihe (max. 4 Chips, siehe eqPresetChips-Handler weiter
+// unten) - Delta-Arrays in Baender-Reihenfolge von FREQ_BANDS (subbass...brilliance). "Unsere
+// Empfehlung" ist kein fixes Array, sondern ruft weiterhin die bestehende
+// suggestedEqGainDb-Logik gegen die tatsaechliche Analyse auf (siehe Klick-Handler).
+const EQ_PRESETS = {
+  "vocal-clear": [0, -1, -1.5, 2, 2.5, 1, 0],
+  "bass-plus": [3, 2.5, 0, 0, 0, 0, 0],
+  warm: [1.5, 1, 0.5, 0, -1, -1.5, -1],
+};
 let eqAudioCtx = null;
 let eqSourceNode = null;
 let eqFilters = [];
 let eqPlaying = false;
 let eqGains = FREQ_BANDS.map(() => 0);
+// A/B-Vergleich: true = Vorschau spielt gerade das unveraenderte Original statt der Bearbeitung.
+// Wird ueber einen kompletten Graph-Rebuild in startEqPreview() umgesetzt (siehe dort) statt
+// echtem Live-Crossfading - dasselbe Muster, das ohnehin schon bei jeder De-Esser-Umschaltung
+// waehrend der Wiedergabe passiert, kein neues Risiko.
+let eqAbOriginal = false;
 let eqDeEsserEnabled = false;
 let eqDeEsserAmount = 0.5;
 let eqDeEsserNodes = null;
@@ -3841,11 +3956,29 @@ function drawEqCurveOverlay(ctx, w, h) {
   ctx.lineTo(last.x, last.y);
   ctx.stroke();
 
-  ctx.fillStyle = "#f0d19c";
+  // Baender, die tatsaechlich veraendert wurden, bekommen einen groesseren nummerierten Marker -
+  // unveraenderte Baender bleiben ein kleiner Punkt, damit die Kurve bei 0dB-Baendern nicht mit
+  // Nummern zugepflastert wird (siehe "nicht zu ueberladen"-Vorgabe fuer dieses Redesign).
+  let pinNum = 0;
   for (let i = 1; i < points.length - 1; i++) {
-    ctx.beginPath();
-    ctx.arc(points[i].x, points[i].y, 2.5, 0, Math.PI * 2);
-    ctx.fill();
+    const bandIndex = i - 1;
+    if (eqGains[bandIndex]) {
+      pinNum++;
+      ctx.fillStyle = "#f0d19c";
+      ctx.beginPath();
+      ctx.arc(points[i].x, points[i].y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#241d10";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(pinNum), points[i].x, points[i].y);
+    } else {
+      ctx.fillStyle = "#f0d19c";
+      ctx.beginPath();
+      ctx.arc(points[i].x, points[i].y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.restore();
 }
@@ -4276,11 +4409,11 @@ function startEqPreview(offsetSeconds = 0) {
   // dem Fade hoeren) - dann einmalig abspielen statt loopen.
   source.loop = !eqFadeOutEnabled;
 
-  const filters = buildEqFilterChain(ctx, eqGains);
+  const filters = buildEqFilterChain(ctx, eqAbOriginal ? FREQ_BANDS.map(() => 0) : eqGains);
   source.connect(filters[0]);
   let chainOutput = filters[filters.length - 1];
 
-  if (eqDeEsserEnabled) {
+  if (eqDeEsserEnabled && !eqAbOriginal) {
     const de = attachDeEsser(ctx, chainOutput, eqDeEsserAmount);
     eqDeEsserNodes = de;
     chainOutput = de.output;
@@ -4289,7 +4422,7 @@ function startEqPreview(offsetSeconds = 0) {
   }
 
   const gainNode = ctx.createGain();
-  gainNode.gain.value = Math.pow(10, eqGainDb / 20);
+  gainNode.gain.value = eqAbOriginal ? 1 : Math.pow(10, eqGainDb / 20);
   chainOutput.connect(gainNode);
   gainNode.connect(ctx.destination);
   eqGainNode = gainNode;
@@ -4467,8 +4600,11 @@ function renderEqSliders() {
       eqGains[i] = Number(input.value);
       document.getElementById(`eq-value-${i}`).textContent = `${eqGains[i].toFixed(1)} dB`;
       wrap.classList.toggle("is-adjusted", eqGains[i] !== 0);
+      clearEqPresetActive();
+      eqBackToEdited();
       if (eqPlaying) updateEqFilterGains();
       redrawEqWaveformNow();
+      renderEqChangesSummary();
       // Waehrend des Ziehens (input-Event, mehrfach pro Sekunde) bewusst KEINE Score-Neuberechnung -
       // das waere eine teure Offline-Neuanalyse pro Frame. Stattdessen erst beim Loslassen (change,
       // siehe unten).
@@ -4487,6 +4623,12 @@ function initEqEditor(audioMetrics, profile) {
   eqGainDb = 0;
   eqTrimIntroEnabled = false;
   eqFadeOutEnabled = false;
+  eqAbOriginal = false;
+  const abToggleBtn = document.getElementById("eq-ab-toggle");
+  if (abToggleBtn) {
+    abToggleBtn.setAttribute("aria-pressed", "false");
+    abToggleBtn.textContent = t("eqAbToggleEdited");
+  }
   eqPendingSeekOffset = 0;
   stopEqPreview();
   eqPreviewToken++;
@@ -4514,6 +4656,8 @@ function initEqEditor(audioMetrics, profile) {
   if (trimCheckbox) trimCheckbox.checked = false;
   const fadeCheckbox = document.getElementById("eq-fadeout");
   if (fadeCheckbox) fadeCheckbox.checked = false;
+  clearEqPresetActive();
+  renderEqChangesSummary();
   const metaTitleEl = document.getElementById("eq-meta-title");
   if (metaTitleEl) metaTitleEl.value = document.getElementById("track-title").value || "";
   const metaArtistEl = document.getElementById("eq-meta-artist");
@@ -4545,7 +4689,6 @@ if (eqEditorUpgradeBtn) {
   });
 }
 
-const eqSuggestBtn = document.getElementById("eq-suggest-btn");
 const eqResetBtn = document.getElementById("eq-reset-btn");
 const eqPlayBtn = document.getElementById("eq-play-btn");
 const eqDownloadBtn = document.getElementById("eq-download-btn");
@@ -4562,6 +4705,7 @@ if (eqDeEsserAutoBtn) {
     const { needed, amount } = suggestedDeEsserAmount(eqLastMetrics, eqLastProfile);
     eqDeEsserEnabled = needed;
     eqDeEsserAmount = amount;
+    eqBackToEdited();
     if (eqDeEsserEnabledEl) eqDeEsserEnabledEl.checked = needed;
     if (eqDeEsserStrengthWrap) eqDeEsserStrengthWrap.hidden = !needed;
     const pct = Math.round(amount * 100);
@@ -4577,6 +4721,8 @@ if (eqDeEsserEnabledEl) {
   eqDeEsserEnabledEl.addEventListener("change", () => {
     eqDeEsserEnabled = eqDeEsserEnabledEl.checked;
     if (eqDeEsserStrengthWrap) eqDeEsserStrengthWrap.hidden = !eqDeEsserEnabled;
+    eqBackToEdited();
+    renderEqChangesSummary();
     if (eqPlaying) startEqPreview(getEqElapsedPosition()); // Graph neu aufbauen (De-Esser rein/raus), an gleicher Stelle weiterspielen
     updateEqPreview();
   });
@@ -4586,6 +4732,7 @@ if (eqDeEsserStrengthEl) {
   eqDeEsserStrengthEl.addEventListener("input", () => {
     eqDeEsserAmount = Number(eqDeEsserStrengthEl.value) / 100;
     if (eqDeEsserStrengthValueEl) eqDeEsserStrengthValueEl.textContent = `${eqDeEsserStrengthEl.value}%`;
+    eqBackToEdited();
     if (eqPlaying && eqDeEsserNodes) updateDeEsserAmount(eqDeEsserNodes, eqDeEsserAmount);
     // Waehrend des Ziehens bewusst keine Score-Neuberechnung - erst beim Loslassen (change).
   });
@@ -4602,10 +4749,14 @@ if (eqGainEl) {
   eqGainEl.addEventListener("input", () => {
     eqGainDb = Number(eqGainEl.value);
     if (eqGainValueEl) eqGainValueEl.textContent = `${eqGainDb.toFixed(1)} dB`;
+    eqBackToEdited();
     if (eqPlaying && eqGainNode) rampAudioParam(eqGainNode.gain, Math.pow(10, eqGainDb / 20), eqAudioCtx);
     // Waehrend des Ziehens bewusst keine Score-Neuberechnung - erst beim Loslassen (change).
   });
-  eqGainEl.addEventListener("change", () => updateEqPreview());
+  eqGainEl.addEventListener("change", () => {
+    renderEqChangesSummary();
+    updateEqPreview();
+  });
 }
 
 if (eqGainMatchBtn) {
@@ -4615,7 +4766,9 @@ if (eqGainMatchBtn) {
     eqGainDb = Math.round(suggested * 2) / 2;
     if (eqGainEl) eqGainEl.value = eqGainDb;
     if (eqGainValueEl) eqGainValueEl.textContent = `${eqGainDb.toFixed(1)} dB`;
+    eqBackToEdited();
     if (eqPlaying && eqGainNode) rampAudioParam(eqGainNode.gain, Math.pow(10, eqGainDb / 20), eqAudioCtx);
+    renderEqChangesSummary();
     if (eqStatus) eqStatus.textContent = t("eqGainMatched");
     updateEqPreview();
   });
@@ -4624,6 +4777,8 @@ if (eqGainMatchBtn) {
 if (eqTrimIntroEl) {
   eqTrimIntroEl.addEventListener("change", () => {
     eqTrimIntroEnabled = eqTrimIntroEl.checked;
+    eqBackToEdited();
+    renderEqChangesSummary();
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
     updateEqPreview();
   });
@@ -4632,34 +4787,89 @@ if (eqTrimIntroEl) {
 if (eqFadeOutEl) {
   eqFadeOutEl.addEventListener("change", () => {
     eqFadeOutEnabled = eqFadeOutEl.checked;
+    eqBackToEdited();
+    renderEqChangesSummary();
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
     updateEqPreview();
   });
 }
 
-if (eqSuggestBtn) {
-  eqSuggestBtn.addEventListener("click", () => {
-    if (!eqLastMetrics || !eqLastProfile) return;
-    // Bei mehreren gleichzeitig "zu niedrigen" Nachbarbaendern (z.B. bassbetonte Trap-Tracks mit
-    // wenig Mitten) summieren sich die ueberlappenden Q=1-Peaking-Filter in der Kette - ein
-    // Klemmwert wie beim manuellen Regler (+-12dB pro Band) waere hier schon bei 2-3 gleichzeitig
-    // korrigierten Nachbarbaendern hoerbar unnatuerlich. +-6dB pro Band entspricht eher dem, was
-    // in echter korrektiver Mischung in einem automatischen Vorschlag vertretbar ist.
-    eqGains = FREQ_BANDS.map((band, i) => {
-      const [lo, hi] = eqLastProfile.refs[i];
-      const suggested = suggestedEqGainDb(eqLastMetrics.bandPercents[i], lo, hi);
-      return Math.max(-6, Math.min(6, suggested));
-    });
+function clearEqPresetActive() {
+  document.querySelectorAll(".eq-preset-chip").forEach((b) => b.classList.remove("is-active"));
+}
+
+// Jede Editier-Aktion (Regler, De-Esser, Presets, Reset, ...) soll automatisch wieder auf "hoere
+// die bearbeitete Version" zurueckspringen, statt dass man nach einer Aenderung versehentlich
+// weiter das A/B-Original hoert.
+function eqBackToEdited() {
+  if (!eqAbOriginal) return;
+  eqAbOriginal = false;
+  const btn = document.getElementById("eq-ab-toggle");
+  if (btn) {
+    btn.setAttribute("aria-pressed", "false");
+    btn.textContent = t("eqAbToggleEdited");
+  }
+}
+
+// Schreibgeschriebene Zusammenfassung der aktuell angewendeten Aenderungen (Baender, De-Esser,
+// Lautheit, Trim/Fade) als Pill-Reihe - ergaenzt die bestehenden Regler/Checkboxen, ersetzt sie
+// nicht. Nummerierung folgt derselben Links-nach-rechts-Reihenfolge wie die Kurven-Pins in
+// drawEqCurveOverlay, damit "Punkt 2" auf der Kurve und "2" in der Liste dasselbe Band meinen.
+function renderEqChangesSummary() {
+  const el = document.getElementById("eq-changes-summary");
+  if (!el) return;
+  const items = [];
+  let pinNum = 0;
+  FREQ_BANDS.forEach((band, i) => {
+    if (eqGains[i]) {
+      pinNum++;
+      const sign = eqGains[i] > 0 ? "+" : "";
+      items.push(`<span class="eq-change-pill"><b>${pinNum}</b> ${bandLabel(band)} ${sign}${eqGains[i].toFixed(1)} dB</span>`);
+    }
+  });
+  if (eqDeEsserEnabled) items.push(`<span class="eq-change-pill">${escapeHtml(t("eqDeesserToggle"))}</span>`);
+  if (eqGainDb) {
+    const sign = eqGainDb > 0 ? "+" : "";
+    items.push(`<span class="eq-change-pill">${escapeHtml(t("eqGainLabel"))} ${sign}${eqGainDb.toFixed(1)} dB</span>`);
+  }
+  if (eqTrimIntroEnabled) items.push(`<span class="eq-change-pill">${escapeHtml(t("eqTrimIntro"))}</span>`);
+  if (eqFadeOutEnabled) items.push(`<span class="eq-change-pill">${escapeHtml(t("eqFadeout"))}</span>`);
+  el.innerHTML = items.length ? `<span class="eq-changes-label">${escapeHtml(t("eqChangesSummaryLabel"))}</span>${items.join("")}` : "";
+  el.hidden = items.length === 0;
+}
+
+document.querySelectorAll(".eq-preset-chip").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const key = btn.dataset.preset;
+    if (key === "suggest") {
+      if (!eqLastMetrics || !eqLastProfile) return;
+      // Bei mehreren gleichzeitig "zu niedrigen" Nachbarbaendern (z.B. bassbetonte Trap-Tracks mit
+      // wenig Mitten) summieren sich die ueberlappenden Q=1-Peaking-Filter in der Kette - ein
+      // Klemmwert wie beim manuellen Regler (+-12dB pro Band) waere hier schon bei 2-3 gleichzeitig
+      // korrigierten Nachbarbaendern hoerbar unnatuerlich. +-6dB pro Band entspricht eher dem, was
+      // in echter korrektiver Mischung in einem automatischen Vorschlag vertretbar ist.
+      eqGains = FREQ_BANDS.map((band, i) => {
+        const [lo, hi] = eqLastProfile.refs[i];
+        const suggested = suggestedEqGainDb(eqLastMetrics.bandPercents[i], lo, hi);
+        return Math.max(-6, Math.min(6, suggested));
+      });
+    } else {
+      eqGains = EQ_PRESETS[key].slice();
+    }
     renderEqSliders();
+    eqBackToEdited();
     if (eqPlaying) updateEqFilterGains();
     redrawEqWaveformNow();
+    renderEqChangesSummary();
+    clearEqPresetActive();
+    btn.classList.add("is-active");
     if (eqStatus) eqStatus.textContent = t("eqSuggestionApplied");
     // Direkt starten statt ueber das Drag-Debounce - ein Klick ist ein einzelnes, diskretes Ereignis,
     // die Berechnung soll sofort im Hintergrund losgehen (siehe updateEqPreview fuer das
     // Zurueckstellen waehrend aktiver Wiedergabe).
     updateEqPreview();
   });
-}
+});
 
 if (eqResetBtn) {
   eqResetBtn.addEventListener("click", () => {
@@ -4675,6 +4885,9 @@ if (eqResetBtn) {
     if (eqDeEsserStrengthWrap) eqDeEsserStrengthWrap.hidden = true;
     if (eqTrimIntroEl) eqTrimIntroEl.checked = false;
     if (eqFadeOutEl) eqFadeOutEl.checked = false;
+    clearEqPresetActive();
+    eqBackToEdited();
+    renderEqChangesSummary();
     if (eqPlaying) startEqPreview(getEqElapsedPosition());
     else redrawEqWaveformNow();
     if (eqStatus) eqStatus.textContent = t("eqResetDone");
@@ -4702,6 +4915,16 @@ if (eqPlayBtn) {
     } catch (err) {
       if (eqStatus) eqStatus.textContent = t("eqPreviewFailed", { msg: err && err.message ? err.message : t("unknownError") });
     }
+  });
+}
+
+const eqAbToggleBtn = document.getElementById("eq-ab-toggle");
+if (eqAbToggleBtn) {
+  eqAbToggleBtn.addEventListener("click", () => {
+    eqAbOriginal = !eqAbOriginal;
+    eqAbToggleBtn.setAttribute("aria-pressed", String(eqAbOriginal));
+    eqAbToggleBtn.textContent = eqAbOriginal ? t("eqAbToggleOriginal") : t("eqAbToggleEdited");
+    if (eqPlaying) startEqPreview(getEqElapsedPosition());
   });
 }
 
