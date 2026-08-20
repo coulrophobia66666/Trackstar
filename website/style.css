@@ -2514,16 +2514,6 @@ button#vocals-check-btn:disabled {
   margin: 0 0 0.15rem;
 }
 
-.plan-price-usd {
-  font-size: 0.76rem;
-  color: var(--text-muted);
-  margin: 0 0 0.6rem;
-}
-
-.plan-price-usd:empty {
-  display: none;
-}
-
 .plan-price-old {
   font-size: 0.9rem;
   font-weight: 500;
@@ -2543,6 +2533,10 @@ button#vocals-check-btn:disabled {
   border-radius: 999px;
   padding: 0.2rem 0.6rem;
   margin: 0 0 0.5rem;
+}
+
+.plan-promo-badge[hidden] {
+  display: none;
 }
 
 .plan-price span {

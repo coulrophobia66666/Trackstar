@@ -120,7 +120,6 @@ const I18N = {
     premiumTeaserTitle: "Die Tiefenanalyse: das steckt drin",
     premiumTeaserDesc: "Frequenzkurve im Detail, alle Verbesserungstipps zu Sound, Hook & Songtext, KI-Einordnung, Titel-Ideen und wohin du den Track am besten einreichst.",
     premiumTeaserBtn: "Preise ansehen",
-    planPriceUsdApprox: "ca. {amount}",
     premiumHeading: "Die Tiefenanalyse",
     exportPdfBtn: "Als PDF exportieren",
     tabFacts: "Fakten",
@@ -520,18 +519,18 @@ const I18N = {
     newPasswordLabel: "New password",
     resetPasswordBtn: "Set password",
     pricingHeading: "Pricing",
-    pricingHint: "The quick check (traffic-light verdict + biggest problem) is always free. For the in-depth analysis (prices incl. VAT):",
+    pricingHint: "The quick check (verdict + your biggest issue) is always free. Unlock the full analysis with:",
     planCreditsTitle: "Credits",
-    planCreditsPromoBadge: "Today -50%",
+    planCreditsPromoBadge: "Today only: 50% off",
     planCreditsUnit: "one-time",
-    planCreditsDesc: "5 in-depth analyses, no subscription",
-    planSelectBtn: "Select",
+    planCreditsDesc: "5 full analyses, no subscription",
+    planSelectBtn: "Get started",
     planProTitle: "Pro",
     planProUnit: "/ month",
-    planProDesc: "50 checks/month, full report, hook/title/lyrics/placement tips, album upload",
-    planProAnnualTitle: "Pro annual",
+    planProDesc: "50 checks a month, full reports, hook/title/lyrics tips, and album uploads",
+    planProAnnualTitle: "Pro (annual)",
     planProAnnualUnit: "/ year",
-    planProAnnualDesc: "Same as Pro, discounted annual plan",
+    planProAnnualDesc: "Everything in Pro, at a lower annual rate",
     eyebrow: "AI Song Check",
     subtitle: "Upload your track and find out if it has star potential. The quick check is free.",
     trackLabel: "Your track",
@@ -581,7 +580,7 @@ const I18N = {
     howItWorksStep3Title: "Fix it, if you want",
     howItWorksStep3Desc: "Deep analysis with correction, frequency curve and a submission plan. Optional.",
     battleTeaserBadge: "Live",
-    battleTeaserTitle: "Live: Battle-Rap Contest · €50",
+    battleTeaserTitle: "Live: Battle-Rap Contest · $50 prize",
     battleTeaserDesc: "32 spots, 5 weeks. Registration open – an account is required to join.",
     battleTeaserLink: "Go to the contest",
     albumHeading: "Album check",
@@ -597,11 +596,10 @@ const I18N = {
     unlockTitle: "Want to know exactly what's wrong – and how to fix it?",
     unlockDesc: "Detailed frequency curve, all improvement tips, and where best to submit your track.",
     unlockBtn: "View full analysis",
-    unlockNote: "5 credits for €7 or Pro plan from €9.50/month",
+    unlockNote: "5 credits for $8, or Pro from $11/month",
     premiumTeaserTitle: "The deep analysis: what's included",
     premiumTeaserDesc: "Detailed frequency curve, all improvement tips for sound, hook & lyrics, AI classification, title ideas, and where best to submit your track.",
     premiumTeaserBtn: "View pricing",
-    planPriceUsdApprox: "approx. {amount}",
     premiumHeading: "The in-depth analysis",
     exportPdfBtn: "Export as PDF",
     tabFacts: "Facts",
@@ -1026,46 +1024,50 @@ function applyStaticTranslations() {
   document.querySelectorAll(".lang-btn").forEach((btn) => {
     btn.setAttribute("aria-pressed", String(btn.dataset.lang === currentLang));
   });
-  applyCreditsFlashSale();
+  applyPlanPrices();
 }
 
 // Eintages-Rabattaktion auf den Credits-Plan (13.08.2026, 50%) - bewusst als einmaliger,
 // hart einprogrammierter Zeitraum statt eines generischen Rabatt-Systems, das es (noch) nicht
 // braucht. Die eigentliche Preisreduktion passiert serverseitig ueber einen Stripe-Coupon
 // (siehe handleCreateCheckoutSession im Worker) - hier wird nur die Anzeige angepasst, der
-// tatsaechlich abgerechnete Preis kommt immer von Stripe.
+// tatsaechlich abgerechnete Preis kommt immer von Stripe (aktuell nur Euro, siehe unten).
 const CREDITS_FLASH_SALE_START = Date.parse("2026-08-13T22:00:00Z"); // 14.08. 00:00 MESZ
 const CREDITS_FLASH_SALE_END = Date.parse("2026-08-14T22:00:00Z"); // 15.08. 00:00 MESZ
 
-function applyCreditsFlashSale() {
+// Abgerechnet wird bei Stripe weiterhin immer in Euro (die Bank des Kaeufers rechnet beim Zahlen
+// automatisch um) - das hier sind nur die auf der englischsprachigen Seite ANGEZEIGTEN,
+// gerundeten Dollar-Betraege, damit dort nicht gleichzeitig $ und € auftauchen. Kein Blocker fuer
+// den Kauf selbst.
+const PLAN_PRICE_USD = { credits: 8, creditsSale: 4, pro: 11, proAnnual: 89 };
+
+function applyPlanPrices() {
   const badge = document.getElementById("credits-promo-badge");
-  const priceEl = document.getElementById("credits-plan-price");
-  if (!badge || !priceEl) return;
-  const active = Date.now() >= CREDITS_FLASH_SALE_START && Date.now() < CREDITS_FLASH_SALE_END;
-  badge.hidden = !active;
-  const unit = escapeHtml(t("planCreditsUnit"));
-  priceEl.innerHTML = active
-    ? `<span class="plan-price-old">7&nbsp;€</span> 3,50&nbsp;€ <span>${unit}</span>`
-    : `7&nbsp;€ <span>${unit}</span>`;
-  updatePlanPricesUsd(active);
-}
+  const creditsPriceEl = document.getElementById("credits-plan-price");
+  const proPriceEl = document.getElementById("pro-plan-price");
+  const proAnnualPriceEl = document.getElementById("pro-annual-plan-price");
+  if (!creditsPriceEl) return;
 
-// Grobe Naeherung, keine Live-Kurs-Abfrage - nur zur Orientierung fuer Kaeufer aus Nicht-Euro-
-// Laendern (z.B. USA), abgerechnet wird bei Stripe immer in Euro (die Bank des Kaeufers rechnet
-// beim Zahlen automatisch um). Kein Blocker fuer den Kauf selbst, siehe Chat vom 14.08.
-const EUR_TO_USD_APPROX = 1.1;
+  const saleActive = Date.now() >= CREDITS_FLASH_SALE_START && Date.now() < CREDITS_FLASH_SALE_END;
+  if (badge) badge.hidden = !saleActive;
 
-function usdApprox(eur) {
-  return `$${(eur * EUR_TO_USD_APPROX).toFixed(2)}`;
-}
+  const creditsUnit = escapeHtml(t("planCreditsUnit"));
+  const proUnit = escapeHtml(t("planProUnit"));
+  const proAnnualUnit = escapeHtml(t("planProAnnualUnit"));
 
-function updatePlanPricesUsd(creditsFlashSaleActive) {
-  const creditsUsdEl = document.getElementById("credits-plan-price-usd");
-  const proUsdEl = document.getElementById("pro-plan-price-usd");
-  const proAnnualUsdEl = document.getElementById("pro-annual-plan-price-usd");
-  if (creditsUsdEl) creditsUsdEl.textContent = t("planPriceUsdApprox", { amount: usdApprox(creditsFlashSaleActive ? 3.5 : 7) });
-  if (proUsdEl) proUsdEl.textContent = t("planPriceUsdApprox", { amount: usdApprox(9.5) });
-  if (proAnnualUsdEl) proAnnualUsdEl.textContent = t("planPriceUsdApprox", { amount: usdApprox(79) });
+  if (currentLang === "en") {
+    creditsPriceEl.innerHTML = saleActive
+      ? `<span class="plan-price-old">$${PLAN_PRICE_USD.credits}</span> $${PLAN_PRICE_USD.creditsSale} <span>${creditsUnit}</span>`
+      : `$${PLAN_PRICE_USD.credits} <span>${creditsUnit}</span>`;
+    if (proPriceEl) proPriceEl.innerHTML = `$${PLAN_PRICE_USD.pro} <span>${proUnit}</span>`;
+    if (proAnnualPriceEl) proAnnualPriceEl.innerHTML = `$${PLAN_PRICE_USD.proAnnual} <span>${proAnnualUnit}</span>`;
+  } else {
+    creditsPriceEl.innerHTML = saleActive
+      ? `<span class="plan-price-old">7&nbsp;€</span> 3,50&nbsp;€ <span>${creditsUnit}</span>`
+      : `7&nbsp;€ <span>${creditsUnit}</span>`;
+    if (proPriceEl) proPriceEl.innerHTML = `9,50&nbsp;€ <span>${proUnit}</span>`;
+    if (proAnnualPriceEl) proAnnualPriceEl.innerHTML = `79&nbsp;€ <span>${proAnnualUnit}</span>`;
+  }
 }
 
 function setLang(lang) {
