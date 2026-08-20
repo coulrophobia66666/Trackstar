@@ -84,74 +84,6 @@ body {
   70% { transform: scale(1); }
 }
 
-/* Luxus-Glanzeffekt: einmaliger Lichtstreifen quer ueber die gesamte Seite beim Laden */
-.page-shine-streak {
-  position: fixed;
-  top: 0;
-  left: -35%;
-  width: 35%;
-  height: 100%;
-  background: linear-gradient(
-    100deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0) 35%,
-    rgba(255, 255, 255, 0.3) 50%,
-    rgba(240, 209, 156, 0.2) 62%,
-    transparent 100%
-  );
-  transform: skewX(-15deg);
-  pointer-events: none;
-  z-index: 5;
-  animation: page-shine-move 2.4s ease-in-out 0.3s 1 forwards;
-}
-
-@keyframes page-shine-move {
-  from { left: -35%; }
-  to { left: 135%; }
-}
-
-/* Glanzeffekt fuer einzelne Karten: Lichtstreifen ueber die Flaeche + kurzes Aufblitzen am Rand */
-.shine-sweep {
-  position: relative;
-  overflow: hidden;
-  animation: card-flash 0.55s ease-out 2.1s 1;
-}
-
-.shine-sweep::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -160%;
-  width: 60%;
-  height: 100%;
-  background: linear-gradient(
-    120deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0) 30%,
-    rgba(255, 255, 255, 0.5) 50%,
-    rgba(255, 255, 255, 0) 70%,
-    transparent 100%
-  );
-  transform: skewX(-20deg);
-  pointer-events: none;
-  animation: shine-sweep-move 1.6s ease-out 0.5s 1 both;
-}
-
-@keyframes shine-sweep-move {
-  from { left: -160%; }
-  to { left: 160%; }
-}
-
-@keyframes card-flash {
-  0%, 100% { box-shadow: 0 24px 48px -26px rgba(0, 0, 0, 0.75); }
-  50% {
-    box-shadow:
-      0 24px 48px -26px rgba(0, 0, 0, 0.75),
-      0 0 0 1.5px rgba(255, 255, 255, 0.7),
-      0 0 28px 3px rgba(255, 255, 255, 0.35);
-  }
-}
-
 .eyebrow {
   font-size: 0.72rem;
   letter-spacing: 0.22em;
@@ -2731,17 +2663,12 @@ button#vocals-check-btn:disabled {
   .achievement-badge,
   .confetti-piece,
   .wordmark-line,
-  .shine-sweep,
-  .shine-sweep::after,
   .eq-preview-icon {
     animation: none !important;
   }
   .meter-fill,
   .meter-handle {
     transition: none !important;
-  }
-  .page-shine-streak {
-    display: none !important;
   }
 }
 

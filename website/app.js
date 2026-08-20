@@ -5379,15 +5379,6 @@ if (albumBtn) {
    Laeuft durchgehend hinter dem gesamten Inhalt, nicht nur in einem kleinen Header-Widget -
    das war explizites Feedback ("die ganze Seite soll in Bewegung sein"). */
 
-// Der einmalige Glanzstreifen wird nach seiner Animation wieder aus dem DOM entfernt -
-// er wird nur beim ersten Seitenaufruf gebraucht, danach ist er nur totes Gewicht.
-(function cleanupPageShineStreak() {
-  const streak = document.getElementById("page-shine-streak");
-  if (!streak) return;
-  streak.addEventListener("animationend", () => streak.remove());
-  setTimeout(() => streak.remove(), 4000);
-})();
-
 (function initBgWaves() {
   const canvas = document.getElementById("bg-waves");
   if (!canvas) return;
