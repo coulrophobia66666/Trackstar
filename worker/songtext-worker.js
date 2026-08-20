@@ -1585,6 +1585,7 @@ async function handleBattleSubmit(request, env, cors) {
   const matchupId = formData.get("matchupId");
   const audio = formData.get("audio");
   const photo = formData.get("photo");
+  const soundScoreRaw = formData.get("soundScore");
   if (typeof matchupId !== "string" || !matchupId) {
     return jsonResponse({ error: "matchupId erforderlich." }, 400, cors);
   }
@@ -1628,10 +1629,17 @@ async function handleBattleSubmit(request, env, cors) {
   await env.BATTLE_MEDIA.put(audioKey, await audio.arrayBuffer(), { httpMetadata: { contentType: audio.type } });
   await env.BATTLE_MEDIA.put(photoKey, await photo.arrayBuffer(), { httpMetadata: { contentType: photo.type } });
 
+  // Sound-Score wird vom Browser der Einreichenden mitgeschickt (die Worker-Runtime kann Audio
+  // nicht selbst dekodieren/analysieren) - rein informativ, deshalb bei fehlendem/ungueltigem Wert
+  // einfach nicht speichern statt die Einreichung abzulehnen.
+  const soundScore = typeof soundScoreRaw === "string" ? Number(soundScoreRaw) : null;
+  const validScore = Number.isFinite(soundScore) && soundScore >= 0 && soundScore <= 100 ? soundScore : null;
+
   const audioColumn = side === "a" ? "submission_a_key" : "submission_b_key";
   const photoColumn = side === "a" ? "photo_a_key" : "photo_b_key";
-  await env.DB.prepare(`UPDATE battle_matchups SET ${audioColumn} = ?, ${photoColumn} = ? WHERE id = ?`)
-    .bind(audioKey, photoKey, matchupId)
+  const scoreColumn = side === "a" ? "score_a" : "score_b";
+  await env.DB.prepare(`UPDATE battle_matchups SET ${audioColumn} = ?, ${photoColumn} = ?, ${scoreColumn} = ? WHERE id = ?`)
+    .bind(audioKey, photoKey, validScore, matchupId)
     .run();
 
   return jsonResponse({ ok: true }, 200, cors);
@@ -1731,6 +1739,11 @@ async function handleBattleState(request, env, cors, slug) {
       audioB: m.submission_b_key ? "/battle-media/" + m.submission_b_key : null,
       photoA: m.photo_a_key ? "/battle-media/" + m.photo_a_key : null,
       photoB: m.photo_b_key ? "/battle-media/" + m.photo_b_key : null,
+      // Anders als votesA/votesB bewusst SOFORT sichtbar, nicht erst nach Abstimmungsende - der
+      // Sound-Score ist Teil dessen, was Teilnehmer direkt nach dem Einreichen teilen sollen
+      // ("Votet fuer mich"-Loop), kein Abstimmungsergebnis, das Bandwagon-Effekte ausloesen koennte.
+      scoreA: m.score_a,
+      scoreB: m.score_b,
       submissionDeadline: m.submission_deadline,
       voteDeadline: m.vote_deadline,
       votingOpen,

@@ -102,7 +102,7 @@ async function loadState() {
   renderMatchups(data.matchups);
 }
 
-function sideHtml(matchup, side, participant, audioUrl, photoUrl) {
+function sideHtml(matchup, side, participant, audioUrl, photoUrl, score) {
   if (!participant) return '<div class="battle-side"><p class="name">Freilos</p></div>';
 
   const isWinner = matchup.winnerParticipantId === participant.id;
@@ -116,8 +116,10 @@ function sideHtml(matchup, side, participant, audioUrl, photoUrl) {
       ${photoUrl ? `<img src="${escapeHtml(mediaUrl(photoUrl))}" alt="${escapeHtml(participant.name)}" />` : ""}
       <p class="name">${escapeHtml(participant.name)}${isWinner ? ' <span class="battle-winner">Sieger</span>' : ""}</p>
       ${audioUrl ? `<audio controls src="${escapeHtml(mediaUrl(audioUrl))}"></audio>` : '<p class="battle-msg">Noch kein Track eingereicht</p>'}
+      ${score != null ? `<p class="battle-score">Sound-Score: ${score}/100</p>` : ""}
       ${canVote ? `<button type="button" class="battle-vote-btn" data-matchup="${matchup.id}" data-side="${side}">Für ${escapeHtml(participant.name)} stimmen</button>` : ""}
       ${votes !== null && votes !== undefined ? `<p class="battle-votes">${votes} Stimmen</p>` : ""}
+      ${audioUrl ? `<button type="button" class="battle-share-btn" data-matchup="${matchup.id}" data-side="${side}">Teilen</button>` : ""}
     </div>`;
 }
 
@@ -143,9 +145,9 @@ function renderMatchups(matchups) {
 
     card.innerHTML = `
       <div class="battle-matchup-vs">
-        ${sideHtml(m, "a", m.participantA, m.audioA, m.photoA)}
+        ${sideHtml(m, "a", m.participantA, m.audioA, m.photoA, m.scoreA)}
         <div class="battle-vs-label">VS</div>
-        ${sideHtml(m, "b", m.participantB, m.audioB, m.photoB)}
+        ${sideHtml(m, "b", m.participantB, m.audioB, m.photoB, m.scoreB)}
       </div>
       <p class="battle-deadline">${deadlineText}</p>
     `;
@@ -176,6 +178,7 @@ function renderMatchups(matchups) {
 
   matchupsEl.querySelectorAll(".battle-vote-btn").forEach((btn) => btn.addEventListener("click", onVoteClick));
   matchupsEl.querySelectorAll(".battle-submit-btn").forEach((btn) => btn.addEventListener("click", onSubmitClick));
+  matchupsEl.querySelectorAll(".battle-share-btn").forEach((btn) => btn.addEventListener("click", onShareClick));
 }
 
 async function onVoteClick(e) {
@@ -212,12 +215,38 @@ async function onSubmitClick(e) {
     return;
   }
 
+  btn.disabled = true;
+  btn.textContent = "Analysiere...";
+
+  // Sound-Score direkt im Browser berechnen (dieselbe Analyse/Bewertung wie der Kurzcheck auf der
+  // Hauptseite, aus website/audio-core.js) und mit hochladen - der Worker kann Audio inhaltlich
+  // nicht auswerten (keine Web-Audio-API in der Workers-Runtime). Kein Songtext/Genre bei
+  // Battle-Einreichungen erfasst, deshalb Allgemein-Profil + leere Lyrics (wie auf der
+  // Hauptseite ohne Eingabe), Hook/Titel-Teilscores dadurch automatisch ausgeklammert.
+  let soundScore = null;
+  try {
+    const arrayBuffer = await audioInput.files[0].arrayBuffer();
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioCtx();
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+    const audioMetrics = analyzeAudioBuffer(audioBuffer);
+    const lyrics = analyzeLyrics("", "");
+    const profile = genreProfile("");
+    const { scores } = computeAllScores(audioMetrics, lyrics, profile);
+    const combined = combineScores([scores.technik, scores.frequenz, scores.lautheit]);
+    if (combined != null) soundScore = Math.round(combined);
+  } catch {
+    // Score ist ein Bonus, kein Blocker fuers Einreichen - schlaegt die lokale Analyse fehl
+    // (z.B. ein Format, das der Browser nicht dekodieren kann), wird einfach kein Score
+    // mitgeschickt.
+  }
+
   const formData = new FormData();
   formData.append("matchupId", matchupId);
   formData.append("audio", audioInput.files[0]);
   formData.append("photo", photoInput.files[0]);
+  if (soundScore != null) formData.append("soundScore", String(soundScore));
 
-  btn.disabled = true;
   btn.textContent = "Lädt hoch...";
   const { ok, data } = await apiFetch("battle/submit", { method: "POST", body: formData });
   btn.disabled = false;
@@ -230,6 +259,171 @@ async function onSubmitClick(e) {
   } else {
     msgEl.textContent = data.error || "Einreichung fehlgeschlagen.";
     msgEl.classList.add("error");
+  }
+}
+
+/* ---------- Share-Karte ("Votet fuer mich") ----------
+   Eigene, einfache Canvas-Zeichnung im selben visuellen Stil wie das Share-Bild der Hauptseite
+   (buildShareCardBlob in app.js) - bewusst hier dupliziert statt aus app.js importiert, battle.js
+   bleibt eigenstaendig (siehe Kommentar am Dateianfang) und hat kein t()-i18n-System. */
+
+function loadImageAsync(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function wrapLines(ctx, text, maxWidth) {
+  const words = text.split(" ");
+  const lines = [];
+  let line = "";
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (line && ctx.measureText(test).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+async function buildBattleShareCardBlob(name, opponentName, score) {
+  try {
+    await document.fonts.ready;
+  } catch {
+    /* Font-Ladefehler ignorieren - Canvas faellt dann auf eine System-Schrift zurueck */
+  }
+
+  const width = 1080;
+  const height = 1200;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+
+  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+  bgGrad.addColorStop(0, "#07080c");
+  bgGrad.addColorStop(1, "#0b0e14");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, width, height);
+
+  const glow = ctx.createRadialGradient(width / 2, height * 0.4, 40, width / 2, height * 0.4, height * 0.55);
+  glow.addColorStop(0, "rgba(205, 168, 107, 0.18)");
+  glow.addColorStop(1, "rgba(205, 168, 107, 0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "center";
+
+  let logoImg = null;
+  try {
+    logoImg = await loadImageAsync("logo.svg");
+  } catch {
+    /* Logo ist ein Bonus, kein Blocker fuers restliche Bild */
+  }
+  if (logoImg) ctx.drawImage(logoImg, width / 2 - 28, 90, 56, 56);
+  ctx.font = "700 32px Manrope, sans-serif";
+  ctx.fillStyle = "#cda86b";
+  ctx.fillText("OVERHERTZ BATTLE-RAP-CONTEST", width / 2, logoImg ? 190 : 140);
+
+  ctx.font = "700 62px Fraunces, serif";
+  ctx.fillStyle = "#f5f0e6";
+  ctx.fillText(name, width / 2, 300);
+
+  ctx.font = "500 34px Manrope, sans-serif";
+  ctx.fillStyle = "rgba(183, 178, 166, 0.9)";
+  ctx.fillText("VS " + (opponentName || "?"), width / 2, 355);
+
+  if (score != null) {
+    ctx.font = "600 30px Manrope, sans-serif";
+    ctx.fillStyle = "#cda86b";
+    ctx.fillText("SOUND-SCORE", width / 2, 490);
+    ctx.font = "700 200px Fraunces, serif";
+    ctx.fillStyle = "#f0d19c";
+    ctx.fillText(String(score), width / 2, 700);
+    ctx.font = "600 38px Fraunces, serif";
+    ctx.fillStyle = "rgba(245, 240, 230, 0.7)";
+    ctx.fillText("/100", width / 2, 755);
+  }
+
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(width / 2 - 90, 840);
+  ctx.lineTo(width / 2 + 90, 840);
+  ctx.stroke();
+
+  ctx.font = "700 40px Manrope, sans-serif";
+  ctx.fillStyle = "#f5f0e6";
+  wrapLines(ctx, "Jetzt für " + name + " abstimmen!", width - 240).forEach((l, i) => ctx.fillText(l, width / 2, 910 + i * 50));
+
+  ctx.font = "500 28px Manrope, sans-serif";
+  ctx.fillStyle = "#cda86b";
+  ctx.fillText("overhertz.app/battle.html", width / 2, 1010);
+
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function onShareClick(e) {
+  const btn = e.currentTarget;
+  const matchupId = btn.dataset.matchup;
+  const side = btn.dataset.side;
+  if (!currentState) return;
+  const matchup = currentState.matchups.find((m) => m.id === matchupId);
+  if (!matchup) return;
+  const participant = side === "a" ? matchup.participantA : matchup.participantB;
+  const opponent = side === "a" ? matchup.participantB : matchup.participantA;
+  const score = side === "a" ? matchup.scoreA : matchup.scoreB;
+  if (!participant) return;
+
+  const shareText =
+    `${participant.name} tritt beim Overhertz Battle-Rap-Contest an` +
+    (opponent ? ` gegen ${opponent.name}` : "") +
+    (score != null ? ` (Sound-Score ${score}/100)` : "") +
+    " - jetzt abstimmen:";
+  const shareUrl = window.location.origin + window.location.pathname;
+  const combined = `${shareText} ${shareUrl}`;
+
+  let imageBlob = null;
+  try {
+    imageBlob = await buildBattleShareCardBlob(participant.name, opponent ? opponent.name : null, score);
+  } catch {
+    /* Bild ist ein Bonus, kein Blocker fuers Teilen selbst */
+  }
+
+  try {
+    if (navigator.share) {
+      const file = imageBlob ? new File([imageBlob], "overhertz-battle.png", { type: "image/png" }) : null;
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ text: combined, files: [file] });
+      } else {
+        await navigator.share({ text: combined });
+      }
+      return;
+    }
+    await navigator.clipboard.writeText(combined);
+    if (imageBlob) downloadBlob(imageBlob, "overhertz-battle.png");
+  } catch {
+    /* Abbruch durch Nutzer (z.B. Share-Dialog geschlossen) oder Clipboard nicht verfuegbar -
+       kein kritischer Vorgang. */
   }
 }
 

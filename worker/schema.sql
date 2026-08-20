@@ -200,6 +200,8 @@ CREATE TABLE IF NOT EXISTS battle_matchups (
   submission_b_key TEXT,
   photo_a_key TEXT, -- R2-Objekt-Key Bild
   photo_b_key TEXT,
+  score_a REAL, -- Sound-Score (0-100), lokal im Browser der Einreichenden berechnet
+  score_b REAL,
   votes_a INTEGER NOT NULL DEFAULT 0,
   votes_b INTEGER NOT NULL DEFAULT 0,
   winner_participant_id TEXT,
@@ -226,3 +228,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_battle_votes_unique ON battle_votes(matchu
 -- hinzugefuegt wurden: CREATE TABLE IF NOT EXISTS erfasst das automatisch beim naechsten
 -- Schema-Lauf, hier ist (anders als bei den anderen Tabellen oben) keine manuelle ALTER TABLE
 -- noetig, da alle Spalten von Anfang an Teil der Tabellendefinition sind.
+
+-- Nachtraeglich ergaenzt (Sound-Score bei Battle-Einreichungen): score_a/score_b existieren nicht
+-- automatisch in einer schon angelegten battle_matchups-Tabelle - diese Zeilen EINMALIG
+-- zusaetzlich in der D1-Console ausfuehren:
+-- ALTER TABLE battle_matchups ADD COLUMN score_a REAL;
+-- ALTER TABLE battle_matchups ADD COLUMN score_b REAL;
