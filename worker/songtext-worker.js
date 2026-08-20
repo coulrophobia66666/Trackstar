@@ -1773,11 +1773,14 @@ async function handleBattleState(request, env, cors, slug) {
   );
 }
 
-async function handleBattleMedia(env, key) {
-  if (!env.BATTLE_MEDIA) return new Response("Media-Speicher ist noch nicht eingerichtet.", { status: 501 });
+// cors-Header noetig, damit die Battle-Seite bereits hochgeladene Tracks per fetch() erneut
+// dekodieren kann (z.B. fuer den 15s-Snippet-Video-Export) - <audio src="...">-Tags brauchten das
+// bisher nicht, ein fetch()+decodeAudioData() wird ohne Access-Control-Allow-Origin geblockt.
+async function handleBattleMedia(env, key, cors) {
+  if (!env.BATTLE_MEDIA) return new Response("Media-Speicher ist noch nicht eingerichtet.", { status: 501, headers: cors });
   const object = await env.BATTLE_MEDIA.get(key);
-  if (!object) return new Response("Nicht gefunden.", { status: 404 });
-  const headers = new Headers();
+  if (!object) return new Response("Nicht gefunden.", { status: 404, headers: cors });
+  const headers = new Headers(cors);
   object.writeHttpMetadata(headers);
   headers.set("etag", object.httpEtag);
   headers.set("cache-control", "public, max-age=31536000, immutable");
@@ -2055,7 +2058,7 @@ export default {
     }
     if (url.pathname.startsWith("/battle-media/") && request.method === "GET") {
       const key = url.pathname.slice("/battle-media/".length);
-      return handleBattleMedia(env, key);
+      return handleBattleMedia(env, key, cors);
     }
     if (url.pathname === "/admin/battle/create" && request.method === "POST") {
       return handleAdminBattleCreate(request, env, cors);

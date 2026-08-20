@@ -79,6 +79,7 @@ async function loadState() {
   }
 
   currentState = data;
+  clipAudioCache = {}; // Re-Fetch erzwingen, falls sich Einreichungen seit dem letzten Laden geaendert haben
   emptyMsg.hidden = true;
 
   statusBar.hidden = false;
@@ -120,6 +121,8 @@ function sideHtml(matchup, side, participant, audioUrl, photoUrl, score) {
       ${canVote ? `<button type="button" class="battle-vote-btn" data-matchup="${matchup.id}" data-side="${side}">Für ${escapeHtml(participant.name)} stimmen</button>` : ""}
       ${votes !== null && votes !== undefined ? `<p class="battle-votes">${votes} Stimmen</p>` : ""}
       ${audioUrl ? `<button type="button" class="battle-share-btn" data-matchup="${matchup.id}" data-side="${side}">Teilen</button>` : ""}
+      ${audioUrl && canCreateShareVideo() ? `<button type="button" class="battle-clip-btn" data-matchup="${matchup.id}" data-side="${side}">Video-Clip erstellen</button>` : ""}
+      <div class="battle-clip-panel" id="battle-clip-panel-${matchup.id}-${side}" hidden></div>
     </div>`;
 }
 
@@ -179,6 +182,7 @@ function renderMatchups(matchups) {
   matchupsEl.querySelectorAll(".battle-vote-btn").forEach((btn) => btn.addEventListener("click", onVoteClick));
   matchupsEl.querySelectorAll(".battle-submit-btn").forEach((btn) => btn.addEventListener("click", onSubmitClick));
   matchupsEl.querySelectorAll(".battle-share-btn").forEach((btn) => btn.addEventListener("click", onShareClick));
+  matchupsEl.querySelectorAll(".battle-clip-btn").forEach((btn) => btn.addEventListener("click", onClipBtnClick));
 }
 
 async function onVoteClick(e) {
@@ -293,18 +297,18 @@ function wrapLines(ctx, text, maxWidth) {
   return lines;
 }
 
-async function buildBattleShareCardBlob(name, opponentName, score) {
+// Reine Zeichenroutine auf ein bestehendes Canvas - von buildBattleShareCardBlob (PNG-Export) UND
+// von buildBattleShareVideoBlob (Video-Export via captureStream, braucht ein offenes Canvas statt
+// direkt ein Blob) gemeinsam genutzt, damit Bild- und Video-Share optisch immer identisch bleiben.
+async function drawBattleShareCard(canvas, name, opponentName, score) {
   try {
     await document.fonts.ready;
   } catch {
     /* Font-Ladefehler ignorieren - Canvas faellt dann auf eine System-Schrift zurueck */
   }
 
-  const width = 1080;
-  const height = 1200;
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
+  const width = canvas.width;
+  const height = canvas.height;
   const ctx = canvas.getContext("2d");
 
   const bgGrad = ctx.createLinearGradient(0, 0, width, height);
@@ -367,7 +371,13 @@ async function buildBattleShareCardBlob(name, opponentName, score) {
   ctx.font = "500 28px Manrope, sans-serif";
   ctx.fillStyle = "#cda86b";
   ctx.fillText("overhertz.app/battle.html", width / 2, 1010);
+}
 
+async function buildBattleShareCardBlob(name, opponentName, score) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1200;
+  await drawBattleShareCard(canvas, name, opponentName, score);
   return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
 }
 
@@ -380,6 +390,312 @@ function downloadBlob(blob, filename) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/* ---------- 15-Sekunden-Video-Clip ("Video-Clip erstellen") ----------
+   Teilnehmer (oder wer auch immer teilen moechte, gleiche Logik wie beim bestehenden
+   "Teilen"-Button - der ist auch nicht auf den eigenen Track beschraenkt) waehlt ueber einen
+   Wellenform-Regler 15 Sekunden seines Tracks aus, daraus wird ein kurzes Video (Karten-Optik +
+   Audio) erzeugt und geteilt - Story/Reel-Format statt reiner Audiodatei, da die meisten
+   Plattformen (WhatsApp/Instagram/TikTok) beim Teilen Video oder Bild erwarten, aber selten rohe
+   Audiodateien annehmen. */
+
+const CLIP_DURATION_SEC = 15;
+const CLIP_WAVEFORM_BUCKETS = 200;
+
+function pickSupportedVideoMimeType() {
+  if (typeof MediaRecorder === "undefined" || typeof MediaRecorder.isTypeSupported !== "function") return null;
+  const candidates = [
+    "video/mp4;codecs=h264,aac",
+    "video/mp4",
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+  ];
+  for (const c of candidates) {
+    if (MediaRecorder.isTypeSupported(c)) return c;
+  }
+  return null;
+}
+
+// Feature-Check VOR dem Anzeigen des Buttons, nicht erst beim Klick - auf Geraeten ohne
+// MediaRecorder/captureStream (v.a. aeltere/manche iOS-Safari-Versionen) taucht der Button dann
+// gar nicht erst auf, der bestehende Bild-"Teilen"-Button bleibt als Fallback unangetastet.
+function canCreateShareVideo() {
+  return (
+    typeof MediaRecorder !== "undefined" &&
+    typeof HTMLCanvasElement !== "undefined" &&
+    typeof HTMLCanvasElement.prototype.captureStream === "function" &&
+    pickSupportedVideoMimeType() != null
+  );
+}
+
+// Grobe Peak-Wellenform (Betrag, ein Wert pro Bucket) fuer die Auswahl-Vorschau - bewusst simpler
+// als computeEqWaveformPeaks in app.js (kein Min/Max-Paar noetig, hier reicht eine gespiegelte
+// Balkenoptik), eigene Kopie statt Import, battle.js bleibt eigenstaendig.
+function computeClipWaveformPeaks(buffer) {
+  const length = buffer.length;
+  const channelData = [];
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) channelData.push(buffer.getChannelData(ch));
+  const samplesPerBucket = Math.max(1, Math.floor(length / CLIP_WAVEFORM_BUCKETS));
+  const stride = Math.max(1, Math.floor(samplesPerBucket / 200));
+  const peaks = new Array(CLIP_WAVEFORM_BUCKETS);
+  for (let i = 0; i < CLIP_WAVEFORM_BUCKETS; i++) {
+    const start = i * samplesPerBucket;
+    const end = i === CLIP_WAVEFORM_BUCKETS - 1 ? length : start + samplesPerBucket;
+    let max = 0;
+    for (let j = start; j < end; j += stride) {
+      for (let ch = 0; ch < channelData.length; ch++) {
+        const v = Math.abs(channelData[ch][j]);
+        if (v > max) max = v;
+      }
+    }
+    peaks[i] = max;
+  }
+  return peaks;
+}
+
+function drawClipWaveform(canvas, peaks, duration, windowStartSec) {
+  const w = canvas.width;
+  const h = canvas.height;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, w, h);
+  const mid = h / 2;
+  const barWidth = w / peaks.length;
+
+  const windowStartX = duration > 0 ? (windowStartSec / duration) * w : 0;
+  const windowEndX = duration > 0 ? ((windowStartSec + CLIP_DURATION_SEC) / duration) * w : w;
+
+  peaks.forEach((peak, i) => {
+    const x = i * barWidth;
+    const barH = Math.max(1, peak * (h * 0.9));
+    const inWindow = x >= windowStartX && x <= windowEndX;
+    ctx.fillStyle = inWindow ? "#f0d19c" : "rgba(240, 209, 156, 0.28)";
+    ctx.fillRect(x, mid - barH / 2, Math.max(1, barWidth - 1), barH);
+  });
+
+  ctx.fillStyle = "rgba(240, 209, 156, 0.14)";
+  ctx.fillRect(windowStartX, 0, windowEndX - windowStartX, h);
+  ctx.strokeStyle = "#f0d19c";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(windowStartX + 1, 1, Math.max(1, windowEndX - windowStartX - 2), h - 2);
+}
+
+// Schneidet einen festen 15s-Bereich aus dem Buffer - einfachere Variante von getEqSourceBuffer in
+// app.js (dort geht es um Intro-Stille-Erkennung, hier reicht fester Start+Dauer).
+function trimAudioBufferToClip(ctx, buffer, startSec) {
+  const sampleRate = buffer.sampleRate;
+  const startSample = Math.min(buffer.length, Math.round(startSec * sampleRate));
+  const numSamples = Math.min(buffer.length - startSample, Math.round(CLIP_DURATION_SEC * sampleRate));
+  const clip = ctx.createBuffer(buffer.numberOfChannels, Math.max(1, numSamples), sampleRate);
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    clip.getChannelData(ch).set(buffer.getChannelData(ch).subarray(startSample, startSample + numSamples));
+  }
+  return clip;
+}
+
+async function buildBattleShareVideoBlob(name, opponentName, score, audioBuffer, startSec) {
+  const mimeType = pickSupportedVideoMimeType();
+  if (!mimeType) throw new Error("Video-Erstellung wird auf diesem Gerät nicht unterstützt.");
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1200;
+  await drawBattleShareCard(canvas, name, opponentName, score);
+
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const audioCtx = new AudioCtx();
+  const clip = trimAudioBufferToClip(audioCtx, audioBuffer, startSec);
+
+  const videoStream = canvas.captureStream(1);
+  const dest = audioCtx.createMediaStreamDestination();
+  const source = audioCtx.createBufferSource();
+  source.buffer = clip;
+  source.connect(dest);
+  // Bewusst NICHT zusaetzlich mit audioCtx.destination verbunden - sonst waere die Aufnahme beim
+  // Erstellen hoerbar, das ist hier nur eine stille Offscreen-Aufnahme.
+
+  const combinedStream = new MediaStream([...videoStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+  const recorder = new MediaRecorder(combinedStream, { mimeType });
+  const chunks = [];
+  recorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) chunks.push(e.data);
+  };
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    recorder.onstop = () => {
+      if (settled) return;
+      settled = true;
+      audioCtx.close().catch(() => {});
+      resolve(new Blob(chunks, { type: mimeType.split(";")[0] }));
+    };
+    recorder.onerror = (e) => {
+      if (settled) return;
+      settled = true;
+      audioCtx.close().catch(() => {});
+      reject((e && e.error) || new Error("Aufnahme fehlgeschlagen."));
+    };
+    recorder.start();
+    source.start();
+    source.onended = () => {
+      try {
+        if (recorder.state !== "inactive") recorder.stop();
+      } catch {
+        /* bereits gestoppt */
+      }
+    };
+    // Sicherheitsnetz, falls onended aus irgendeinem Grund nicht feuert.
+    setTimeout(() => {
+      try {
+        if (recorder.state !== "inactive") recorder.stop();
+      } catch {
+        /* bereits gestoppt */
+      }
+    }, clip.duration * 1000 + 800);
+  });
+}
+
+let clipAudioCache = {}; // matchupId+side -> decoded AudioBuffer, damit Wellenform+Video nicht doppelt geladen/dekodiert werden
+
+async function onClipBtnClick(e) {
+  const btn = e.currentTarget;
+  const matchupId = btn.dataset.matchup;
+  const side = btn.dataset.side;
+  const panel = document.getElementById(`battle-clip-panel-${matchupId}-${side}`);
+  if (!panel) return;
+
+  if (!panel.hidden) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+
+  if (!currentState) return;
+  const matchup = currentState.matchups.find((m) => m.id === matchupId);
+  if (!matchup) return;
+  const participant = side === "a" ? matchup.participantA : matchup.participantB;
+  const opponent = side === "a" ? matchup.participantB : matchup.participantA;
+  const score = side === "a" ? matchup.scoreA : matchup.scoreB;
+  const audioUrl = side === "a" ? matchup.audioA : matchup.audioB;
+  if (!participant || !audioUrl) return;
+
+  panel.innerHTML = `
+    <p class="battle-clip-status">Track wird geladen …</p>
+    <div class="battle-clip-preview">
+      <img class="battle-clip-card-preview" alt="Vorschau der Share-Karte" />
+    </div>
+    <canvas class="battle-clip-waveform" width="600" height="90"></canvas>
+    <p class="battle-clip-hint">Ziehe das Fenster auf die stärkste Stelle deines Tracks (z. B. den Hook).</p>
+    <button type="button" class="battle-clip-create-btn" disabled>Video erstellen &amp; teilen</button>
+  `;
+
+  const statusEl = panel.querySelector(".battle-clip-status");
+  const previewImg = panel.querySelector(".battle-clip-card-preview");
+  const waveformCanvas = panel.querySelector(".battle-clip-waveform");
+  const createBtn = panel.querySelector(".battle-clip-create-btn");
+
+  // Karten-Vorschau steht sofort fest (haengt nicht vom gewaehlten Audio-Fenster ab) - zeigt direkt,
+  // wie die Karte im fertigen Video aussehen wird, noch bevor das Audio geladen ist.
+  try {
+    const previewBlob = await buildBattleShareCardBlob(participant.name, opponent ? opponent.name : null, score);
+    if (previewBlob) previewImg.src = URL.createObjectURL(previewBlob);
+  } catch {
+    /* Vorschau ist ein Bonus, kein Blocker */
+  }
+
+  const cacheKey = matchupId + side;
+  let audioBuffer = clipAudioCache[cacheKey];
+  if (!audioBuffer) {
+    try {
+      const res = await fetch(mediaUrl(audioUrl));
+      if (!res.ok) throw new Error("Track konnte nicht geladen werden.");
+      const arrayBuffer = await res.arrayBuffer();
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const decodeCtx = new AudioCtx();
+      audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
+      decodeCtx.close().catch(() => {});
+      clipAudioCache[cacheKey] = audioBuffer;
+    } catch {
+      statusEl.textContent = "Track konnte nicht geladen werden.";
+      return;
+    }
+  }
+
+  const duration = audioBuffer.duration;
+  const peaks = computeClipWaveformPeaks(audioBuffer);
+  let windowStart = 0;
+
+  if (duration <= CLIP_DURATION_SEC) {
+    statusEl.textContent = "Track ist kürzer als 15 Sekunden - der ganze Track wird genutzt.";
+  } else {
+    statusEl.textContent = "";
+  }
+
+  const redraw = () => drawClipWaveform(waveformCanvas, peaks, duration, windowStart);
+  redraw();
+  createBtn.disabled = false;
+
+  const maxStart = Math.max(0, duration - CLIP_DURATION_SEC);
+  let dragging = false;
+  const setWindowFromClientX = (clientX) => {
+    const rect = waveformCanvas.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    windowStart = Math.max(0, Math.min(maxStart, ratio * duration - CLIP_DURATION_SEC / 2));
+    redraw();
+  };
+  waveformCanvas.addEventListener("pointerdown", (ev) => {
+    dragging = true;
+    waveformCanvas.setPointerCapture(ev.pointerId);
+    setWindowFromClientX(ev.clientX);
+  });
+  waveformCanvas.addEventListener("pointermove", (ev) => {
+    if (dragging) setWindowFromClientX(ev.clientX);
+  });
+  waveformCanvas.addEventListener("pointerup", () => {
+    dragging = false;
+  });
+
+  createBtn.addEventListener("click", async () => {
+    createBtn.disabled = true;
+    const originalLabel = createBtn.textContent;
+    createBtn.textContent = "Video wird erstellt …";
+    statusEl.textContent = "";
+    try {
+      const videoBlob = await buildBattleShareVideoBlob(
+        participant.name,
+        opponent ? opponent.name : null,
+        score,
+        audioBuffer,
+        windowStart
+      );
+      const shareText =
+        `${participant.name} tritt beim Overhertz Battle-Rap-Contest an` +
+        (opponent ? ` gegen ${opponent.name}` : "") +
+        (score != null ? ` (Sound-Score ${score}/100)` : "") +
+        " - jetzt abstimmen:";
+      const shareUrl = window.location.origin + window.location.pathname;
+      const combined = `${shareText} ${shareUrl}`;
+      const ext = videoBlob.type.includes("mp4") ? "mp4" : "webm";
+      const file = new File([videoBlob], `overhertz-battle-clip.${ext}`, { type: videoBlob.type });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ text: combined, files: [file] });
+      } else {
+        downloadBlob(videoBlob, `overhertz-battle-clip.${ext}`);
+        try {
+          await navigator.clipboard.writeText(combined);
+        } catch {
+          /* Zwischenablage optional */
+        }
+      }
+    } catch (err) {
+      statusEl.textContent = (err && err.message) || "Video konnte nicht erstellt werden.";
+    } finally {
+      createBtn.disabled = false;
+      createBtn.textContent = originalLabel;
+    }
+  });
 }
 
 async function onShareClick(e) {

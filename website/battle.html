@@ -51,6 +51,26 @@
       font-size: 0.8rem; font-weight: 600; cursor: pointer;
     }
     .battle-share-btn:hover { border-color: var(--gold); }
+    .battle-clip-btn {
+      display: inline-block; margin-top: 0.5rem; margin-left: 0.5rem; background: none; color: var(--gold-bright);
+      border: 1px solid var(--gridline); border-radius: 999px; padding: 0.4rem 1rem;
+      font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .battle-clip-btn:hover { border-color: var(--gold); }
+    .battle-clip-panel {
+      margin-top: 0.9rem; padding: 0.9rem; border-radius: 14px;
+      border: 1px solid var(--gridline); background: rgba(255, 255, 255, 0.02); text-align: left;
+    }
+    .battle-clip-status { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0.6rem; min-height: 1.1em; }
+    .battle-clip-preview { display: flex; justify-content: center; margin-bottom: 0.8rem; }
+    .battle-clip-card-preview { width: 140px; border-radius: 10px; background: var(--surface-2); }
+    .battle-clip-waveform { width: 100%; height: 90px; display: block; border-radius: 8px; background: rgba(255, 255, 255, 0.03); cursor: grab; touch-action: none; }
+    .battle-clip-hint { font-size: 0.78rem; color: var(--text-muted); margin: 0.5rem 0 0.8rem; }
+    .battle-clip-create-btn {
+      width: 100%; background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: #241d10;
+      border: none; border-radius: 999px; padding: 0.55rem 1rem; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+    }
+    .battle-clip-create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     @media (max-width: 640px) {
       .battle-matchup-vs { grid-template-columns: 1fr; }
       .battle-vs-label { display: none; }
