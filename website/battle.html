@@ -71,6 +71,10 @@
       border: none; border-radius: 999px; padding: 0.55rem 1rem; font-size: 0.85rem; font-weight: 700; cursor: pointer;
     }
     .battle-clip-create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .battle-link-btn {
+      display: block; margin-top: 0.6rem; background: none; border: none; color: var(--gold-bright);
+      font-size: 0.82rem; font-weight: 600; cursor: pointer; padding: 0; text-decoration: underline;
+    }
     @media (max-width: 640px) {
       .battle-matchup-vs { grid-template-columns: 1fr; }
       .battle-vs-label { display: none; }
@@ -90,9 +94,31 @@
 
     <div id="battle-status-bar" class="battle-status-bar" hidden></div>
 
-    <p id="battle-login-hint" class="battle-msg" hidden>
-      Bitte zuerst <a href="index.html">auf der Hauptseite einloggen</a>, um teilzunehmen – abstimmen kannst du auch ohne Login.
-    </p>
+    <div id="battle-auth-block" class="battle-register" hidden>
+      <p>Abstimmen kannst du auch ohne Login – zum Mitmachen registrierst du dich hier direkt mit deinem Rap-Namen:</p>
+
+      <form id="battle-signup-form">
+        <label for="battle-signup-email">E-Mail</label>
+        <input id="battle-signup-email" type="email" required />
+        <label for="battle-signup-password">Passwort <span class="optional">(mind. 8 Zeichen)</span></label>
+        <input id="battle-signup-password" type="password" required minlength="8" />
+        <label for="battle-signup-artist-name">Künstlername</label>
+        <input id="battle-signup-artist-name" type="text" maxlength="60" placeholder="Dein Rap-Name" required />
+        <button type="submit">Registrieren &amp; anmelden</button>
+      </form>
+      <p id="battle-signup-msg" class="battle-msg"></p>
+      <button type="button" id="battle-show-login-btn" class="battle-link-btn">Schon ein Konto? Einloggen</button>
+
+      <form id="battle-login-form" hidden>
+        <label for="battle-login-email">E-Mail</label>
+        <input id="battle-login-email" type="email" required />
+        <label for="battle-login-password">Passwort</label>
+        <input id="battle-login-password" type="password" required />
+        <button type="submit">Einloggen</button>
+      </form>
+      <p id="battle-login-msg" class="battle-msg" hidden></p>
+      <button type="button" id="battle-show-signup-btn" class="battle-link-btn" hidden>Neu hier? Registrieren</button>
+    </div>
 
     <div id="battle-register-block" class="battle-register" hidden>
       <p>Melde dich mit deinem Overhertz-Konto für den Contest an:</p>

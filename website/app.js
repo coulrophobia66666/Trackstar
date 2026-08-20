@@ -399,6 +399,8 @@ const I18N = {
     verifySuccessHeading: "E-Mail bestätigt",
     verifySuccessText: "Dein Konto ist jetzt vollständig freigeschaltet. Viel Erfolg mit deinem Track!",
     verifySuccessContinueBtn: "Weiter zum Login",
+    verifySuccessBattleText: "Und du bist jetzt auch für den Battle-Rap-Contest registriert!",
+    verifySuccessBattleLink: "Zum Battle-Rap-Contest →",
     historyToggleBtn: "Meine Checks",
     historyHeading: "Meine Checks",
     historyHint: "Deine bisherigen Tiefenanalysen – nur die Ergebnisse (Tipps, Fazit, Einordnung), nicht die Audiodateien selbst.",
@@ -457,7 +459,7 @@ const I18N = {
     menuTerms: "Nutzungsbedingungen",
     menuPrivacy: "Datenschutzrichtlinie",
     navPricing: "Preise",
-    navContest: "Contest",
+    navContest: "Battle-Rap-Contest",
     ratingModalHeadingGeneric: "Wie zufrieden bist du mit Overhertz?",
     ratingModalHintGeneric: "Kurzes Feedback oder ein Fehler, der dir aufgefallen ist – hilft uns direkt weiter.",
     whatsNewHeading: "Was ist neu bei Overhertz",
@@ -890,6 +892,8 @@ const I18N = {
     verifySuccessHeading: "Email confirmed",
     verifySuccessText: "Your account is now fully unlocked. Good luck with your track!",
     verifySuccessContinueBtn: "Continue to login",
+    verifySuccessBattleText: "And you're now signed up for the Battle Rap Contest too!",
+    verifySuccessBattleLink: "Go to the Battle Rap Contest →",
     historyToggleBtn: "My checks",
     historyHeading: "My checks",
     historyHint: "Your past deep analyses – results only (tips, summary, assessment), not the audio files themselves.",
@@ -948,7 +952,7 @@ const I18N = {
     menuTerms: "Terms of use",
     menuPrivacy: "Privacy policy",
     navPricing: "Pricing",
-    navContest: "Contest",
+    navContest: "Battle Rap Contest",
     ratingModalHeadingGeneric: "How happy are you with Overhertz?",
     ratingModalHintGeneric: "Quick feedback or a bug you noticed – helps us a lot.",
     whatsNewHeading: "What's new on Overhertz",
@@ -2781,6 +2785,8 @@ if (resetTokenFromUrl && resetPasswordForm) {
 // nichts (siehe renderVerifyEmailBanner), zeigt nur eine Rueckmeldung, ob's geklappt hat. Faengt
 // sowohl den Fall "auf diesem Geraet noch eingeloggt" (Banner verschwindet nach refreshAccount)
 // als auch "auf einem anderen Geraet/Browser geoeffnet" ab (Status liegt server-seitig am Konto).
+const PENDING_BATTLE_KEY = "overhertz_pending_battle";
+
 const verifyTokenFromUrl = new URLSearchParams(window.location.search).get("verify");
 if (verifyTokenFromUrl) {
   (async () => {
@@ -2794,6 +2800,28 @@ if (verifyTokenFromUrl) {
       document.getElementById("auth-tabs").hidden = true;
       document.getElementById("auth-forms").hidden = true;
       document.getElementById("verify-success-panel").hidden = false;
+
+      // Kam die Registrierung von der Battle-Rap-Contest-Seite (kombiniertes Formular dort: E-Mail
+      // + Kuenstlername in einem Schritt), war /battle/register direkt nach dem Anlegen des Kontos
+      // noch nicht moeglich (braucht eine bestaetigte E-Mail) - der Kuenstlername wurde deshalb nur
+      // lokal gemerkt und wird jetzt, nach erfolgreicher Bestaetigung, nachgeholt.
+      let pending = null;
+      try {
+        pending = JSON.parse(localStorage.getItem(PENDING_BATTLE_KEY) || "null");
+      } catch {
+        pending = null;
+      }
+      if (pending && pending.battleId && pending.artistName) {
+        const battleResult = await apiFetch("battle/register", {
+          method: "POST",
+          body: JSON.stringify({ battleId: pending.battleId, artistName: pending.artistName }),
+        });
+        localStorage.removeItem(PENDING_BATTLE_KEY);
+        if (battleResult.ok) {
+          const battleNote = document.getElementById("verify-success-battle-note");
+          if (battleNote) battleNote.hidden = false;
+        }
+      }
     } else {
       showAuthForm(loginForm);
       authStatus.textContent = data.error || t("verifyEmailLinkFailed");

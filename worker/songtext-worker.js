@@ -1787,6 +1787,29 @@ async function handleBattleMedia(env, key, cors) {
   return new Response(object.body, { headers });
 }
 
+// Kontaktliste (E-Mail + Kuenstlername) der Teilnehmer eines Battles - separat vom oeffentlichen
+// /battle/:slug/state-Endpunkt gehalten, der bewusst keine E-Mails preisgibt. Fuer z.B. die
+// Finale-Ankuendigung oder Rueckfragen an Teilnehmer.
+async function handleAdminBattleParticipants(request, env, cors, url) {
+  const dbErr = requireDb(env, cors);
+  if (dbErr) return dbErr;
+  if (!env.ADMIN_SECRET || request.headers.get("x-admin-secret") !== env.ADMIN_SECRET) {
+    return jsonResponse({ error: "Nicht autorisiert." }, 401, cors);
+  }
+
+  const battleId = url.searchParams.get("battleId") || "";
+  if (!battleId) return jsonResponse({ error: "battleId erforderlich." }, 400, cors);
+
+  const { results } = await env.DB.prepare(
+    "SELECT u.email AS email, bp.artist_name AS artistName, bp.registered_at AS registeredAt, bp.eliminated_round AS eliminatedRound " +
+      "FROM battle_participants bp JOIN users u ON u.id = bp.user_id WHERE bp.battle_id = ? ORDER BY bp.registered_at ASC"
+  )
+    .bind(battleId)
+    .all();
+
+  return jsonResponse({ ok: true, participants: results || [] }, 200, cors);
+}
+
 async function handleAdminBattleCreate(request, env, cors) {
   const dbErr = requireDb(env, cors);
   if (dbErr) return dbErr;
@@ -2059,6 +2082,9 @@ export default {
     if (url.pathname.startsWith("/battle-media/") && request.method === "GET") {
       const key = url.pathname.slice("/battle-media/".length);
       return handleBattleMedia(env, key, cors);
+    }
+    if (url.pathname === "/admin/battle/participants" && request.method === "GET") {
+      return handleAdminBattleParticipants(request, env, cors, url);
     }
     if (url.pathname === "/admin/battle/create" && request.method === "POST") {
       return handleAdminBattleCreate(request, env, cors);

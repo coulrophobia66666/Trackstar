@@ -16,6 +16,10 @@
   #overrides-wrap { margin-top: 1rem; }
   .override-row { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; margin-bottom: 0.5rem; }
   .override-row input[type="text"] { flex: 1; margin: 0; }
+  table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.82rem; }
+  th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid #333; }
+  th { color: #b7b2a6; font-weight: 600; }
+  #participants-csv-btn { background: #333; color: #f5f0e6; }
 </style>
 </head>
 <body>
@@ -65,6 +69,21 @@
   <button id="add-override-btn" type="button" style="background:#333; color:#f5f0e6; margin-top:0.5rem;">+ weiterer Override</button>
   <button id="advance-btn" type="button">Runde abschließen</button>
   <p id="advance-status" class="status"></p>
+
+  <h2>4. Teilnehmer-Kontaktliste</h2>
+  <p class="hint">
+    E-Mail-Adressen und Künstlernamen aller für die oben eingetragene Battle-ID angemeldeten
+    Teilnehmer (z. B. für Preisgeld-Auszahlung oder Ankündigungen).
+  </p>
+  <button id="participants-fetch-btn" type="button">Liste abrufen</button>
+  <p id="participants-status" class="status"></p>
+  <table id="participants-table" hidden>
+    <thead>
+      <tr><th>E-Mail</th><th>Künstlername</th><th>Angemeldet</th><th>Ausgeschieden (Runde)</th></tr>
+    </thead>
+    <tbody id="participants-tbody"></tbody>
+  </table>
+  <button id="participants-csv-btn" type="button" hidden>Als CSV herunterladen</button>
 
   <script>
     function headers() {
@@ -151,6 +170,71 @@
       } finally {
         btn.disabled = false;
       }
+    });
+
+    let participantsData = [];
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    document.getElementById("participants-fetch-btn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("participants-status");
+      const btn = document.getElementById("participants-fetch-btn");
+      const tableEl = document.getElementById("participants-table");
+      const tbodyEl = document.getElementById("participants-tbody");
+      const csvBtn = document.getElementById("participants-csv-btn");
+      const battleId = document.getElementById("battle-id").value.trim();
+      if (!battleId) {
+        statusEl.textContent = "Bitte zuerst eine Battle-ID eintragen.";
+        return;
+      }
+      btn.disabled = true;
+      tableEl.hidden = true;
+      csvBtn.hidden = true;
+      statusEl.textContent = "Lade...";
+      try {
+        const res = await fetch(workerUrl() + "/admin/battle/participants?battleId=" + encodeURIComponent(battleId), {
+          method: "GET",
+          headers: headers(),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          participantsData = data.participants || [];
+          tbodyEl.innerHTML = participantsData
+            .map(
+              (p) =>
+                `<tr><td>${escapeHtml(p.email)}</td><td>${escapeHtml(p.artistName)}</td><td>${escapeHtml(
+                  new Date(p.registeredAt).toLocaleString("de-DE")
+                )}</td><td>${p.eliminatedRound == null ? "–" : escapeHtml(String(p.eliminatedRound))}</td></tr>`
+            )
+            .join("");
+          tableEl.hidden = participantsData.length === 0;
+          csvBtn.hidden = participantsData.length === 0;
+          statusEl.textContent = participantsData.length + " Teilnehmer gefunden.";
+        } else {
+          statusEl.textContent = "Fehler (" + res.status + "): " + (data.error || "unbekannt");
+        }
+      } catch (err) {
+        statusEl.textContent = "Netzwerkfehler: " + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("participants-csv-btn").addEventListener("click", () => {
+      const rows = [["E-Mail", "Kuenstlername", "Angemeldet", "Ausgeschieden (Runde)"]];
+      for (const p of participantsData) {
+        rows.push([p.email, p.artistName, new Date(p.registeredAt).toISOString(), p.eliminatedRound == null ? "" : String(p.eliminatedRound)]);
+      }
+      const csv = rows.map((r) => r.map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "battle-teilnehmer.csv";
+      a.click();
+      URL.revokeObjectURL(url);
     });
   </script>
 </body>

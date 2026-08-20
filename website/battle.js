@@ -13,6 +13,18 @@ function getToken() {
   return localStorage.getItem(TOKEN_KEY) || "";
 }
 
+function setToken(token) {
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
+}
+
+// Gemerkter Kuenstlername, wenn die Registrierung ueber das kombinierte Formular hier auf der
+// Battle-Seite lief: /battle/register verlangt eine bestaetigte E-Mail (siehe Worker), direkt nach
+// /auth/register ist das Konto aber noch unbestaetigt. Der Name wird deshalb lokal gemerkt und von
+// app.js auf der Hauptseite nachgeholt, sobald der Bestaetigungslink geklickt wurde (gleicher
+// localStorage, gleicher Origin) - siehe PENDING_BATTLE_KEY-Handling im dortigen verify-Ablauf.
+const PENDING_BATTLE_KEY = "overhertz_pending_battle";
+
 function getVoterFingerprint() {
   let id = localStorage.getItem(VOTER_KEY);
   if (!id) {
@@ -62,7 +74,7 @@ let currentState = null;
 async function loadState() {
   const statusBar = document.getElementById("battle-status-bar");
   const registerBlock = document.getElementById("battle-register-block");
-  const loginHint = document.getElementById("battle-login-hint");
+  const authBlock = document.getElementById("battle-auth-block");
   const matchupsEl = document.getElementById("battle-matchups");
   const emptyMsg = document.getElementById("battle-empty-msg");
 
@@ -73,7 +85,7 @@ async function loadState() {
     emptyMsg.textContent = data.error || "Aktuell läuft kein Battle.";
     statusBar.hidden = true;
     registerBlock.hidden = true;
-    loginHint.hidden = true;
+    authBlock.hidden = true;
     matchupsEl.innerHTML = "";
     return;
   }
@@ -93,10 +105,10 @@ async function loadState() {
 
   const token = getToken();
   if (!token) {
-    loginHint.hidden = false;
+    authBlock.hidden = false;
     registerBlock.hidden = true;
   } else {
-    loginHint.hidden = true;
+    authBlock.hidden = true;
     registerBlock.hidden = !(data.battle.status === "registration" && !data.myRegistered);
   }
 
@@ -769,5 +781,97 @@ document.getElementById("battle-register-btn").addEventListener("click", async (
     msgEl.classList.add("error");
   }
 });
+
+/* ---------- Kombinierte Registrierung (E-Mail + Kuenstlername in einem Schritt) ----------
+   /battle/register verlangt eine bestaetigte E-Mail (siehe Worker), direkt nach /auth/register
+   ist das Konto aber noch unbestaetigt - der Kuenstlername wird deshalb hier nur lokal gemerkt
+   (PENDING_BATTLE_KEY) und von app.js auf der Hauptseite nachgeholt, sobald der
+   Bestaetigungslink geklickt wurde. */
+
+const battleSignupForm = document.getElementById("battle-signup-form");
+const battleLoginForm = document.getElementById("battle-login-form");
+const battleShowLoginBtn = document.getElementById("battle-show-login-btn");
+const battleShowSignupBtn = document.getElementById("battle-show-signup-btn");
+
+if (battleShowLoginBtn) {
+  battleShowLoginBtn.addEventListener("click", () => {
+    battleSignupForm.hidden = true;
+    document.getElementById("battle-signup-msg").hidden = true;
+    battleShowLoginBtn.hidden = true;
+    battleLoginForm.hidden = false;
+    battleShowSignupBtn.hidden = false;
+  });
+}
+
+if (battleShowSignupBtn) {
+  battleShowSignupBtn.addEventListener("click", () => {
+    battleLoginForm.hidden = true;
+    document.getElementById("battle-login-msg").hidden = true;
+    battleShowSignupBtn.hidden = true;
+    battleSignupForm.hidden = false;
+    battleShowLoginBtn.hidden = false;
+  });
+}
+
+if (battleSignupForm) {
+  battleSignupForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("battle-signup-email").value;
+    const password = document.getElementById("battle-signup-password").value;
+    const artistName = document.getElementById("battle-signup-artist-name").value.trim();
+    const msgEl = document.getElementById("battle-signup-msg");
+    msgEl.hidden = false;
+    msgEl.className = "battle-msg";
+    if (!artistName) {
+      msgEl.textContent = "Bitte einen Künstlernamen eingeben.";
+      msgEl.classList.add("error");
+      return;
+    }
+    if (!currentState || !currentState.battle) return;
+
+    const submitBtn = battleSignupForm.querySelector("button[type=submit]");
+    submitBtn.disabled = true;
+    msgEl.textContent = "Registriere...";
+    const { ok, data } = await apiFetch("auth/register", { method: "POST", body: JSON.stringify({ email, password }) });
+    submitBtn.disabled = false;
+
+    if (ok) {
+      setToken(data.token);
+      localStorage.setItem(PENDING_BATTLE_KEY, JSON.stringify({ battleId: currentState.battle.id, artistName }));
+      msgEl.textContent =
+        "Fast geschafft! Bestätige deine E-Mail-Adresse (Link wurde dir geschickt) – danach bist du automatisch für den Battle-Rap-Contest registriert.";
+      msgEl.classList.add("success");
+      battleSignupForm.hidden = true;
+    } else {
+      msgEl.textContent = data.error || "Registrierung fehlgeschlagen.";
+      msgEl.classList.add("error");
+    }
+  });
+}
+
+if (battleLoginForm) {
+  battleLoginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("battle-login-email").value;
+    const password = document.getElementById("battle-login-password").value;
+    const msgEl = document.getElementById("battle-login-msg");
+    msgEl.hidden = false;
+    msgEl.className = "battle-msg";
+    const submitBtn = battleLoginForm.querySelector("button[type=submit]");
+    submitBtn.disabled = true;
+    msgEl.textContent = "Melde an...";
+    const { ok, data } = await apiFetch("auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+    submitBtn.disabled = false;
+    if (ok) {
+      setToken(data.token);
+      msgEl.textContent = "";
+      msgEl.hidden = true;
+      await loadState();
+    } else {
+      msgEl.textContent = data.error || "Login fehlgeschlagen.";
+      msgEl.classList.add("error");
+    }
+  });
+}
 
 loadState();

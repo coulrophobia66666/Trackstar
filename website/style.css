@@ -2088,6 +2088,29 @@ button#vocals-check-btn:disabled {
   color: var(--gold-bright);
 }
 
+/* Eigenes, auffaelligeres Pill-Design statt des neutralen .site-nav-link-Textlinks - der
+   Battle-Rap-Contest ist ein Wachstums-/Viralitaets-Feature und soll im Header nicht in derselben
+   unauffaelligen Optik wie "Preise" untergehen. */
+.battle-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  background: var(--gold-wash);
+  border: 1px solid rgba(205, 168, 107, 0.35);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.battle-nav-btn:hover {
+  border-color: var(--gold);
+  background: rgba(205, 168, 107, 0.24);
+}
+
 .site-nav-right {
   display: flex;
   align-items: center;
