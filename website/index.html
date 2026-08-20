@@ -36,15 +36,18 @@
   // nach MAINTENANCE_UNTIL laedt die Seite automatisch wieder ganz normal. Nur die Website
   // betroffen, der Worker (Login/Kauf/Battle-Contest) bleibt in dieser Zeit erreichbar.
   (function () {
-    var MAINTENANCE_UNTIL = 1787226615275; // 20.08.2026, ca. 13:50 MESZ
+    var MAINTENANCE_UNTIL = 1787314420000; // 21.08.2026, ca. 14:13 MESZ
     if (Date.now() >= MAINTENANCE_UNTIL) return;
     document.documentElement.style.overflow = "hidden";
     var isDe = !(navigator.language || "").toLowerCase().startsWith("en");
-    var timeStr = new Date(MAINTENANCE_UNTIL).toLocaleTimeString(isDe ? "de-DE" : "en-US", { hour: "2-digit", minute: "2-digit" });
+    var target = new Date(MAINTENANCE_UNTIL);
+    var timeStr = target.toLocaleTimeString(isDe ? "de-DE" : "en-US", { hour: "2-digit", minute: "2-digit" });
+    var isNextDay = target.toDateString() !== new Date().toDateString();
+    var whenStr = isNextDay ? (isDe ? "morgen gegen " + timeStr : "tomorrow around " + timeStr) : (isDe ? "gegen " + timeStr : "around " + timeStr);
     var title = isDe ? "Wartungsarbeiten" : "Under maintenance";
     var text = isDe
-      ? "Wir sind kurz für Wartungsarbeiten offline. Gegen " + timeStr + " Uhr sind wir wieder da – danke für deine Geduld!"
-      : "We're briefly offline for maintenance. Back around " + timeStr + " – thanks for your patience!";
+      ? "Wir arbeiten gerade an neuen Funktionen. " + whenStr + " Uhr sind wir wieder da – danke für deine Geduld!"
+      : "We're rolling out new features right now. Back " + whenStr + " – thanks for your patience!";
     document.write(
       '<div style="position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:#07080c;color:#f5f0e6;font-family:Manrope,system-ui,sans-serif;">' +
         '<div style="font-family:Fraunces,Georgia,serif;font-size:1.5rem;font-weight:600;color:#f0d19c;margin-bottom:0.8rem;">Overhertz</div>' +
