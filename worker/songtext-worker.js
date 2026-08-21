@@ -1194,7 +1194,8 @@ async function handleCreateCheckoutSession(request, env, cors) {
 
     return jsonResponse({ url: session.url }, 200, cors);
   } catch (err) {
-    return jsonResponse({ error: err.message || "Zahlung konnte nicht gestartet werden." }, 502, cors);
+    console.error("Stripe-Checkout-Fehler", err);
+    return jsonResponse({ error: "Zahlung konnte nicht gestartet werden." }, 502, cors);
   }
 }
 
@@ -1222,7 +1223,8 @@ async function handleCreatePortalSession(request, env, cors) {
     });
     return jsonResponse({ url: session.url }, 200, cors);
   } catch (err) {
-    return jsonResponse({ error: err.message || "Konnte nicht geoeffnet werden." }, 502, cors);
+    console.error("Stripe-Portal-Fehler", err);
+    return jsonResponse({ error: "Konnte nicht geoeffnet werden." }, 502, cors);
   }
 }
 
@@ -2070,7 +2072,7 @@ export default {
       return handleBattleRegister(request, env, cors);
     }
     if (url.pathname === "/battle/submit" && request.method === "POST") {
-      return handleBattleSubmit(request, env, cors);
+      return withRateLimit(env, "battlesubmit:" + clientIp, cors, () => handleBattleSubmit(request, env, cors));
     }
     if (url.pathname === "/battle/vote" && request.method === "POST") {
       return withRateLimit(env, "battlevote:" + clientIp, cors, () => handleBattleVote(request, env, cors));
