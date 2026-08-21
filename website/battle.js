@@ -818,12 +818,23 @@ if (battleSignupForm) {
     e.preventDefault();
     const email = document.getElementById("battle-signup-email").value;
     const password = document.getElementById("battle-signup-password").value;
+    const passwordConfirm = document.getElementById("battle-signup-password-confirm").value;
     const artistName = document.getElementById("battle-signup-artist-name").value.trim();
     const msgEl = document.getElementById("battle-signup-msg");
     msgEl.hidden = false;
     msgEl.className = "battle-msg";
+    if (password !== passwordConfirm) {
+      msgEl.textContent = "Die Passwörter stimmen nicht überein.";
+      msgEl.classList.add("error");
+      return;
+    }
     if (!artistName) {
       msgEl.textContent = "Bitte einen Künstlernamen eingeben.";
+      msgEl.classList.add("error");
+      return;
+    }
+    if (!document.getElementById("battle-signup-consent").checked) {
+      msgEl.textContent = "Bitte AGB und Datenschutz akzeptieren.";
       msgEl.classList.add("error");
       return;
     }

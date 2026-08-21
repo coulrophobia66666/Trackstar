@@ -23,7 +23,7 @@
   <!-- Versions-Query (?v=) an style.css/app.js/etc.: bei jeder inhaltlichen Aenderung dieser
        Dateien hochzaehlen, sonst liefern Browser/Cloudflare-Cache alten Nutzern weiter die alte
        Version aus, obwohl index.html selbst (Service Worker, network-first) schon aktuell ist. -->
-  <link rel="stylesheet" href="style.css?v=2" />
+  <link rel="stylesheet" href="style.css?v=3" />
   <link rel="icon" href="logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="manifest" href="manifest.json" />
@@ -137,6 +137,16 @@
               </button>
             </div>
           </div>
+          <div class="field">
+            <label for="reset-new-password-confirm" data-i18n="confirmPasswordLabel">Passwort bestätigen</label>
+            <div class="password-field">
+              <input type="password" id="reset-new-password-confirm" required minlength="8" />
+              <button type="button" class="password-toggle" data-target="reset-new-password-confirm" aria-label="Passwort anzeigen">
+                <svg class="icon-eye" width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/></svg>
+                <svg class="icon-eye-off" width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M2.5 2.5l11 11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+              </button>
+            </div>
+          </div>
           <button type="submit" class="account-btn account-btn-primary" data-i18n="resetPasswordBtn">Passwort setzen</button>
         </form>
         <form id="register-form" class="auth-form" hidden>
@@ -155,6 +165,25 @@
               </button>
             </div>
           </div>
+          <div class="field">
+            <label for="register-password-confirm" data-i18n="confirmPasswordLabel">Passwort bestätigen</label>
+            <div class="password-field">
+              <input type="password" id="register-password-confirm" required minlength="8" />
+              <button type="button" class="password-toggle" data-target="register-password-confirm" aria-label="Passwort anzeigen">
+                <svg class="icon-eye" width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/></svg>
+                <svg class="icon-eye-off" width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M2.5 2.5l11 11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+              </button>
+            </div>
+          </div>
+          <label class="consent-checkbox-row" for="register-consent">
+            <input type="checkbox" id="register-consent" required />
+            <span>
+              <span data-i18n="registerConsentPrefix">Ich akzeptiere die</span>
+              <a href="agb.html" target="_blank" rel="noopener" data-i18n="footerAgb">AGB</a>
+              <span data-i18n="registerConsentMiddle">und die</span>
+              <a href="datenschutz.html" target="_blank" rel="noopener" data-i18n="footerDatenschutz">Datenschutz</a>
+            </span>
+          </label>
           <button type="submit" class="account-btn account-btn-primary" data-i18n="registerBtn">Konto erstellen</button>
           <button type="button" id="go-to-login-link" class="link-btn" data-i18n="goToLoginLink">Schon ein Konto? Login</button>
         </form>
@@ -695,7 +724,7 @@
     </div>
   </div>
 
-  <script src="audio-core.js?v=2"></script>
-  <script src="app.js?v=2"></script>
+  <script src="audio-core.js?v=3"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>

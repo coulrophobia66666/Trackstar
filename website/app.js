@@ -27,6 +27,11 @@ const I18N = {
     passwordHint: "(mind. 8 Zeichen)",
     passwordShowLabel: "Passwort anzeigen",
     passwordHideLabel: "Passwort verbergen",
+    confirmPasswordLabel: "Passwort bestätigen",
+    passwordMismatchError: "Die Passwörter stimmen nicht überein.",
+    registerConsentPrefix: "Ich akzeptiere die",
+    registerConsentMiddle: "und die",
+    registerConsentRequired: "Bitte AGB und Datenschutz akzeptieren.",
     registerBtn: "Konto erstellen",
     forgotPasswordLink: "Passwort vergessen?",
     backToLoginLink: "Zurück zum Login",
@@ -520,6 +525,11 @@ const I18N = {
     passwordHint: "(min. 8 characters)",
     passwordShowLabel: "Show password",
     passwordHideLabel: "Hide password",
+    confirmPasswordLabel: "Confirm password",
+    passwordMismatchError: "Those passwords don't match.",
+    registerConsentPrefix: "I agree to the",
+    registerConsentMiddle: "and",
+    registerConsentRequired: "Please accept the Terms and Privacy Policy to continue.",
     registerBtn: "Create account",
     forgotPasswordLink: "Forgot password?",
     backToLoginLink: "Back to login",
@@ -2687,6 +2697,15 @@ if (registerForm) {
     e.preventDefault();
     const email = document.getElementById("register-email").value;
     const password = document.getElementById("register-password").value;
+    const passwordConfirm = document.getElementById("register-password-confirm").value;
+    if (password !== passwordConfirm) {
+      authStatus.textContent = t("passwordMismatchError");
+      return;
+    }
+    if (!document.getElementById("register-consent").checked) {
+      authStatus.textContent = t("registerConsentRequired");
+      return;
+    }
     authStatus.textContent = t("authRegistering");
     const { ok, data } = await apiFetch("auth/register", { method: "POST", body: JSON.stringify({ email, password }) });
     if (ok) {
@@ -2756,6 +2775,11 @@ if (resetPasswordForm) {
     e.preventDefault();
     const token = resetPasswordForm.dataset.token || "";
     const password = document.getElementById("reset-new-password").value;
+    const passwordConfirm = document.getElementById("reset-new-password-confirm").value;
+    if (password !== passwordConfirm) {
+      authStatus.textContent = t("passwordMismatchError");
+      return;
+    }
     authStatus.textContent = t("resetPasswordSetting");
     const { ok, data } = await apiFetch("auth/reset-password", { method: "POST", body: JSON.stringify({ token, password }) });
     if (ok) {
